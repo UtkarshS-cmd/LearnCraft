@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head sandbox-head">
+  <div><div class="eyebrow">Learn by building</div><div class="h1">Sandbox Lab</div><p>Build a circuit, observe what it does, and change one thing at a time.</p></div>
+  <div class="sandbox-loop"><span class="loop-done">BUILD</span><span>→</span><span>OBSERVE</span><span>→</span><span>MODIFY</span><span>→</span><span>TRY AGAIN</span></div>
+</div>
+<div class="sandbox-layout">
+  <main class="card circuit-lab">
+    <div class="lab-heading"><div><span class="badge info">Physics · Electricity</span><div class="h2" style="margin-top:10px">Circuit Workshop</div><p class="caption">Arrange the parts, then close the switch to test the path.</p></div><span class="badge ok">Offline lab</span></div>
+    <div class="circuit-board" id="circuitBoard" aria-label="Circuit construction board">
+      <div class="board-label">YOUR WORKBENCH</div>
+      <div class="circuit-path" id="circuitPath">
+        <div class="circuit-node battery-node"><span class="component-symbol">+</span><strong>Battery</strong><small>source</small></div><div class="wire-segment"></div>
+        <div class="circuit-node bulb-node"><span class="bulb-symbol">◉</span><strong>Bulb</strong><small id="bulbState">dark</small></div><div class="wire-segment"></div>
+        <button class="circuit-node switch-node" id="switchControl" onclick="toggleCircuitSwitch()" aria-pressed="false"><span class="switch-symbol">⌁</span><strong>Switch</strong><small id="switchState">open</small></button><div class="wire-segment"></div>
+        <div class="circuit-node return-node"><span class="wire-symbol">↩</span><strong>Wire</strong><small>path</small></div>
+      </div>
+      <div class="board-note" id="boardNote">The gap at the switch is part of the experiment.</div>
+    </div>
+    <div class="component-tray"><div><div class="h3">Build the system</div><div class="caption">Remove a part to see which role it plays.</div></div><div class="component-buttons">
+      <button class="component-toggle active" data-component="battery" onclick="toggleCircuitComponent('battery')"><span>＋</span> Battery</button><button class="component-toggle active" data-component="bulb" onclick="toggleCircuitComponent('bulb')"><span>◉</span> Bulb</button><button class="component-toggle active" data-component="switch" onclick="toggleCircuitComponent('switch')"><span>⌁</span> Switch</button><button class="component-toggle active" data-component="wire" onclick="toggleCircuitComponent('wire')"><span>↩</span> Wire</button>
+    </div></div>
+  </main>
+  <aside class="sandbox-side">
+    <section class="concept-panel" id="conceptPanel" aria-live="polite"><div class="concept-top"><span class="eyebrow">What your system says</span><button class="icon-btn" onclick="dismissConcept()" aria-label="Dismiss explanation" title="Dismiss explanation">×</button></div><div class="concept-status" id="conceptStatus">Open circuit</div><div class="h2" id="conceptTitle">The bulb stays dark</div>
+      <div class="concept-row"><b>What happened?</b><p id="conceptHappened"></p></div><div class="concept-row"><b>Why did it happen?</b><p id="conceptWhy"></p></div><div class="concept-highlight"><span class="concept-icon">✦</span><div><b>Relevant concept</b><p id="conceptText"></p></div></div><div class="formula" id="conceptFormula"></div><button class="btn btn-secondary btn-sm" id="conceptAction" onclick="applyConceptAction()">Close the switch and observe</button>
+    </section>
+    <button class="revisit-button" id="revisitButton" onclick="showConcept()">↗ Revisit this explanation</button>
+    <section class="card experiment-card"><div class="eyebrow">Experiment trail</div><div class="h3" style="margin-top:5px">Your observations</div><div id="experimentTrail" class="experiment-trail"></div></section>
+  </aside>
+</div>
+<section class="card sandbox-footer"><div><div class="h3">Keep experimenting</div><div class="caption">There is no wrong state here. Change one part, observe the result, then make a new prediction.</div></div><button class="btn btn-ghost btn-sm" onclick="resetCircuit()">↺ Reset circuit</button></section>
+{% endblock %}

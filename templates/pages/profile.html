@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% from "components.html" import badge %}
+{% block content %}
+<div class="page-head"><div><div class="h1">Profile</div><p>Your learner identity in the lab.</p></div><button class="btn btn-secondary" onclick="toast('Avatar editor coming soon')">Edit profile</button></div>
+<div class="grid grid-2">
+  <div class="card" style="display:flex;gap:16px;align-items:center"><div class="avatar" style="width:64px;height:64px;font-size:22px">{{ student.avatar }}</div><div><div class="h2">{{ student.name }}</div><div class="caption">{{ student.roll_no }} · Lab A · Class 10</div><div style="margin-top:8px;display:flex;gap:6px"><span class="badge info">Level {{ student.level }}</span><span class="badge ok">▲ {{ student.streak_days }}-day streak</span><span class="badge warn">★ {{ student.xp }} XP</span></div></div></div>
+  <div class="card"><div class="h2" style="margin-bottom:12px">Next step for you</div><div class="banner ok">✓ <span>Finish <b>Friction Simulator</b> (12 min) to hit <b>Level 8</b>.</span></div><div style="margin-top:12px;display:flex;gap:8px"><a class="btn btn-primary btn-sm" href="/subjects/physics">Resume Physics →</a><a class="btn btn-secondary btn-sm" href="/progress">View progress</a></div></div>
+</div>
+<div class="card" style="margin-top:16px"><div class="h2" style="margin-bottom:12px">Preferences (saved on this device)</div>
+  <div class="grid grid-2">
+    <label class="row-item"><input type="checkbox" checked onchange="toast('Sound effects on')"> <b class="body-sm">Sound effects</b></label>
+    <label class="row-item"><input type="checkbox" checked onchange="toast('Reminders on')"> <b class="body-sm">Daily reminder · 6 PM</b></label>
+    <label class="row-item"><input type="checkbox" onchange="toast('High-contrast ' + (this.checked?'on':'off'))"> <b class="body-sm">High contrast text</b></label>
+    <label class="row-item"><input type="checkbox" checked onchange="toast('Offline mode always on')"> <b class="body-sm">Offline-first mode</b></label>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% from "components.html" import progressbar, badge, empty_state %}
+{% block content %}
+<div class="page-head"><div><div class="h1">My Learning</div><p>Pick up exactly where you left off. One tap to resume.</p></div><a class="btn btn-primary" href="/home">▶ Continue: {{ cont.lesson }}</a></div>
+<div class="tabs"><button class="tab active" onclick="toast('Filtered: In progress')">In progress</button><button class="tab" onclick="toast('Filtered: Completed')">Completed</button><button class="tab" onclick="toast('Filtered: Saved')">Saved</button></div>
+<div class="grid grid-3">
+{% for c in items %}
+<div class="card hover" data-search="{{ c.subject }} {{ c.chapter }} {{ c.lesson }}">
+  <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><div class="tile-icon" style="background:{{ c.bg }};color:{{ c.color }}">▶</div><div><b>{{ c.subject }}</b><div class="caption">{{ c.chapter }}</div></div><span style="margin-left:auto">{{ badge(c.status.replace('_',' ').title(), 'ok' if c.status=='completed' else 'info') }}</span></div>
+  <div class="h3" style="margin-bottom:4px">{{ c.lesson }}</div><div class="caption" style="margin-bottom:10px">{{ c.time }}</div>
+  {{ progressbar(c.progress) }}
+  <div style="display:flex;gap:8px;margin-top:14px"><a class="btn btn-primary btn-sm" style="flex:1" href="{% if c.slug in lesson_map %}/subjects/{{ c.slug }}/lessons/{{ lesson_map[c.slug] }}{% else %}/subjects/{{ c.slug }}{% endif %}">{{ 'Review' if c.status=='completed' else 'Resume' }} →</a><button class="btn btn-secondary btn-sm" onclick="toast('Saved to your list')">♡</button></div>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

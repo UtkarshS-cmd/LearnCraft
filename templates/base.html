@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title or "LearnCraft" }} · LearnCraft OS</title>
+<link rel="stylesheet" href="/static/css/design-system.css">
+</head>
+<body>
+{% from "components.html" import icon %}
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="brand-mark">L</div><div><div class="brand-name">LearnCraft</div><div class="brand-sub">Student OS · Offline</div></div></div>
+    <nav class="nav">
+      <div class="nav-label">Learn</div>
+      {% for item in nav %}
+      <a class="nav-item {% if active == item.slug %}active{% endif %}" href="{{ item.href }}">{{ icon(item.icon) }}{{ item.label }}
+        {% if item.slug == 'assignments' and pending_count %}<span class="count">{{ pending_count }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </nav>
+    <div class="side-foot">
+      <div class="offline-pill" data-network-pill><span class="dot pulse"></span><span>Offline Mode · Local</span></div>
+      <div class="mini-profile"><div class="avatar">{{ student.avatar }}</div><div><div style="font-weight:800;font-size:13.5px">{{ student.name }}</div><div class="caption">{{ student.roll_no }}</div></div></div>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <button class="btn btn-secondary btn-sm menu-btn" onclick="document.body.classList.toggle('nav-open')">☰ Menu</button>
+      <div class="search">⌕ <input id="globalSearch" placeholder="Search lessons, practicals, assignments…" oninput="filterCards(this.value)"></div>
+      <div class="top-actions">
+        <span class="pill">▲ {{ student.streak_days }}-day streak</span>
+        <span class="pill xp">★ {{ student.xp }} XP</span>
+        <div class="avatar">{{ student.avatar }}</div>
+      </div>
+    </div>
+    <div class="content">{% block content %}{% endblock %}</div>
+  </div>
+</div>
+<div class="modal-back" id="modalBack"><div class="modal" id="modalBox"></div></div>
+<div class="toast" id="toast"></div>
+<script src="/static/js/app.js"></script>
+<script src="/static/js/sandbox-engine.js"></script>
+<script src="/static/js/offline-store.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

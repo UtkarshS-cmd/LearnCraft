@@ -1,0 +1,166 @@
+{% extends "base.html" %}{% from "components.html" import progressbar, badge, state_badge, state_icon %}
+{% block content %}
+<style>
+.subj-head{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.subj-head .meta{flex:1;min-width:240px}
+.sub-tabs{display:flex;gap:6px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);padding:5px;border-radius:16px;margin-bottom:16px}
+.sub-tabs .tab{white-space:nowrap}
+.pane{display:none}.pane.show{display:block}
+.unit{border:1px solid var(--line);border-radius:18px;background:#fff;margin-bottom:12px;overflow:hidden}
+.unit>summary{list-style:none;cursor:pointer;padding:16px 18px;display:flex;gap:12px;align-items:center}
+.unit>summary::-webkit-details-marker{display:none}
+.unit-body{border-top:1px solid var(--line-soft);padding:6px 10px 12px}
+.chap{border:1px solid var(--line-soft);border-radius:14px;padding:13px 14px;margin:8px;background:#FCFDFF}
+.chap.current{border-color:#C7CBFF;background:#FBFBFF;box-shadow:var(--shadow-sm)}
+.chap.locked{opacity:.72}
+.act-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.act{border:1px solid var(--line-soft);border-radius:11px;padding:9px 10px;font-size:12.5px;background:#fff}
+.act b{display:block;font-size:12.5px}.act span{color:var(--muted)}
+.next-strip{display:flex;gap:12px;align-items:center;background:linear-gradient(120deg,#1E1B4B,#4F46E5 70%);color:#fff;border-radius:18px;padding:18px 20px;margin-bottom:14px;flex-wrap:wrap}
+.next-strip .btn-primary{background:#fff;color:#312E81}
+@media(max-width:860px){.act-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+<div class="caption"><a href="/subjects">← All subjects</a></div>
+
+<!-- HEADER: identical for every subject, only values change -->
+<div class="subj-head">
+  <div class="tile-icon" style="background:{{ page.bg }};color:{{ page.color }};width:56px;height:56px;font-size:26px">{{ page.icon }}</div>
+  <div class="meta">
+    <div class="h1">{{ page.name }}</div>
+    <p class="body-sm" style="margin:4px 0 6px;color:var(--muted)">{{ page.description }}</p>
+    <div>{% for t in page.tags %}{{ badge(t, 'info') }} {% endfor %}</div>
+  </div>
+  <div class="card" style="min-width:250px;flex:1;max-width:340px">
+    <div style="display:flex;justify-content:space-between"><b class="body-sm">Overall progress</b><b class="body-sm">{{ page.progress }}%</b></div>
+    <div style="margin:8px 0 12px">{{ progressbar(page.progress) }}</div>
+    <a class="btn btn-primary" style="width:100%" href="{{ page.continue.href }}">▶ {{ page.continue.cta }} →</a>
+  </div>
+</div>
+
+<!-- NAV: same 8 tabs for every subject -->
+<div class="sub-tabs" role="tablist">
+  {% for t in ['Overview','Learn','Practice','Sandbox','Practical','Assignments','Notes','Progress'] %}
+  <button class="tab {% if loop.first %}active{% endif %}" data-pane="pane-{{ t|lower }}" role="tab">{{ t }}</button>
+  {% endfor %}
+</div>
+
+<!-- OVERVIEW: Up-next + Units with progressive disclosure -->
+<div class="pane show" id="pane-overview">
+  <div class="next-strip">
+    <div style="flex:1;min-width:240px"><span class="badge" style="background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3);color:#fff">● UP NEXT · {{ page.continue.chapter_label }}</span>
+      <div class="h2" style="margin:8px 0 2px">{{ page.continue.lesson }}</div>
+      <div style="opacity:.8;font-size:13px">{{ page.continue.time_left }} · {{ page.continue.progress }}% done</div></div>
+    <a class="btn btn-primary" href="{{ page.continue.href }}">▶ Continue →</a>
+  </div>
+  {% for u in page.units %}
+  <details class="unit" {% if u.id == 'u2' %}open{% endif %}>
+    <summary>{{ state_icon('Completed' if u.id=='u1' else ('In Progress' if u.id=='u2' else 'Locked')) }}
+      <span style="flex:1"><b>{{ u.title }}</b><br><span class="caption">{{ u.desc }}</span></span>
+      {{ state_badge('Completed' if u.id=='u1' else ('In Progress' if u.id=='u2' else 'Locked')) }}
+    </summary>
+    <div class="unit-body">
+      {% for c in u.chapters %}
+      <div class="chap {% if c.is_current %}current{% endif %} {% if c.status=='Locked' %}locked{% endif %}" data-search="chapter {{ c.n }} {{ c.title }}">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          {{ state_icon(c.status) }}
+          <div style="flex:1;min-width:200px"><b>Chapter {{ c.n }} · {{ c.title }}</b>
+            <div class="caption">{{ c.est }} · {{ c.lessons_count }} lessons{% if c.prereq %} · Needs: {{ c.prereq }}{% endif %}</div>
+            <div style="max-width:320px;margin-top:7px">{{ progressbar(c.progress) }}</div>
+          </div>
+          {{ state_badge(c.status) }}
+          {% if c.is_current %}<span class="badge warn">● Current</span>{% elif c.is_next %}<span class="badge info">→ Next</span>{% endif %}
+          {% if c.status == 'In Progress' %}<a class="btn btn-primary btn-sm" href="{{ page.continue.href }}">Continue →</a>
+          {% elif c.status == 'Available' %}<button class="btn btn-secondary btn-sm" onclick="toast('Chapter {{ c.n }} unlocked (mock)')">{% if c.is_next %}Start next{% else %}Start{% endif %} →</button>
+          {% elif c.status == 'Completed' %}<button class="btn btn-secondary btn-sm" onclick="toast('Reviewing Ch.{{ c.n }} (mock)')">Review</button>
+          {% else %}<button class="btn btn-secondary btn-sm" disabled>Locked</button>{% endif %}
+        </div>
+        {% if c.is_current %}
+        <div class="act-grid">
+          <div class="act"><b>📖 Lessons ({{ c.lessons_count }})</b><span>3 done · 2 left</span></div>
+          <div class="act"><b>◈ Sim · {{ c.sim }}</b><span>Step 4 of 6 · 12 min left</span></div>
+          <div class="act"><b>⚗ Practical</b><span>{{ c.practical }}</span></div>
+          <div class="act"><b>✎ {{ c.quiz }}</b><span>Unlocks after sim</span></div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+</div>
+
+<!-- LEARN: Subject → Unit → Chapter → Lesson → Activity (flattened, current expanded) -->
+<div class="pane" id="pane-learn">
+  {% for u in page.units %}
+  <div class="card" style="margin-bottom:12px"><div class="h3" style="margin-bottom:10px">{{ u.title }}</div>
+    {% for c in u.chapters %}
+    <div class="row-item" style="{% if c.status=='Locked' %}opacity:.6{% endif %}"><div style="flex:1"><b class="body-sm">Ch.{{ c.n }} · {{ c.title }}</b><div class="caption">📖 {{ c.lessons_count }} lessons · ◈ {{ c.sim }} · ✎ {{ c.quiz }}</div></div>
+      {{ state_badge(c.status) }}
+      {% if c.status != 'Locked' and first_lesson %}<a class="btn btn-secondary btn-sm" href="/subjects/{{ page.slug }}/lessons/{{ first_lesson }}">Open →</a>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- PRACTICE -->
+<div class="pane" id="pane-practice">
+  {% for p in page.practice %}
+  <div class="row-item">{{ state_icon(p.status) }}<div style="flex:1"><b>{{ p.title }}</b><div class="caption">{{ p.meta }}</div></div>{{ state_badge(p.status) }}
+  <button class="btn btn-{{ 'primary' if p.status in ['In Progress','Available'] else 'secondary' }} btn-sm" onclick="toast('Opening practice (mock)')">{{ 'Review' if p.status=='Completed' else 'Start →' }}</button></div>
+  {% endfor %}
+</div>
+
+<!-- SANDBOX -->
+<div class="pane" id="pane-sandbox">
+  <div class="grid grid-2">{% for s in page.sims %}
+    <div class="card hover"><div class="tile-icon" style="background:{{ page.bg }};color:{{ page.color }};margin-bottom:10px">◈</div><div class="h3">{{ s }}</div><div class="caption" style="margin:4px 0 10px">Offline · auto-saves · no setup</div><div style="display:flex;gap:8px"><a class="btn btn-primary btn-sm" href="/sandbox">Open sim →</a><button class="btn btn-secondary btn-sm" onclick="toast('Guide saved (mock)')">Guide</button></div></div>
+  {% endfor %}</div>
+</div>
+
+<!-- PRACTICAL -->
+<div class="pane" id="pane-practical">
+  {% for p in page.practicals %}
+  <div class="row-item"><div class="tile-icon" style="background:{{ page.bg }};color:{{ page.color }}">⚗</div><div style="flex:1"><b>{{ p.title }}</b><div class="caption">{{ p.env }} · {{ p.steps }} · {{ p.due }}</div></div>{{ state_badge(p.status) }}
+  <a class="btn btn-{{ 'primary' if p.status!='Locked' else 'secondary' }} btn-sm" href="/practical" {% if p.status=='Locked' %}style="pointer-events:none;opacity:.5"{% endif %}>{{ 'Open lab →' if p.status!='Locked' else 'Locked' }}</a></div>
+  {% endfor %}
+</div>
+
+<!-- ASSIGNMENTS -->
+<div class="pane" id="pane-assignments">
+  {% for a in page.assignments %}
+  <div class="row-item"><div class="tile-icon" style="background:{{ page.bg }};color:{{ page.color }}">✎</div><div style="flex:1"><b>{{ a.title }}</b><div class="caption">{{ a.meta }} · {{ a.due }}</div></div>{{ state_badge(a.status) }}
+  <a class="btn btn-{{ 'primary' if a.status=='In Progress' else 'secondary' }} btn-sm" href="/assignments">{{ 'Continue →' if a.status=='In Progress' else 'View' }}</a></div>
+  {% endfor %}
+</div>
+
+<!-- NOTES -->
+<div class="pane" id="pane-notes">
+  <div class="card" style="margin-bottom:12px"><div class="h3" style="margin-bottom:8px">{{ page.name }} notes (offline)</div>
+    {% for n in page.notes %}<div class="activity"><span class="dot" style="color:{{ page.color }};margin-top:7px"></span><div style="flex:1"><b>{{ n.title }}</b><div class="caption">{{ n.body }} · {{ n.updated }}</div></div></div>{% endfor %}
+    <div style="display:flex;gap:8px;margin-top:10px"><a class="btn btn-secondary btn-sm" href="/notes">Open all notes →</a><button class="btn btn-primary btn-sm" onclick="toast('Note saved (mock)')">+ Quick note</button></div>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="pane" id="pane-progress">
+  <div class="card"><div class="h3" style="margin-bottom:10px">Unit progress · {{ page.name }}</div>
+    {% for u in page.units %}
+    {% set done = u.chapters|selectattr('status','equalto','Completed')|list|length %}
+    <div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)"><b class="body-sm" style="width:220px">{{ u.title }}</b><div style="flex:1">{{ progressbar((done / u.chapters|length * 100)|round|int) }}</div><span class="caption">{{ done }}/{{ u.chapters|length }}</span></div>
+    {% endfor %}
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">{{ state_badge('Completed') }} {{ state_badge('In Progress') }} {{ state_badge('Available') }} {{ state_badge('Locked') }} {{ state_badge('Submitted') }} {{ state_badge('Needs Review') }}</div>
+    <div class="caption" style="margin-top:8px">Legend — every subject uses these same 6 states.</div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}<script>
+document.querySelectorAll('.sub-tabs .tab').forEach(btn=>{btn.addEventListener('click',()=>{
+  document.querySelectorAll('.sub-tabs .tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('show'));
+  document.getElementById(btn.dataset.pane).classList.add('show');
+});});
+if(location.hash){const id='pane-'+location.hash.slice(1);const p=document.getElementById(id);if(p){document.querySelectorAll('.pane').forEach(x=>x.classList.remove('show'));p.classList.add('show');document.querySelectorAll('.sub-tabs .tab').forEach(b=>b.classList.toggle('active',b.dataset.pane===id));}}
+</script>{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.lesson-rail{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px}
+.stage{font-size:11px;font-weight:800;letter-spacing:.05em;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--faint)}
+.stage.done{background:var(--green-soft);border-color:#BBF7D0;color:#15803D}
+.stage.now{background:var(--ink);color:#fff;border-color:var(--ink)}
+.block{display:none}.block.show{display:block}
+.dots{display:flex;gap:6px}.dots i{width:26px;height:6px;border-radius:99px;background:var(--line)}.dots i.hit{background:var(--primary)}.dots i.now{background:var(--ink)}
+.diagram{border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#FBFCFF,#F1F5FF);padding:22px;text-align:center}
+.fbox{width:110px;height:70px;background:#fff;border:2px solid var(--ink);border-radius:10px;margin:6px auto;position:relative;font-weight:800;display:grid;place-items:center}
+.farr{font-size:13px;font-weight:800}
+.check-opt{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:#fff;font:inherit;margin-top:8px;cursor:pointer}
+.check-opt:hover{border-color:var(--primary)}
+.check-opt.right{border-color:#16A34A;background:var(--green-soft)}
+.check-opt.wrong{border-color:#F59E0B;background:#FFFBEB}
+.feedback{border-radius:12px;padding:11px 13px;font-size:13.5px;margin-top:10px;display:none}
+.feedback.ok{display:block;background:var(--green-soft);border:1px solid #BBF7D0}
+.feedback.no{display:block;background:#FFFBEB;border:1px solid #FDE68A}
+.ph-strip{height:26px;border-radius:99px;background:linear-gradient(90deg,#DC2626,#F59E0B,#A3E635,#16A34A,#0891B2,#7C3AED);margin:12px 0 4px}
+input[type=range]{width:100%}
+.lesson-nav{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.done-banner{display:none;border:1px solid #BBF7D0;background:var(--green-soft);border-radius:16px;padding:16px;margin-top:16px}
+.done-banner.show{display:block}
+</style>
+
+<div class="caption"><a href="/subjects">Subjects</a> › <a href="/subjects/{{ lesson.subject_slug }}">{{ lesson.subject_name }}</a> › {{ lesson.chapter_label }}</div>
+<div class="page-head" style="margin-top:6px"><div><div class="h1">{{ lesson.title }}</div><p>🎯 {{ lesson.objective }} · ⏱ {{ lesson.est }}</p></div>
+<a class="btn btn-secondary btn-sm" href="/subjects/{{ lesson.subject_slug }}">✕ Exit</a></div>
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="pbar" style="flex:1;min-width:180px"><i id="lprog" style="width:0%"></i></div>
+    <span class="caption" id="lcount"></span>
+  </div>
+  <div class="lesson-rail" id="rail">
+    {% for s in stages %}<span class="stage" data-stage="{{ s }}">{{ s }}</span>{% endfor %}
+  </div>
+  <div id="resumeNote" class="caption" style="display:none;margin-top:6px">↩ Picked up where you left off. <button class="btn btn-ghost btn-sm" id="restartBtn">Restart lesson</button></div>
+</div>
+
+<div id="blocks" style="margin-top:14px">
+{% for b in lesson.blocks %}
+<section class="block card" data-idx="{{ loop.index0 }}" data-stage="{{ b.stage }}" data-type="{{ b.type }}">
+  <span class="badge info">{{ b.stage }} · step {{ loop.index }} of {{ lesson.blocks|length }}</span>
+  <div class="h2" style="margin:10px 0 6px">{{ b.title }}</div>
+
+  {% if b.type == 'text' %}<p class="body">{{ b.body }}</p>
+
+  {% elif b.type == 'visual' %}
+    <div class="diagram">
+      {% if b.diagram == 'friction' %}
+      <div class="farr">⬆ N = 100 N</div><div class="fbox">📦 10 kg</div>
+      <div><span class="farr">← friction&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="farr">push →</span></div>
+      {% elif b.diagram == 'parabola' %}
+      <svg viewBox="0 0 200 120" width="100%" height="150"><line x1="100" y1="5" x2="100" y2="115" stroke="#CBD5E1"/><line x1="5" y1="90" x2="195" y2="90" stroke="#CBD5E1"/><path d="M20,15 Q100,150 180,15" fill="none" stroke="#5B5BF6" stroke-width="3"/></svg>
+      {% elif b.diagram == 'ph' %}
+      <div class="ph-strip"></div><div class="caption">0 ····· 7 (water) ····· 14</div>
+      {% endif %}
+    </div><div class="caption" style="margin-top:8px">{{ b.caption }}</div>
+
+  {% elif b.type == 'video' %}
+    <div class="diagram">▶ <b>{{ b.caption }}</b><div class="caption" style="margin-top:6px">{{ b.duration }} · tap play — no internet needed</div></div>
+
+  {% elif b.type == 'interactive' %}
+    <p class="body-sm">{{ b.prompt }}</p>
+    {% if b.widget == 'slider' %}
+    <label class="lbl">{{ b.config.unit }} = <b id="muVal">{{ b.config.default }}</b> → max grip = <b id="gripVal"></b></label>
+    <input type="range" id="muSlider" min="{{ b.config.min }}" max="{{ b.config.max }}" step="0.05" value="{{ b.config.default }}">
+    <div class="caption">10 kg box · N ≈ 100 N · grip = μ × N</div>
+    {% elif b.widget == 'parabola' %}
+    <label class="lbl">a = <b id="paVal">{{ b.config.default }}</b></label>
+    <input type="range" id="paSlider" min="{{ b.config.min }}" max="{{ b.config.max }}" step="0.5" value="{{ b.config.default }}">
+    <svg viewBox="0 0 200 120" width="100%" height="150"><line x1="100" y1="5" x2="100" y2="115" stroke="#CBD5E1"/><line x1="5" y1="90" x2="195" y2="90" stroke="#CBD5E1"/><path id="paCurve" d="" fill="none" stroke="#5B5BF6" stroke-width="3"/></svg>
+    <div class="caption" id="paNote"></div>
+    {% endif %}
+
+  {% elif b.type == 'simulation' %}
+    <p class="body-sm">{{ b.desc }}</p>
+    <div style="display:flex;gap:8px;margin-top:10px"><a class="btn btn-primary btn-sm" href="{{ b.href }}">Open simulator →</a><button class="btn btn-secondary btn-sm" data-act="mark-visited">I'll do it after</button></div>
+
+  {% elif b.type == 'code' %}
+    <textarea class="input codebox" id="lessonCode" rows="5">{{ b.starter }}</textarea>
+    <div class="caption" style="margin:6px 0">Expect: {{ b.expect }} · Hint: {{ b.hint }}</div>
+    <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" id="runLessonCode">▶ Run</button></div>
+    <div class="codebox" id="lessonOut" style="margin-top:10px;min-height:56px">Press Run — executes offline (mock).</div>
+
+  {% elif b.type == 'check' %}
+    <p class="body"><b>{{ b.question }}</b></p>
+    {% for opt in b.options %}<button class="check-opt" data-opt="{{ loop.index0 }}">{{ opt }}</button>{% endfor %}
+    <div class="feedback" data-fb></div>
+    <div class="caption" data-answer="{{ b.answer }}" data-explain="{{ b.explain }}" style="display:none"></div>
+
+  {% elif b.type == 'reflect' %}
+    <p class="body-sm">{{ b.prompt }}</p>
+    <textarea class="input" rows="3" data-reflect placeholder="One or two lines is enough…"></textarea>
+    <div style="margin-top:8px"><button class="btn btn-secondary btn-sm" data-act="save-reflect">Save thought</button></div>
+
+  {% elif b.type == 'apply' %}
+    <div class="banner ok">✓ <span>{{ b.task }}</span></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><a class="btn btn-secondary btn-sm" href="/notes?context_subject={{ lesson.subject_name|urlencode }}&context_chapter={{ lesson.chapter_label|urlencode }}&source_type=lesson&source_id={{ lesson.id|urlencode }}&source_title={{ lesson.title|urlencode }}">Save in Notes →</a><a class="btn btn-secondary btn-sm" href="/sandbox">Open Sandbox →</a></div>
+  {% endif %}
+</section>
+{% endfor %}
+</div>
+
+<div class="lesson-nav">
+  <button class="btn btn-secondary" id="prevBtn">← Back</button>
+  <div class="dots" id="dots"></div>
+  <button class="btn btn-primary" id="nextBtn">Next →</button>
+</div>
+
+<div class="done-banner" id="doneBanner">✓ <b>Lesson complete.</b> Nice — exploring counts. Next: <b>{{ lesson.next_label }}</b>.
+  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><a class="btn btn-primary btn-sm" href="/subjects/{{ lesson.subject_slug }}">Continue →</a><a class="btn btn-secondary btn-sm" href="/notes">Review notes</a></div>
+</div>
+
+{% endblock %}
+{% block scripts %}<script>
+(function(){
+const KEY='lc_lesson_{{ lesson.id }}';
+const total={{ lesson.blocks|length }};
+let state={idx:0,visited:[0],checked:{},done:false};
+try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.idx>=0&&s.idx<total){state=s;document.getElementById('resumeNote').style.display='block';}}catch(e){}
+document.getElementById('restartBtn').onclick=()=>{state={idx:0,visited:[0],checked:{},done:false};save();render();};
+const blocks=[...document.querySelectorAll('.block')];
+const dots=document.getElementById('dots');
+blocks.forEach((_,i)=>{const d=document.createElement('i');dots.appendChild(d);});
+function save(){localStorage.setItem(KEY,JSON.stringify(state));window.LearnCraftOffline?.persist('progress','lesson:{{ lesson.id }}',state,state.done?'completed':'in_progress');}
+function render(){
+  blocks.forEach((b,i)=>b.classList.toggle('show',i===state.idx));
+  [...dots.children].forEach((d,i)=>{d.className=state.visited.includes(i)?'hit':'';if(i===state.idx)d.classList.add('now');});
+  document.getElementById('lprog').style.width=Math.round(state.visited.length/total*100)+'%';
+  document.getElementById('lcount').textContent='Step '+(state.idx+1)+' of '+total+' · '+Math.round(state.visited.length/total*100)+'%';
+  const st=blocks[state.idx].dataset.stage;
+  document.querySelectorAll('#rail .stage').forEach(el=>{el.classList.toggle('now',el.dataset.stage===st);
+    const order=[...document.querySelectorAll('#rail .stage')].map(x=>x.dataset.stage);
+    el.classList.toggle('done',order.indexOf(el.dataset.stage)<order.indexOf(st));});
+  document.getElementById('prevBtn').disabled=state.idx===0;
+  document.getElementById('nextBtn').textContent=state.idx===total-1?(state.done?'Done ✓':'Finish ✓'):'Next →';
+  document.getElementById('doneBanner').classList.toggle('show',!!state.done);
+}
+document.getElementById('prevBtn').onclick=()=>{if(state.idx>0){state.idx--;save();render();window.scrollTo({top:0,behavior:'smooth'});}};
+document.getElementById('nextBtn').onclick=()=>{
+  if(state.idx<total-1){state.idx++;if(!state.visited.includes(state.idx))state.visited.push(state.idx);save();render();window.scrollTo({top:0,behavior:'smooth'});}
+  else{state.done=true;if(!state.visited.includes(state.idx))state.visited.push(state.idx);save();render();}
+};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;
+  if(e.key==='ArrowRight')document.getElementById('nextBtn').click();if(e.key==='ArrowLeft')document.getElementById('prevBtn').click();});
+// concept checks — attempts count, wrong answers never block
+document.querySelectorAll('.block[data-type="check"]').forEach(sec=>{
+  const meta=sec.querySelector('[data-explain]');
+  const ans=+meta.dataset.answer, expl=meta.dataset.explain, fb=sec.querySelector('[data-fb]');
+  sec.querySelectorAll('.check-opt').forEach(btn=>btn.onclick=()=>{
+    const right=+btn.dataset.opt===ans;
+    sec.querySelectorAll('.check-opt').forEach(b=>b.classList.remove('right','wrong'));
+    btn.classList.add(right?'right':'wrong');
+    fb.className='feedback '+(right?'ok':'no');
+    fb.innerHTML=(right?'✓ Exactly. ':'Not quite — good try, exploration counts. ')+expl+(right?'':' Try another option 👆');
+    const id=sec.dataset.idx;state.checked[id]=true;save();
+  });
+});
+// reflect autosave
+document.querySelectorAll('[data-reflect]').forEach(ta=>{
+  const id=ta.closest('.block').dataset.idx;
+  try{ta.value=(JSON.parse(localStorage.getItem(KEY))||{}).reflect?.[id]||'';}catch(e){}
+  ta.addEventListener('input',()=>{try{const s=JSON.parse(localStorage.getItem(KEY))||{};s.reflect=s.reflect||{};s.reflect[id]=ta.value;localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}});
+});
+document.querySelectorAll('[data-act="save-reflect"]').forEach(b=>b.onclick=()=>toast('Thought saved offline'));
+document.querySelectorAll('[data-act="mark-visited"]').forEach(b=>b.onclick=()=>{toast('No problem — marked for later');document.getElementById('nextBtn').click();});
+// friction slider widget
+const mu=document.getElementById('muSlider');
+if(mu){const upd=()=>{const v=+mu.value;document.getElementById('muVal').textContent=v.toFixed(2);document.getElementById('gripVal').textContent=Math.round(v*100)+' N';};mu.oninput=upd;upd();}
+// parabola widget
+const pa=document.getElementById('paSlider');
+if(pa){const upd=()=>{const a=+pa.value;document.getElementById('paVal').textContent=a;
+  const q=a===0?'Straight line — a = 0 kills the curve.':(a>0?'Opens up (valley) · roots depend on c.':'Opens down (hill) · vertex is a max.');
+  document.getElementById('paNote').textContent=q;
+  const c=document.getElementById('paCurve');const pts=[];for(let x=-90;x<=90;x+=6){const y=90-a*0.28*(x*x)/90;pts.push((100+x)+','+Math.max(5,Math.min(115,y)));}
+  c.setAttribute('d','M'+pts.join(' L'));};pa.oninput=upd;upd();}
+// code runner (mock, offline)
+const rc=document.getElementById('runLessonCode');
+if(rc)rc.onclick=()=>{const out=document.getElementById('lessonOut');out.textContent='▶ Running offline…';setTimeout(()=>{out.textContent='✓ Ran 0 errors (mock)\n1\n22\n333\n4444\n55555';toast('Code ran offline');},500);};
+render();
+})();
+</script>{% endblock %}

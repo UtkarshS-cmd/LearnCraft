@@ -1,0 +1,41 @@
+{% macro icon(name) -%}
+{% if name == 'home' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
+{% elif name == 'play' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z" fill="currentColor"/></svg>
+{% elif name == 'grid' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+{% elif name == 'flask' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3"/><path d="M7.5 15h9"/></svg>
+{% elif name == 'clip' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a3 3 0 0 1 6 0M9 11l2 2 4-4"/></svg>
+{% elif name == 'code' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 8-5 4 5 4M16 8l5 4-5 4M13 4l-2 16"/></svg>
+{% elif name == 'chart' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
+{% elif name == 'note' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2z"/><path d="M9 8h6M9 12h6"/></svg>
+{% elif name == 'user' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+{% else %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+{% endif %}
+{%- endmacro %}
+
+{% macro progressbar(pct) -%}
+<div class="pbar" role="progressbar" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"><i style="width:{{ pct }}%"></i></div>
+{%- endmacro %}
+
+{% macro badge(text, tone='muted') -%}<span class="badge {{ tone }}">{{ text }}</span>{%- endmacro %}
+
+{% macro state_badge(status) -%}
+{% if status == 'Completed' %}<span class="badge ok">✓ Completed</span>
+{% elif status == 'Submitted' %}<span class="badge ok">✓ Submitted</span>
+{% elif status == 'In Progress' %}<span class="badge info">▶ In Progress</span>
+{% elif status == 'Available' %}<span class="badge info">○ Available</span>
+{% elif status == 'Needs Review' %}<span class="badge warn">! Needs Review</span>
+{% elif status == 'Locked' %}<span class="badge muted">🔒 Locked</span>
+{% else %}<span class="badge muted">{{ status }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro state_icon(status, color='#6366F1') -%}
+{% if status == 'Completed' %}<div class="tile-icon" style="background:var(--green-soft);color:var(--green)">✓</div>
+{% elif status == 'In Progress' %}<div class="tile-icon" style="background:var(--primary-soft);color:var(--primary)">▶</div>
+{% elif status == 'Needs Review' %}<div class="tile-icon" style="background:var(--amber-soft);color:#B45309">!</div>
+{% elif status == 'Locked' %}<div class="tile-icon" style="background:var(--surface-2);color:var(--faint)">🔒</div>
+{% else %}<div class="tile-icon" style="background:var(--surface-2);color:{{ color }}">○</div>{% endif %}
+{%- endmacro %}
+
+{% macro empty_state(title, sub, cta='', href='') -%}
+<div class="empty"><div class="h3" style="color:var(--ink)">{{ title }}</div><div class="body-sm" style="margin:6px 0 14px">{{ sub }}</div>{% if cta %}<a class="btn btn-secondary btn-sm" href="{{ href }}">{{ cta }}</a>{% endif %}</div>
+{%- endmacro %}

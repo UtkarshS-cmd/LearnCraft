@@ -1,0 +1,91 @@
+{% extends "base.html" %}{% from "components.html" import progressbar, badge %}
+{% block content %}
+<style>
+.hub-greet{margin-bottom:18px}.hub-greet h1{font-size:24px;font-weight:800;letter-spacing:-.02em}.hub-greet p{margin:4px 0 0;color:var(--muted);font-size:13.5px}
+.continue-card{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.continue-meta{flex:1;min-width:240px}
+.today{border-left:4px solid var(--line)}.today.urgent{border-left-color:var(--amber);background:#FFFEF7}
+.quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.quick a{display:flex;flex-direction:column;gap:4px;padding:16px}
+.quick .q-ico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px;font-weight:800}
+.section-h{display:flex;align-items:baseline;justify-content:space-between;margin:22px 0 12px}
+.section-h h2{font-size:16px;font-weight:800}.section-h a{font-size:13px;font-weight:700}
+@media(max-width:860px){.quick{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+<!-- 1. Greeting -->
+<div class="hub-greet">
+  <h1>Good afternoon, {{ student.name.split(' ')[0] }}</h1>
+  <p>{{ greeting_sub }}</p>
+</div>
+
+<!-- 2. Continue Learning -->
+<div class="card" style="border-color:#D9DCFF">
+  <div class="continue-card">
+    <div class="tile-icon" style="background:{{ cont.subject_bg }};color:{{ cont.subject_color }};width:54px;height:54px;font-size:24px">◈</div>
+    <div class="continue-meta">
+      <span class="badge info">{{ cont.subject }} · {{ cont.chapter }}</span>
+      <div class="h2" style="margin:8px 0 2px">{{ cont.lesson }}</div>
+      <div class="caption">{{ cont.last_activity }} · {{ cont.time_left }}</div>
+      <div style="max-width:380px;margin-top:10px">{{ progressbar(cont.progress_pct) }}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
+      <a class="btn btn-primary btn-lg" href="{{ cont.resume_url }}">▶ Continue →</a>
+      <span class="caption" style="text-align:center">{{ cont.progress_pct }}% complete</span>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Today's Work -->
+<div class="section-h"><h2>Today's work · {{ today_work|length }} items</h2><a href="/assignments">View all →</a></div>
+<div class="grid grid-2">
+  {% for t in today_work %}
+  <div class="row-item today {% if t.urgent %}urgent{% endif %}" data-search="{{ t.title }} {{ t.kind }}">
+    <div style="flex:1">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:3px">
+        <span class="badge {{ 'warn' if t.urgent else 'muted' }}">{{ t.kind }}</span>
+        <span class="caption">{{ t.due }}</span>
+      </div>
+      <b>{{ t.title }}</b>
+      <div class="caption">{{ t.meta }}</div>
+    </div>
+    <a class="btn btn-{{ 'primary' if t.urgent else 'secondary' }} btn-sm" href="{{ t.href }}">{{ t.action }} →</a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- 4. My Subjects -->
+<div class="section-h"><h2>My subjects</h2><a href="/subjects">All subjects →</a></div>
+<div class="grid grid-4">
+  {% for s in my_subjects %}
+  <div class="card hover" data-search="{{ s.name }}">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+      <div class="tile-icon" style="background:{{ s.bg }};color:{{ s.color }}">{{ s.icon }}</div>
+      <div><b>{{ s.name }}</b><div class="caption">{{ s.current_chapter }}</div></div>
+    </div>
+    {{ progressbar(s.progress) }}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <span class="caption">{{ s.progress }}%</span>
+      <a href="/subjects/{{ s.slug }}" style="font-size:13px;font-weight:800">Continue →</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- 5. Quick Access -->
+<div class="section-h"><h2>Quick access</h2></div>
+<div class="quick">
+  <a class="card hover" href="/practical"><span class="q-ico" style="background:var(--primary-soft);color:var(--primary)">⚗</span><b class="body-sm">Practicals</b><span class="caption">{{ pending_practicals }} pending</span></a>
+  <a class="card hover" href="/assignments"><span class="q-ico" style="background:var(--amber-soft);color:#B45309">✎</span><b class="body-sm">Assignments</b><span class="caption">{{ pending_assign }} due</span></a>
+  <a class="card hover" href="/sandbox"><span class="q-ico" style="background:#FFF7ED;color:#EA580C">▣</span><b class="body-sm">Sandbox</b><span class="caption">4 labs ready</span></a>
+  <a class="card hover" href="/notes"><span class="q-ico" style="background:var(--green-soft);color:var(--green)">✎</span><b class="body-sm">Notes</b><span class="caption">2 saved</span></a>
+</div>
+
+<!-- 6. Recent Activity -->
+<div class="section-h"><h2>Recent activity</h2></div>
+<div class="card" style="padding-top:8px;padding-bottom:8px">
+  {% for e in activity %}
+  <div class="activity"><span class="dot" style="color:{{ e.dot }};margin-top:7px"></span><div style="flex:1;font-size:14px">{{ e.text }}<div class="caption">{{ e.time }}</div></div></div>
+  {% endfor %}
+</div>
+{% endblock %}

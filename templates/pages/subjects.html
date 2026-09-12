@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% from "components.html" import progressbar, badge %}
+{% block content %}
+<div class="page-head"><div><div class="h1">Subjects</div><p>Same structure everywhere: Chapters → Lessons → Sim → Practical → Quiz.</p></div></div>
+<div class="grid grid-3">
+{% for s in subjects %}
+<a class="card hover subj" href="/subjects/{{ s.slug }}" data-search="{{ s.name }}">
+  <div class="subj-top"><div class="tile-icon" style="background:{{ s.bg }};color:{{ s.color }}">{{ s.icon }}</div><div><b>{{ s.name }}</b><div class="caption">{{ s.completed }}/{{ s.chapters }} chapters</div></div><span style="margin-left:auto">{{ badge(s.tag, 'ok' if s.tag=='Ahead' else ('warn' if s.tag=='Needs focus' else 'info')) }}</span></div>
+  {{ progressbar(s.progress) }}
+  <div style="display:flex;justify-content:space-between;margin-top:8px"><span class="caption">{{ s.progress }}% complete</span><b class="body-sm">Open →</b></div>
+</a>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{
+  "subject_id": "cbse-x-2026-27-mathematics",
+  "chapters": [
+    {
+      "chapter_id": "cbse-x-2026-27-maths-real-numbers",
+      "chapter_number": 1,
+      "slug": "real-numbers",
+      "title": "Real Numbers",
+      "summary": "Use Euclid's division algorithm and the fundamental theorem of arithmetic to reason about numbers.",
+      "source_reference": "NCERT Mathematics Class X, Chapter 1, https://ncert.nic.in/textbook.php",
+      "topics": [
+        {
+          "topic_id": "cbse-x-2026-27-maths-real-numbers-fundamental-theorem",
+          "slug": "fundamental-theorem-of-arithmetic",
+          "title": "Fundamental Theorem of Arithmetic",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-maths-real-numbers-prime-factorisation",
+              "slug": "prime-factorisation",
+              "title": "Prime Factorisation and HCF",
+              "summary": "Connect prime factorisation with HCF and LCM.",
+              "learning_objectives": ["Find prime factorisations", "Use prime factors to calculate HCF and LCM"],
+              "prerequisites": ["Factors and multiples"],
+              "estimated_minutes": 18,
+              "difficulty": "FOUNDATION",
+              "content_blocks": [{"type": "heading", "text": "One reliable method"}, {"type": "text", "text": "Every composite number can be expressed as a product of primes. Compare the powers of common primes to find the HCF."}, {"type": "example", "text": "For 36 = 2² × 3² and 84 = 2² × 3 × 7, HCF = 2² × 3 = 12."}, {"type": "summary", "text": "HCF uses the smaller powers; LCM uses the larger powers."}],
+              "concepts": [{"concept_id": "cbse-x-2026-27-maths-concept-prime-factorisation", "title": "Prime factorisation", "explanation": "Writing a number as a product of prime numbers."}],
+              "source_reference": "NCERT Mathematics Class X, Chapter 1, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {"question_id": "cbse-x-2026-27-maths-q-hcf-001", "difficulty": "EASY", "question_type": "MCQ", "marks": 1, "skill": "Apply", "prompt": "The HCF of 36 and 84 is:", "answer": "12", "explanation": "36 = 2²×3² and 84 = 2²×3×7, so the common product is 12.", "options": [{"option_id": "a", "text": "6", "is_correct": false}, {"option_id": "b", "text": "12", "is_correct": true}, {"option_id": "c", "text": "18", "is_correct": false}]}
+          ]
+        }
+      ]
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-maths-polynomials",
+      "chapter_number": 2,
+      "slug": "polynomials",
+      "title": "Polynomials",
+      "summary": "Relate zeroes of a polynomial to its graph and coefficients.",
+      "source_reference": "NCERT Mathematics Class X, Chapter 2, https://ncert.nic.in/textbook.php",
+      "topics": [
+        {
+          "topic_id": "cbse-x-2026-27-maths-polynomials-zeroes",
+          "slug": "zeroes-of-polynomial",
+          "title": "Zeroes of a Polynomial",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-maths-polynomials-zeroes-graph",
+              "slug": "zeroes-from-graph",
+              "title": "Reading Zeroes from a Graph",
+              "summary": "Interpret x-intercepts as zeroes of a polynomial.",
+              "learning_objectives": ["Identify zeroes from a graph", "Verify the relationship between zeroes and coefficients"],
+              "prerequisites": ["Coordinate geometry basics"],
+              "estimated_minutes": 16,
+              "difficulty": "EASY",
+              "content_blocks": [{"type": "text", "text": "A zero of p(x) is an x-value where p(x) = 0. On a graph, these are the points where the curve meets the x-axis."}, {"type": "example", "text": "For x² − 5x + 6, the zeroes are 2 and 3 because (x − 2)(x − 3) = 0."}, {"type": "summary", "text": "The sum of zeroes is −b/a and their product is c/a for ax²+bx+c."}],
+              "concepts": [{"concept_id": "cbse-x-2026-27-maths-concept-zeroes", "title": "Zeroes", "explanation": "Values of x for which a polynomial evaluates to zero."}],
+              "source_reference": "NCERT Mathematics Class X, Chapter 2, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {"question_id": "cbse-x-2026-27-maths-q-zeroes-001", "difficulty": "MEDIUM", "question_type": "SHORT_ANSWER", "marks": 2, "skill": "Understand", "prompt": "Find the zeroes of x² − 5x + 6.", "answer": "2 and 3", "explanation": "Factorise as (x−2)(x−3)=0.", "options": []}
+          ]
+        }
+      ]
+    }
+  ]
+}

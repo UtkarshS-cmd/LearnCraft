@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><div class="eyebrow">Student OS</div><div class="h1">Settings</div><p>Manage your account and local learning preferences.</p></div></div>
+<div class="grid grid-2">
+  <section class="card"><div class="h2">Account</div><div class="row-item"><b>{{ student.name }}</b><span class="caption">Signed-in student</span></div><div class="row-item"><b>Class 10</b><span class="caption">CBSE learning workspace</span></div><a class="btn btn-secondary btn-sm" href="/profile">Edit profile</a></section>
+  <section class="card"><div class="h2">Learning</div><label class="row-item"><span><b>Daily goal</b><small class="caption">Choose this on your next study session.</small></span><select class="input" style="width:auto" aria-label="Daily goal"><option>20 min</option><option>30 min</option><option>45 min</option></select></label><label class="row-item"><span><b>Offline-first mode</b><small class="caption">Local progress stays available without internet.</small></span><input type="checkbox" checked disabled aria-label="Offline-first mode enabled"></label></section>
+  <section class="card"><div class="h2">Offline</div><div class="row-item"><span><b>Storage</b><small class="caption">Local SQLite and browser drafts</small></span><span class="badge ok">Ready</span></div><div class="row-item"><span><b>Sync status</b><small class="caption">Changes queue locally until a sync service is configured.</small></span><span class="badge muted">Local only</span></div></section>
+  <section class="card"><div class="h2">Security</div><p class="body-sm">Your session is protected by the LearnCraft server. Signing out clears the authenticated session.</p><a class="btn btn-secondary btn-sm" href="/logout">Sign out</a></section>
+</div>
+{% endblock %}

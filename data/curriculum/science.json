@@ -1,0 +1,71 @@
+{
+  "subject_id": "cbse-x-2026-27-science",
+  "chapters": [
+    {
+      "chapter_id": "cbse-x-2026-27-science-chemical-reactions",
+      "chapter_number": 1,
+      "slug": "chemical-reactions-and-equations",
+      "title": "Chemical Reactions and Equations",
+      "summary": "Represent chemical reactions and identify common reaction types.",
+      "source_reference": "NCERT Science Class X, Chapter 1, https://ncert.nic.in/textbook.php",
+      "topics": [
+        {
+          "topic_id": "cbse-x-2026-27-science-reactions-types",
+          "slug": "types-of-reactions",
+          "title": "Types of Chemical Reactions",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-science-reactions-balancing",
+              "slug": "balancing-equations",
+              "title": "Balancing Chemical Equations",
+              "summary": "Balance equations using conservation of atoms.",
+              "learning_objectives": ["Count atoms on both sides", "Balance an equation using coefficients"],
+              "prerequisites": ["Symbols and formulae"],
+              "estimated_minutes": 20,
+              "difficulty": "FOUNDATION",
+              "content_blocks": [{"type": "text", "text": "A chemical equation is balanced when each element has the same number of atoms on both sides. Change coefficients, never subscripts."}, {"type": "example", "text": "2H₂ + O₂ → 2H₂O has four hydrogen atoms and two oxygen atoms on each side."}, {"type": "summary", "text": "Balancing follows the law of conservation of mass."}],
+              "concepts": [{"concept_id": "cbse-x-2026-27-science-concept-conservation", "title": "Conservation of mass", "explanation": "Atoms are rearranged in a reaction; they are not created or destroyed."}],
+              "source_reference": "NCERT Science Class X, Chapter 1, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {"question_id": "cbse-x-2026-27-science-q-balance-001", "difficulty": "EASY", "question_type": "MCQ", "marks": 1, "skill": "Apply", "prompt": "Which coefficient balances H₂ + O₂ → H₂O?", "answer": "2, 1, 2", "explanation": "Two water molecules require two hydrogen molecules and one oxygen molecule.", "options": [{"option_id": "a", "text": "1, 1, 1", "is_correct": false}, {"option_id": "b", "text": "2, 1, 2", "is_correct": true}, {"option_id": "c", "text": "1, 2, 1", "is_correct": false}]}
+          ]
+        }
+      ]
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-science-life-processes",
+      "chapter_number": 6,
+      "slug": "life-processes",
+      "title": "Life Processes",
+      "summary": "Explain nutrition, respiration, transport and excretion in living organisms.",
+      "source_reference": "NCERT Science Class X, Chapter 6, https://ncert.nic.in/textbook.php",
+      "topics": [
+        {
+          "topic_id": "cbse-x-2026-27-science-life-processes-nutrition",
+          "slug": "nutrition",
+          "title": "Nutrition in Plants",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-science-life-processes-photosynthesis",
+              "slug": "photosynthesis",
+              "title": "Photosynthesis: Making Food",
+              "summary": "Trace how green plants make glucose using light energy.",
+              "learning_objectives": ["State the word equation for photosynthesis", "Explain the role of chlorophyll and stomata"],
+              "prerequisites": ["Cell structure"],
+              "estimated_minutes": 18,
+              "difficulty": "EASY",
+              "content_blocks": [{"type": "text", "text": "Green plants use light energy to convert carbon dioxide and water into glucose and oxygen. Chlorophyll captures the light energy."}, {"type": "formula", "text": "Carbon dioxide + water —light/chlorophyll→ glucose + oxygen"}, {"type": "summary", "text": "Leaves are the main photosynthetic organs; stomata enable gas exchange."}],
+              "concepts": [{"concept_id": "cbse-x-2026-27-science-concept-photosynthesis", "title": "Photosynthesis", "explanation": "The process by which green plants synthesise food using light energy."}],
+              "source_reference": "NCERT Science Class X, Chapter 6, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {"question_id": "cbse-x-2026-27-science-q-photo-001", "difficulty": "MEDIUM", "question_type": "SHORT_ANSWER", "marks": 2, "skill": "Understand", "prompt": "Why is chlorophyll essential for photosynthesis?", "answer": "It absorbs light energy used to drive photosynthesis.", "explanation": "Chlorophyll transfers captured light energy into the chemical process.", "options": []}
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.ai-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px}
+.ai-chat{min-height:440px;display:flex;flex-direction:column}
+.ai-messages{flex:1;display:flex;flex-direction:column;gap:10px;overflow:auto;padding:4px}
+.ai-msg{max-width:82%;padding:12px 14px;border-radius:15px;white-space:pre-wrap}.ai-tools{margin-top:8px;display:flex;gap:6px}
+.ai-msg.user{align-self:flex-end;background:var(--ink);color:#fff}.ai-msg.assistant{background:#F5F7FF;border:1px solid var(--line)}
+.ai-compose{display:flex;gap:8px;margin-top:12px}.ai-compose textarea{flex:1;min-height:56px;resize:vertical}
+.ai-status{display:inline-flex;align-items:center;gap:6px}.ai-dot{width:8px;height:8px;border-radius:50%;background:#94A3B8}.ai-dot.online{background:#16A34A}.ai-dot.offline{background:#F59E0B}
+@media(max-width:800px){.ai-layout{grid-template-columns:1fr}}
+</style>
+<div class="page-head"><div><div class="eyebrow">Curriculum-aware study support</div><div class="h1">Ask AI</div><p>Ask for an explanation, a hint, or a guided solution from your current lesson.</p></div><span class="badge info ai-status"><i class="ai-dot" id="aiDot"></i><span id="aiStatus">Checking AI…</span></span></div>
+<div class="ai-layout">
+  <section class="card ai-chat">
+    <div id="messages" class="ai-messages"><div class="ai-msg assistant">Hi! I can explain a concept, give a hint, simplify an idea, or help you revise. I will use your lesson context when it is available.</div></div>
+    <div class="ai-compose"><textarea id="question" class="input" placeholder="Ask your doubt…" aria-label="Your question"></textarea><button id="send" class="btn btn-primary">Ask</button></div>
+    <div class="caption" id="feedback" role="status" style="margin-top:6px"></div>
+  </section>
+  <aside class="card">
+    <div class="h3">Tutor mode</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">{% for mode in ['Explain','Hint','Solve','Simplify','Deep Dive','Revision'] %}<button class="btn btn-secondary btn-sm mode" data-mode="{{ mode }}">{{ mode }}</button>{% endfor %}</div>
+    <div class="caption">Context</div>
+    <div class="body-sm" id="context">{{ lesson.title if lesson else 'No lesson selected. Open Ask AI from a lesson for grounded help.' }}</div>
+    <hr>
+    <button class="btn btn-ghost btn-sm" id="clear">Clear chat</button>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  const messages=document.getElementById('messages'), input=document.getElementById('question'), send=document.getElementById('send'), feedback=document.getElementById('feedback');
+  let conversationId=null, mode='Explain';
+  const context={lesson_id:{{ (lesson.lesson_id if lesson else '')|tojson }},subject:{{ (lesson.subject_name if lesson else '')|tojson }},chapter:{{ (lesson.chapter_label if lesson else '')|tojson }},topic:{{ (lesson.topic_title if lesson else '')|tojson }}};
+  function add(role,text){const el=document.createElement('div');el.className='ai-msg '+role;const body=document.createElement('div');body.textContent=text;el.appendChild(body);if(role==='assistant'){const tools=document.createElement('div');tools.className='ai-tools';const copy=document.createElement('button');copy.className='btn btn-ghost btn-sm';copy.textContent='Copy';copy.onclick=()=>navigator.clipboard.writeText(text);const save=document.createElement('button');save.className='btn btn-ghost btn-sm';save.textContent='Save to Notes';save.onclick=async()=>{const r=await fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'AI tutor answer',body:text,subject:context.subject||'General',chapter:context.chapter,source_type:'ai',source_id:conversationId,source_title:'LearnCraft AI Tutor'})});feedback.textContent=r.ok?'Answer saved to Notes.':'Could not save answer to Notes.';};tools.append(copy,save);el.appendChild(tools);}messages.appendChild(el);messages.scrollTop=messages.scrollHeight;}
+  document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('.mode').forEach(x=>x.classList.remove('btn-primary'));b.classList.add('btn-primary');});
+  fetch('/api/v1/ai/status').then(r=>r.json()).then(s=>{document.getElementById('aiStatus').textContent=s.state==='online'?'AI Online':s.state==='offline'?'AI Offline':'AI Unavailable';document.getElementById('aiDot').className='ai-dot '+s.state;}).catch(()=>document.getElementById('aiStatus').textContent='AI status unavailable');
+  async function ask(){const text=input.value.trim();if(!text)return;input.value='';add('user',text);send.disabled=true;feedback.textContent='Tutor is thinking…';try{const r=await fetch('/api/v1/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...context,message:text,mode,conversation_id:conversationId})});const data=await r.json();if(!r.ok)throw new Error(data.message||'AI request failed');conversationId=data.conversation_id;add('assistant',data.answer);feedback.textContent=data.provider==='unavailable'?'AI is unavailable; your question was saved in this conversation.':(data.sources.length?'Based on your LearnCraft curriculum context.':'No matching curriculum evidence was found.');}catch(e){feedback.textContent=e.message;}finally{send.disabled=false;input.focus();}}
+  send.onclick=ask;input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask();}});
+  document.getElementById('clear').onclick=()=>{messages.innerHTML='';conversationId=null;feedback.textContent='Chat cleared.';};
+})();
+</script>
+{% endblock %}

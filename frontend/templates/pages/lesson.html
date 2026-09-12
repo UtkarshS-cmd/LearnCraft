@@ -26,7 +26,7 @@ input[type=range]{width:100%}
 
 <div class="caption"><a href="/subjects">Subjects</a> › <a href="/subjects/{{ lesson.subject_slug }}">{{ lesson.subject_name }}</a> › {{ lesson.chapter_label }}</div>
 <div class="page-head" style="margin-top:6px"><div><div class="h1">{{ lesson.title }}</div><p>🎯 {{ lesson.objective }} · ⏱ {{ lesson.est }}</p></div>
-<a class="btn btn-secondary btn-sm" href="/subjects/{{ lesson.subject_slug }}">✕ Exit</a></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-secondary btn-sm" href="/ask-ai?lesson_id={{ lesson.id|default(lesson.lesson_id)|urlencode }}">Ask AI</a><a class="btn btn-secondary btn-sm" href="/subjects/{{ lesson.subject_slug }}">✕ Exit</a></div></div>
 
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -125,7 +125,13 @@ document.getElementById('restartBtn').onclick=()=>{state={idx:0,visited:[0],chec
 const blocks=[...document.querySelectorAll('.block')];
 const dots=document.getElementById('dots');
 blocks.forEach((_,i)=>{const d=document.createElement('i');dots.appendChild(d);});
-function save(){localStorage.setItem(KEY,JSON.stringify(state));window.LearnCraftOffline?.persist('progress','lesson:{{ lesson.id }}',state,state.done?'completed':'in_progress');}
+function save(){
+  localStorage.setItem(KEY,JSON.stringify(state));
+  const status=state.done?'completed':(state.checked[ state.idx ]?'practiced':'in_progress');
+  const percent=Math.round(state.visited.length/total*100);
+  window.LearnCraftOffline?.persist('progress','lesson:{{ lesson.id }}',state,status);
+  fetch('/api/v1/progress',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lesson_id:'{{ lesson.id }}',subject_slug:'{{ lesson.subject_slug }}',chapter_id:'{{ lesson.chapter_label|e }}',status,percent_complete:percent})}).catch(()=>null);
+}
 function render(){
   blocks.forEach((b,i)=>b.classList.toggle('show',i===state.idx));
   [...dots.children].forEach((d,i)=>{d.className=state.visited.includes(i)?'hit':'';if(i===state.idx)d.classList.add('now');});

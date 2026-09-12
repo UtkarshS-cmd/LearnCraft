@@ -1,0 +1,11 @@
+{
+  "board": "CBSE",
+  "class_level": "Class X",
+  "academic_year": "2026-27",
+  "source_version": "CBSE curriculum 2026-27; NCERT textbook catalog accessed 2026-09-12",
+  "subjects": [
+    {"subject_id": "cbse-x-2026-27-mathematics", "slug": "mathematics", "name": "Mathematics", "description": "Number systems, algebra and geometry for CBSE Class X.", "book_id": "ncert-x-mathematics-2026-27", "book_title": "Mathematics Textbook for Class X", "publisher": "NCERT", "source_reference": "https://ncert.nic.in/textbook.php"},
+    {"subject_id": "cbse-x-2026-27-science", "slug": "science", "name": "Science", "description": "Core concepts in chemistry, biology and physics.", "book_id": "ncert-x-science-2026-27", "book_title": "Science Textbook for Class X", "publisher": "NCERT", "source_reference": "https://ncert.nic.in/textbook.php"},
+    {"subject_id": "cbse-x-2026-27-social-science", "slug": "social-science", "name": "Social Science", "description": "History, geography, political science and economics.", "book_id": "ncert-x-social-science-2026-27", "book_title": "Social Science Textbook for Class X", "publisher": "NCERT", "source_reference": "https://ncert.nic.in/textbook.php"}
+  ]
+}

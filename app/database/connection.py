@@ -83,6 +83,7 @@ def initialize_database():
     connection.execute("""
         CREATE TABLE IF NOT EXISTS notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
             client_id TEXT NOT NULL UNIQUE,
             title TEXT NOT NULL,
             body TEXT NOT NULL DEFAULT '',
@@ -159,9 +160,192 @@ def initialize_database():
         )
     """)
 
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_subjects (
+            subject_id TEXT PRIMARY KEY,
+            board TEXT NOT NULL,
+            class_level TEXT NOT NULL,
+            academic_year TEXT NOT NULL,
+            slug TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            source_version TEXT NOT NULL,
+            UNIQUE(board, class_level, academic_year, slug)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_books (
+            book_id TEXT PRIMARY KEY,
+            subject_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            publisher TEXT NOT NULL,
+            source_reference TEXT NOT NULL,
+            FOREIGN KEY(subject_id) REFERENCES academic_subjects(subject_id)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_chapters (
+            chapter_id TEXT PRIMARY KEY,
+            book_id TEXT NOT NULL,
+            chapter_number INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL,
+            summary TEXT NOT NULL DEFAULT '',
+            source_reference TEXT NOT NULL,
+            FOREIGN KEY(book_id) REFERENCES academic_books(book_id)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_topics (
+            topic_id TEXT PRIMARY KEY,
+            chapter_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL,
+            FOREIGN KEY(chapter_id) REFERENCES academic_chapters(chapter_id)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_lessons (
+            lesson_id TEXT PRIMARY KEY,
+            topic_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            learning_objectives_json TEXT NOT NULL,
+            prerequisites_json TEXT NOT NULL,
+            estimated_minutes INTEGER NOT NULL,
+            difficulty TEXT NOT NULL,
+            content_blocks_json TEXT NOT NULL,
+            source_reference TEXT NOT NULL,
+            FOREIGN KEY(topic_id) REFERENCES academic_topics(topic_id)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_concepts (
+            concept_id TEXT PRIMARY KEY,
+            lesson_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            explanation TEXT NOT NULL,
+            FOREIGN KEY(lesson_id) REFERENCES academic_lessons(lesson_id)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_questions (
+            question_id TEXT PRIMARY KEY,
+            subject_id TEXT NOT NULL,
+            chapter_id TEXT NOT NULL,
+            topic_id TEXT,
+            concept_id TEXT,
+            difficulty TEXT NOT NULL,
+            question_type TEXT NOT NULL,
+            marks INTEGER NOT NULL,
+            source_reference TEXT NOT NULL,
+            source_year TEXT,
+            skill TEXT NOT NULL,
+            prompt TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            explanation TEXT NOT NULL,
+            FOREIGN KEY(subject_id) REFERENCES academic_subjects(subject_id),
+            FOREIGN KEY(chapter_id) REFERENCES academic_chapters(chapter_id)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_question_options (
+            question_id TEXT NOT NULL,
+            option_id TEXT NOT NULL,
+            option_text TEXT NOT NULL,
+            is_correct INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY(question_id, option_id),
+            FOREIGN KEY(question_id) REFERENCES academic_questions(question_id)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_practice_sets (
+            practice_set_id TEXT PRIMARY KEY,
+            subject_id TEXT NOT NULL,
+            chapter_id TEXT,
+            title TEXT NOT NULL,
+            practice_type TEXT NOT NULL,
+            question_ids_json TEXT NOT NULL,
+            FOREIGN KEY(subject_id) REFERENCES academic_subjects(subject_id)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS academic_tests (
+            test_id TEXT PRIMARY KEY,
+            subject_id TEXT NOT NULL,
+            chapter_id TEXT,
+            title TEXT NOT NULL,
+            test_type TEXT NOT NULL,
+            duration_minutes INTEGER NOT NULL,
+            marks INTEGER NOT NULL,
+            question_ids_json TEXT NOT NULL,
+            FOREIGN KEY(subject_id) REFERENCES academic_subjects(subject_id)
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS content_manifests (
+            content_id TEXT PRIMARY KEY,
+            version TEXT NOT NULL,
+            size_bytes INTEGER NOT NULL,
+            checksum TEXT NOT NULL,
+            downloaded INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS ai_conversations (
+            conversation_id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL DEFAULT 'Learning chat',
+            context_json TEXT NOT NULL DEFAULT '{}',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS ai_messages (
+            message_id TEXT PRIMARY KEY,
+            conversation_id TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            context_reference TEXT,
+            provider TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(conversation_id) REFERENCES ai_conversations(conversation_id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
     connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
     connection.execute("CREATE INDEX IF NOT EXISTS idx_learning_progress_user ON learning_progress(user_id)")
     connection.execute("CREATE INDEX IF NOT EXISTS idx_learning_progress_subject ON learning_progress(subject_slug)")
+    chapter_indexes = connection.execute("PRAGMA index_list(academic_chapters)").fetchall()
+    if any(row[2] and row[3] == "u" for row in chapter_indexes):
+        connection.execute("PRAGMA foreign_keys = OFF")
+        connection.execute("""
+            CREATE TABLE academic_chapters_migrated (
+                chapter_id TEXT PRIMARY KEY,
+                book_id TEXT NOT NULL,
+                chapter_number INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                summary TEXT NOT NULL DEFAULT '',
+                source_reference TEXT NOT NULL,
+                FOREIGN KEY(book_id) REFERENCES academic_books(book_id)
+            )
+        """)
+        connection.execute("INSERT INTO academic_chapters_migrated SELECT * FROM academic_chapters")
+        connection.execute("DROP TABLE academic_chapters")
+        connection.execute("ALTER TABLE academic_chapters_migrated RENAME TO academic_chapters")
+    note_columns = {row[1] for row in connection.execute("PRAGMA table_info(notes)").fetchall()}
+    if "user_id" not in note_columns:
+        connection.execute("ALTER TABLE notes ADD COLUMN user_id INTEGER")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_notes_user ON notes(user_id)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_ai_conversations_user ON ai_conversations(user_id)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation ON ai_messages(conversation_id)")
 
     connection.commit()
     connection.close()
@@ -319,25 +503,27 @@ def save_learning_progress(user_id, *, subject_slug=None, chapter_id=None, lesso
     connection.close()
 
 
-def ensure_note_seed(notes):
+def ensure_note_seed(user_id, notes):
     connection = get_connection()
-    count = connection.execute("SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL").fetchone()[0]
+    count = connection.execute(
+        "SELECT COUNT(*) FROM notes WHERE user_id = ? AND deleted_at IS NULL", (int(user_id),)
+    ).fetchone()[0]
     if count == 0:
         for note in notes:
             connection.execute(
                 """INSERT INTO notes
-                (client_id, title, body, subject, chapter, pinned, sync_status)
-                VALUES (?, ?, ?, ?, ?, ?, 'local')""",
-                (str(uuid.uuid4()), note["title"], note["body"], note["subject"], note.get("chapter"), 0),
+                (user_id, client_id, title, body, subject, chapter, pinned, sync_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'local')""",
+                (int(user_id), str(uuid.uuid4()), note["title"], note["body"], note["subject"], note.get("chapter"), 0),
             )
         connection.commit()
     connection.close()
 
 
-def get_notes(search="", subject="", pinned_only=False):
+def get_notes(user_id, search="", subject="", pinned_only=False):
     connection = get_connection()
-    clauses = ["deleted_at IS NULL"]
-    params = []
+    clauses = ["user_id = ?", "deleted_at IS NULL"]
+    params = [int(user_id)]
     if search:
         clauses.append("(title LIKE ? OR body LIKE ? OR chapter LIKE ? OR source_title LIKE ?)")
         value = f"%{search}%"
@@ -355,14 +541,14 @@ def get_notes(search="", subject="", pinned_only=False):
     return [_row_to_dict(note) for note in notes]
 
 
-def create_note(title, body, subject, chapter=None, source_type=None, source_id=None, source_title=None):
+def create_note(user_id, title, body, subject, chapter=None, source_type=None, source_id=None, source_title=None):
     connection = get_connection()
     client_id = str(uuid.uuid4())
     connection.execute(
         """INSERT INTO notes
-        (client_id, title, body, subject, chapter, source_type, source_id, source_title, sync_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'local')""",
-        (client_id, title, body, subject, chapter, source_type, source_id, source_title),
+        (user_id, client_id, title, body, subject, chapter, source_type, source_id, source_title, sync_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'local')""",
+        (int(user_id), client_id, title, body, subject, chapter, source_type, source_id, source_title),
     )
     connection.commit()
     note = connection.execute("SELECT * FROM notes WHERE client_id = ?", (client_id,)).fetchone()
@@ -370,13 +556,13 @@ def create_note(title, body, subject, chapter=None, source_type=None, source_id=
     return _row_to_dict(note)
 
 
-def update_note(client_id, title, body, subject, chapter=None):
+def update_note(user_id, client_id, title, body, subject, chapter=None):
     connection = get_connection()
     connection.execute(
         """UPDATE notes SET title = ?, body = ?, subject = ?, chapter = ?,
         updated_at = CURRENT_TIMESTAMP, sync_status = 'local'
-        WHERE client_id = ? AND deleted_at IS NULL""",
-        (title, body, subject, chapter, client_id),
+        WHERE client_id = ? AND user_id = ? AND deleted_at IS NULL""",
+        (title, body, subject, chapter, client_id, int(user_id)),
     )
     connection.commit()
     note = connection.execute("SELECT * FROM notes WHERE client_id = ?", (client_id,)).fetchone()
@@ -384,12 +570,12 @@ def update_note(client_id, title, body, subject, chapter=None):
     return _row_to_dict(note)
 
 
-def set_note_pinned(client_id, pinned):
+def set_note_pinned(user_id, client_id, pinned):
     connection = get_connection()
     connection.execute(
         """UPDATE notes SET pinned = ?, updated_at = CURRENT_TIMESTAMP, sync_status = 'local'
-        WHERE client_id = ? AND deleted_at IS NULL""",
-        (1 if pinned else 0, client_id),
+        WHERE client_id = ? AND user_id = ? AND deleted_at IS NULL""",
+        (1 if pinned else 0, client_id, int(user_id)),
     )
     connection.commit()
     note = connection.execute("SELECT * FROM notes WHERE client_id = ?", (client_id,)).fetchone()
@@ -397,12 +583,12 @@ def set_note_pinned(client_id, pinned):
     return _row_to_dict(note)
 
 
-def delete_note(client_id):
+def delete_note(user_id, client_id):
     connection = get_connection()
     connection.execute(
         """UPDATE notes SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP,
-        sync_status = 'local' WHERE client_id = ?""",
-        (client_id,),
+        sync_status = 'local' WHERE client_id = ? AND user_id = ?""",
+        (client_id, int(user_id)),
     )
     connection.commit()
     connection.close()

@@ -1,0 +1,71 @@
+{
+  "subject_id": "cbse-x-2026-27-social-science",
+  "chapters": [
+    {
+      "chapter_id": "cbse-x-2026-27-sst-rise-of-nationalism",
+      "chapter_number": 1,
+      "slug": "rise-of-nationalism-in-europe",
+      "title": "The Rise of Nationalism in Europe",
+      "summary": "Trace the emergence of the nation-state and national identity in nineteenth-century Europe.",
+      "source_reference": "NCERT India and the Contemporary World-II, Chapter 1, https://ncert.nic.in/textbook.php",
+      "topics": [
+        {
+          "topic_id": "cbse-x-2026-27-sst-nationalism-french-revolution",
+          "slug": "french-revolution-and-nationalism",
+          "title": "The French Revolution and the Idea of the Nation",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-sst-nationalism-french-revolution",
+              "slug": "french-revolution-and-nation",
+              "title": "How the Nation Was Imagined",
+              "summary": "Understand how revolutionary France created symbols of collective identity.",
+              "learning_objectives": ["Describe two measures that created a sense of collective identity", "Connect citizenship with the nation-state"],
+              "prerequisites": ["The French Revolution"],
+              "estimated_minutes": 18,
+              "difficulty": "FOUNDATION",
+              "content_blocks": [{"type": "text", "text": "The French Revolution transferred sovereignty from a monarch to citizens. New flags, hymns and uniform laws helped imagine France as a nation."}, {"type": "example", "text": "The tricolour flag replaced the royal standard and became a visual symbol of the new nation."}, {"type": "summary", "text": "National identity is built through shared symbols, rights and institutions."}],
+              "concepts": [{"concept_id": "cbse-x-2026-27-sst-concept-sovereignty", "title": "Popular sovereignty", "explanation": "The idea that authority rests with the people rather than a hereditary ruler."}],
+              "source_reference": "NCERT India and the Contemporary World-II, Chapter 1, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {"question_id": "cbse-x-2026-27-sst-q-nation-001", "difficulty": "EASY", "question_type": "MCQ", "marks": 1, "skill": "Recall", "prompt": "Which flag became a symbol of revolutionary France?", "answer": "The tricolour", "explanation": "The blue-white-red tricolour replaced the royal standard.", "options": [{"option_id": "a", "text": "The tricolour", "is_correct": true}, {"option_id": "b", "text": "The Union Jack", "is_correct": false}, {"option_id": "c", "text": "The red flag of Russia", "is_correct": false}]}
+          ]
+        }
+      ]
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-sst-resources-development",
+      "chapter_number": 2,
+      "slug": "resources-and-development",
+      "title": "Resources and Development",
+      "summary": "Classify resources and understand sustainable planning and land use.",
+      "source_reference": "NCERT Contemporary India-II, Chapter 1, https://ncert.nic.in/textbook.php",
+      "topics": [
+        {
+          "topic_id": "cbse-x-2026-27-sst-resources-classification",
+          "slug": "resource-classification",
+          "title": "Resource Classification",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-sst-resources-classification",
+              "slug": "classifying-resources",
+              "title": "How Resources Are Classified",
+              "summary": "Classify resources by origin, exhaustibility, ownership and status of development.",
+              "learning_objectives": ["Use the four classification criteria", "Explain why planning is needed for sustainable development"],
+              "prerequisites": ["Basic geography vocabulary"],
+              "estimated_minutes": 15,
+              "difficulty": "EASY",
+              "content_blocks": [{"type": "text", "text": "Resources may be classified by origin, exhaustibility, ownership and status of development. The same resource can belong to more than one category."}, {"type": "example", "text": "Solar energy is a renewable, biotic? No: abiotic resource, and may be community or national depending on the context of use."}, {"type": "summary", "text": "Resource planning balances current needs with conservation for future generations."}],
+              "concepts": [{"concept_id": "cbse-x-2026-27-sst-concept-sustainable-development", "title": "Sustainable development", "explanation": "Development that meets present needs without compromising future generations."}],
+              "source_reference": "NCERT Contemporary India-II, Chapter 1, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {"question_id": "cbse-x-2026-27-sst-q-resources-001", "difficulty": "MEDIUM", "question_type": "SHORT_ANSWER", "marks": 2, "skill": "Analyze", "prompt": "Why is resource planning essential in India?", "answer": "Resources are unevenly distributed and need judicious use for sustainable development.", "explanation": "Planning addresses unequal distribution, technology and conservation.", "options": []}
+          ]
+        }
+      ]
+    }
+  ]
+}

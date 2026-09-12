@@ -20,7 +20,7 @@
 </div>
 
 <!-- 2. Continue Learning -->
-<div class="card" style="border-color:#D9DCFF">
+{% if cont %}<div class="card" style="border-color:#D9DCFF">
   <div class="continue-card">
     <div class="tile-icon" style="background:{{ cont.subject_bg }};color:{{ cont.subject_color }};width:54px;height:54px;font-size:24px">◈</div>
     <div class="continue-meta">
@@ -35,6 +35,7 @@
     </div>
   </div>
 </div>
+{% else %}<div class="empty"><div class="h3" style="color:var(--ink)">Start your learning path</div><div class="body-sm" style="margin:6px 0 14px">Choose a subject and your next meaningful position will appear here.</div><a class="btn btn-primary btn-sm" href="/subjects">Browse subjects</a></div>{% endif %}
 
 <!-- 3. Today's Work -->
 <div class="section-h"><h2>Today's work · {{ today_work|length }} items</h2><a href="/assignments">View all →</a></div>
@@ -78,7 +79,7 @@
   <a class="card hover" href="/practical"><span class="q-ico" style="background:var(--primary-soft);color:var(--primary)">⚗</span><b class="body-sm">Practicals</b><span class="caption">{{ pending_practicals }} pending</span></a>
   <a class="card hover" href="/assignments"><span class="q-ico" style="background:var(--amber-soft);color:#B45309">✎</span><b class="body-sm">Assignments</b><span class="caption">{{ pending_assign }} due</span></a>
   <a class="card hover" href="/sandbox"><span class="q-ico" style="background:#FFF7ED;color:#EA580C">▣</span><b class="body-sm">Sandbox</b><span class="caption">4 labs ready</span></a>
-  <a class="card hover" href="/notes"><span class="q-ico" style="background:var(--green-soft);color:var(--green)">✎</span><b class="body-sm">Notes</b><span class="caption">2 saved</span></a>
+  <a class="card hover" href="/notes"><span class="q-ico" style="background:var(--green-soft);color:var(--green)">✎</span><b class="body-sm">Notes</b><span class="caption">{{ note_count }} saved</span></a>
 </div>
 
 <!-- 6. Recent Activity -->

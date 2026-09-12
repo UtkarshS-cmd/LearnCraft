@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title or 'LearnCraft' }} | LearnCraft</title>
+  <link rel="stylesheet" href="/static/css/design-system.css" />
+  <style>
+    body {
+      background: radial-gradient(circle at top left, rgba(91, 91, 246, 0.18), transparent 32%),
+                  linear-gradient(180deg, #f6f7fb 0%, #eef4ff 100%);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .auth-shell {
+      width: min(100%, 1080px);
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-lg);
+    }
+    .hero {
+      padding: 42px 38px;
+      background: linear-gradient(135deg, #1e1b4b, #4f46e5 58%, #06b6d4);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 620px;
+    }
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .hero h1 {
+      margin-top: 22px;
+      font-size: clamp(2.2rem, 4vw, 3.4rem);
+      line-height: 1.08;
+      letter-spacing: -0.05em;
+    }
+    .hero p {
+      margin: 18px 0 0;
+      font-size: 1.02rem;
+      max-width: 520px;
+      color: rgba(255,255,255,0.82);
+    }
+    .highlights {
+      margin-top: 28px;
+      display: grid;
+      gap: 12px;
+      max-width: 430px;
+    }
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 12px 14px;
+      font-weight: 600;
+    }
+    .chip .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #a3e635;
+      box-shadow: 0 0 0 6px rgba(163, 230, 53, 0.15);
+    }
+    .auth-panel {
+      background: rgba(255,255,255,0.88);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+    }
+    .card {
+      width: min(100%, 390px);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow-md);
+      padding: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #5B5BF6, #8B5CF6 60%, #06B6D4);
+      color: #fff;
+      font-weight: 800;
+    }
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+    .brand-sub {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .tab-row {
+      display: flex;
+      gap: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px;
+      margin-bottom: 20px;
+    }
+    .tab {
+      width: 50%;
+      border: none;
+      background: transparent;
+      border-radius: 999px;
+      padding: 10px 12px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .tab.active {
+      background: var(--ink);
+      color: #fff;
+    }
+    form {
+      display: grid;
+      gap: 14px;
+    }
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+    label {
+      font-size: 0.82rem;
+      color: var(--ink-2);
+      font-weight: 700;
+    }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+    input:focus {
+      outline: 2px solid rgba(91, 91, 246, 0.12);
+      border-color: rgba(91, 91, 246, 0.6);
+    }
+    .btn {
+      margin-top: 6px;
+    }
+    .muted {
+      text-align: center;
+      font-size: 0.83rem;
+      color: var(--muted);
+      margin-top: 14px;
+    }
+    .muted a {
+      color: var(--primary-ink);
+      font-weight: 800;
+    }
+    .form-toggle {
+      display: none;
+    }
+    .form-toggle.active {
+      display: grid;
+    }
+    @media (max-width: 840px) {
+      .auth-shell {
+        grid-template-columns: 1fr;
+      }
+      .hero {
+        min-height: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-shell">
+    <section class="hero">
+      <span class="kicker">Offline-first learning</span>
+      <h1>Build momentum<br />with every lesson.</h1>
+      <p>LearnCraft helps students learn, practice, and track progress with a focused personal workspace designed for school and self-paced study.</p>
+      <div class="highlights">
+        <div class="chip"><span class="dot"></span>Track assignments and practical work</div>
+        <div class="chip"><span class="dot"></span>Keep notes synced locally and offline</div>
+        <div class="chip"><span class="dot"></span>Pick up exactly where you left off</div>
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="card">
+        <div class="brand">
+          <div class="brand-mark">L</div>
+          <div>
+            <div class="brand-title">LearnCraft</div>
+            <div class="brand-sub">Student OS</div>
+          </div>
+        </div>
+
+        <div class="tab-row" aria-label="Authentication mode">
+          <button type="button" class="tab active" id="loginTab">Login</button>
+          <button type="button" class="tab" id="registerTab">Create account</button>
+        </div>
+
+        <form id="loginForm" class="form-toggle active" method="post" action="/auth/login">
+          <div class="field">
+            <label for="loginEmail">Email</label>
+            <input id="loginEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="loginPassword">Password</label>
+            <input id="loginPassword" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg">Sign in</button>
+        </form>
+
+        <form id="registerForm" class="form-toggle" method="post" action="/auth/register">
+          <div class="field">
+            <label for="registerName">Full name</label>
+            <input id="registerName" name="name" type="text" placeholder="Aisha Khan" autocomplete="name" required />
+          </div>
+          <div class="field">
+            <label for="registerEmail">Email</label>
+            <input id="registerEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="registerPassword">Password</label>
+            <input id="registerPassword" name="password" type="password" placeholder="Minimum 8 chars" autocomplete="new-password" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg">Create account</button>
+        </form>
+
+        <p class="muted">
+          {% if title == 'Create account' %}
+            Already have an account? <a href="/login">Sign in</a>
+          {% else %}
+            New here? <a href="/register">Create an account</a>
+          {% endif %}
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const loginTab = document.getElementById('loginTab');
+    const registerTab = document.getElementById('registerTab');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const next = new URLSearchParams(window.location.search).get('next') || '/home';
+
+    function setMode(mode) {
+      const isLogin = mode === 'login';
+      loginTab.classList.toggle('active', isLogin);
+      registerTab.classList.toggle('active', !isLogin);
+      loginForm.classList.toggle('active', isLogin);
+      registerForm.classList.toggle('active', !isLogin);
+    }
+
+    loginTab.addEventListener('click', () => setMode('login'));
+    registerTab.addEventListener('click', () => setMode('register'));
+
+    async function submitJson(form, endpoint) {
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || 'Authentication failed');
+      }
+      window.location.href = next;
+    }
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        await submitJson(loginForm, '/auth/login');
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    registerForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        await submitJson(registerForm, '/auth/register');
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    const titleName = '{{ title or "Login" }}';
+    if (titleName && titleName.toLowerCase().includes('create')) {
+      setMode('register');
+    }
+  </script>
+</body>
+</html>

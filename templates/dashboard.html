@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | LearnCraft</title>
+  <link rel="stylesheet" href="/static/css/design-system.css" />
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, #f7f8fd 0%, #eef4ff 100%);
+      font-family: "Inter", "Segoe UI", sans-serif;
+    }
+    .message {
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-md);
+      border-radius: 20px;
+      padding: 2rem 2.5rem;
+      max-width: 560px;
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+    }
+    p {
+      margin: 0 0 1.25rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="message">
+    <h1>LearnCraft dashboard</h1>
+    <p>The app is using the student home experience; continue to the main learning dashboard from the login flow.</p>
+    <a class="btn btn-primary btn-lg" href="/home">Open home</a>
+  </div>
+</body>
+</html>

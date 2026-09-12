@@ -295,7 +295,4 @@ NAV = [
     {"slug": "notes", "label": "Notes", "href": "/notes", "icon": "note"},
     {"slug": "ask-ai", "label": "Ask AI", "href": "/ask-ai", "icon": "user"},
     {"slug": "profile", "label": "Profile", "href": "/profile", "icon": "user"},
-    {"slug": "settings", "label": "Settings", "href": "/settings", "icon": "user"},
-    {"slug": "help", "label": "Help", "href": "/help", "icon": "user"},
-    {"slug": "logout", "label": "Sign out", "href": "/logout", "icon": "user"},
 ]

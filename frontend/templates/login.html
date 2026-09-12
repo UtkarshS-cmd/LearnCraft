@@ -186,6 +186,17 @@
       color: var(--primary-ink);
       font-weight: 800;
     }
+    .link-button {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--primary-ink);
+      font: inherit;
+      font-size: 0.83rem;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: left;
+    }
     .form-toggle {
       display: none;
     }
@@ -239,7 +250,29 @@
             <label for="loginPassword">Password</label>
             <input id="loginPassword" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required />
           </div>
+          <button type="button" class="link-button" id="forgotPasswordLink" hidden>Forgot password?</button>
           <button type="submit" class="btn btn-primary btn-lg">Sign in</button>
+        </form>
+
+        <form id="forgotPasswordForm" class="form-toggle" hidden>
+          <div class="field">
+            <label for="resetEmail">Email</label>
+            <input id="resetEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg">Send OTP</button>
+          <p class="muted" id="resetStatus"></p>
+          <div id="resetConfirmFields" hidden>
+            <div class="field">
+              <label for="resetOtp">Six-digit OTP</label>
+              <input id="resetOtp" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" />
+            </div>
+            <div class="field">
+              <label for="newPassword">New password</label>
+              <input id="newPassword" name="new_password" type="password" autocomplete="new-password" />
+            </div>
+            <button type="button" class="btn btn-primary btn-lg" id="resetPasswordButton">Reset password</button>
+          </div>
+          <button type="button" class="link-button" id="backToLogin">Back to login</button>
         </form>
 
         <form id="registerForm" class="form-toggle" method="post" action="/auth/register">
@@ -274,6 +307,10 @@
     const registerTab = document.getElementById('registerTab');
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+    const resetConfirmFields = document.getElementById('resetConfirmFields');
+    const resetStatus = document.getElementById('resetStatus');
     const next = new URLSearchParams(window.location.search).get('next') || '/home';
 
     function setMode(mode) {
@@ -282,6 +319,8 @@
       registerTab.classList.toggle('active', !isLogin);
       loginForm.classList.toggle('active', isLogin);
       registerForm.classList.toggle('active', !isLogin);
+      forgotPasswordForm.hidden = true;
+      forgotPasswordLink.hidden = true;
     }
 
     loginTab.addEventListener('click', () => setMode('login'));
@@ -297,7 +336,9 @@
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.message || 'Authentication failed');
+        const error = new Error(result.message || 'Authentication failed');
+        error.code = result.code;
+        throw error;
       }
       window.location.href = next;
     }
@@ -308,7 +349,42 @@
         await submitJson(loginForm, '/auth/login');
       } catch (error) {
         alert(error.message);
+        forgotPasswordLink.hidden = error.code !== 'INVALID_CREDENTIALS';
       }
+    });
+
+    forgotPasswordLink.addEventListener('click', () => {
+      loginForm.classList.remove('active');
+      forgotPasswordForm.hidden = false;
+      forgotPasswordForm.classList.add('active');
+      document.getElementById('resetEmail').value = document.getElementById('loginEmail').value;
+    });
+
+    forgotPasswordForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        await submitJson(forgotPasswordForm, '/auth/password-reset/request');
+        resetStatus.textContent = 'OTP sent. Check your email.';
+        resetConfirmFields.hidden = false;
+        document.getElementById('resetOtp').required = true;
+        document.getElementById('newPassword').required = true;
+      } catch (error) {
+        resetStatus.textContent = error.message;
+      }
+    });
+
+    document.getElementById('resetPasswordButton').addEventListener('click', async () => {
+      try {
+        await submitJson(forgotPasswordForm, '/auth/password-reset/confirm');
+      } catch (error) {
+        resetStatus.textContent = error.message;
+      }
+    });
+
+    document.getElementById('backToLogin').addEventListener('click', () => {
+      forgotPasswordForm.hidden = true;
+      forgotPasswordForm.classList.remove('active');
+      loginForm.classList.add('active');
     });
 
     registerForm.addEventListener('submit', async (event) => {

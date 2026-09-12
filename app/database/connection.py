@@ -50,6 +50,18 @@ def initialize_database():
     """)
 
     connection.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token_hash TEXT NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            used_at TIMESTAMP,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    connection.execute("""
         CREATE TABLE IF NOT EXISTS user_profiles (
             user_id INTEGER PRIMARY KEY,
             roll_no TEXT,
@@ -320,6 +332,7 @@ def initialize_database():
     """)
 
     connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id)")
     connection.execute("CREATE INDEX IF NOT EXISTS idx_learning_progress_user ON learning_progress(user_id)")
     connection.execute("CREATE INDEX IF NOT EXISTS idx_learning_progress_subject ON learning_progress(subject_slug)")
     chapter_indexes = connection.execute("PRAGMA index_list(academic_chapters)").fetchall()
@@ -424,6 +437,52 @@ def get_user_by_email(email):
     user = connection.execute("SELECT * FROM users WHERE email = ?", (str(email or "").strip().lower(),)).fetchone()
     connection.close()
     return _row_to_dict(user)
+
+
+def create_password_reset_token(user_id, token_hash, expires_at):
+    connection = get_connection()
+    connection.execute(
+        "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL",
+        (int(user_id),),
+    )
+    cursor = connection.execute(
+        "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
+        (int(user_id), token_hash, expires_at),
+    )
+    connection.commit()
+    token_id = cursor.lastrowid
+    connection.close()
+    return token_id
+
+
+def consume_password_reset_token(user_id, token_hash):
+    connection = get_connection()
+    token = connection.execute(
+        """
+        SELECT id FROM password_reset_tokens
+        WHERE user_id = ? AND token_hash = ? AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP
+        ORDER BY id DESC LIMIT 1
+        """,
+        (int(user_id), token_hash),
+    ).fetchone()
+    if token:
+        connection.execute(
+            "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (token["id"],),
+        )
+        connection.commit()
+    connection.close()
+    return bool(token)
+
+
+def update_user_password(user_id, password_hash):
+    connection = get_connection()
+    connection.execute(
+        "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (password_hash, int(user_id)),
+    )
+    connection.commit()
+    connection.close()
 
 
 def get_user_by_id(user_id):

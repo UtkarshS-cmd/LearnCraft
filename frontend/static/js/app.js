@@ -4,7 +4,25 @@ function openModal(html){document.getElementById('modalBox').innerHTML=html;docu
 function closeModal(){document.getElementById('modalBack').classList.remove('open');}
 document.addEventListener('click',e=>{if(e.target.id==='modalBack')closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+function closeProfileMenus(){document.querySelectorAll('.profile-menu').forEach(menu=>menu.classList.remove('open'));document.querySelectorAll('.profile-trigger').forEach(button=>button.setAttribute('aria-expanded','false'));}
+function initProfileMenus(){document.querySelectorAll('.profile-trigger').forEach(button=>{
+  button.addEventListener('click',e=>{
+    e.stopPropagation();
+    const menu=document.getElementById(button.getAttribute('aria-controls'));
+    if(!menu)return;
+    const willOpen=!menu.classList.contains('open');
+    closeProfileMenus();
+    if(willOpen){menu.classList.add('open');button.setAttribute('aria-expanded','true');}
+  });
+});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.profile-trigger')&&!e.target.closest('.profile-menu')){
+    closeProfileMenus();
+  }
+});}
 function filterCards(q){q=(q||'').toLowerCase();document.querySelectorAll('[data-search]').forEach(el=>{el.style.display=el.getAttribute('data-search').toLowerCase().includes(q)?'':'none';});}
+
+document.addEventListener('DOMContentLoaded',()=>{initProfileMenus();});
 // Notes — localStorage (offline)
 const NOTES_KEY='learncraft_notes_v1';
 function loadNotes(){try{return JSON.parse(localStorage.getItem(NOTES_KEY))||null;}catch{return null;}}

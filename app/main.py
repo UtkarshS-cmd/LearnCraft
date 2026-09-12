@@ -10,6 +10,7 @@ from flask import Flask, jsonify, redirect, render_template, request, session
 from data.seed import lessons_data as L
 from data.seed import mock_data as M
 from app.core.security import hash_password, password_policy, verify_password
+from app.services.password_reset import PasswordResetService
 from app.database.connection import (
     add_student,
     create_user,
@@ -78,7 +79,15 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+    MAIL_HOST=os.environ.get("LEARNCRAFT_MAIL_HOST"),
+    MAIL_PORT=int(os.environ.get("LEARNCRAFT_MAIL_PORT", "587")),
+    MAIL_USERNAME=os.environ.get("LEARNCRAFT_MAIL_USERNAME"),
+    MAIL_PASSWORD=os.environ.get("LEARNCRAFT_MAIL_PASSWORD"),
+    MAIL_FROM=os.environ.get("LEARNCRAFT_MAIL_FROM", "no-reply@learncraft.local"),
+    MAIL_USE_TLS=os.environ.get("LEARNCRAFT_MAIL_USE_TLS", "true").lower() == "true",
 )
+
+password_reset_service = PasswordResetService()
 
 initialize_database()
 
@@ -271,12 +280,46 @@ def auth_login():
 
     user = get_user_by_email(email)
     if not user or not verify_password(password, user["password_hash"]):
-        return json_error("Invalid email or password.", "INVALID_CREDENTIALS", 401)
+        return json_error(
+            "Invalid email or password. You can reset it with a six-digit OTP.",
+            "INVALID_CREDENTIALS",
+            401,
+        )
 
     session.clear()
     session["user_id"] = user["id"]
     session.permanent = True
     return json_success("Login successful.", "LOGIN_SUCCESS", {"user": user_payload(user)}, 200)
+
+
+@app.post("/auth/password-reset/request")
+def request_password_reset():
+    payload = request.get_json(silent=True) or request.form.to_dict(flat=True) or {}
+    email = str(payload.get("email", "")).strip().lower()
+    if not email:
+        return json_error("Email is required.", "VALIDATION_ERROR", 400)
+
+    try:
+        password_reset_service.request_otp(email)
+    except RuntimeError:
+        return json_error("Password reset email is not configured.", "MAIL_NOT_CONFIGURED", 503)
+    return json_success("If an account exists, a six-digit OTP has been sent to that email.", "OTP_SENT")
+
+
+@app.post("/auth/password-reset/confirm")
+def confirm_password_reset():
+    payload = request.get_json(silent=True) or request.form.to_dict(flat=True) or {}
+    email = str(payload.get("email", "")).strip().lower()
+    otp = str(payload.get("otp", "")).strip()
+    new_password = str(payload.get("new_password", ""))
+    if not email or not otp or not new_password:
+        return json_error("Email, OTP, and new password are required.", "VALIDATION_ERROR", 400)
+
+    success, message = password_reset_service.reset_password(email, otp, new_password)
+    if not success:
+        code = "VALIDATION_ERROR" if message.startswith("Password must") else "INVALID_OTP"
+        return json_error(message, code, 400)
+    return json_success(message, "PASSWORD_RESET")
 
 
 @app.post("/auth/logout")

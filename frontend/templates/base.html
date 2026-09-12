@@ -20,7 +20,18 @@
     </nav>
     <div class="side-foot">
       <div class="offline-pill" data-network-pill><span class="dot pulse"></span><span>Offline Mode · Local</span></div>
-      <div class="mini-profile"><div class="avatar">{{ student.avatar }}</div><div><div style="font-weight:800;font-size:13.5px">{{ student.name }}</div><div class="caption">{{ student.roll_no }}</div></div></div>
+      <div class="profile-menu-wrap sidebar-profile-wrap">
+        <button class="mini-profile profile-trigger" type="button" aria-expanded="false" aria-controls="sidebarProfileMenu">
+          <div class="avatar">{{ student.avatar }}</div>
+          <div><div style="font-weight:800;font-size:13.5px">{{ student.name }}</div><div class="caption">{{ student.roll_no }}</div></div>
+        </button>
+        <div class="profile-menu" id="sidebarProfileMenu" role="menu" aria-label="Profile menu">
+          <a href="/profile" class="profile-menu-item" role="menuitem">Profile</a>
+          <a href="/settings" class="profile-menu-item" role="menuitem">Settings</a>
+          <a href="/help" class="profile-menu-item" role="menuitem">Help</a>
+          <a href="/logout" class="profile-menu-item danger" role="menuitem">Sign out</a>
+        </div>
+      </div>
     </div>
   </aside>
   <div class="main">
@@ -30,7 +41,17 @@
       <div class="top-actions">
         <span class="pill">▲ {{ student.streak_days }}-day streak</span>
         <span class="pill xp">★ {{ student.xp }} XP</span>
-        <div class="avatar">{{ student.avatar }}</div>
+        <div class="profile-menu-wrap top-profile-wrap">
+          <button class="profile-trigger top-profile-trigger" type="button" aria-expanded="false" aria-controls="topProfileMenu">
+            <div class="avatar">{{ student.avatar }}</div>
+          </button>
+          <div class="profile-menu" id="topProfileMenu" role="menu" aria-label="Profile menu">
+            <a href="/profile" class="profile-menu-item" role="menuitem">Profile</a>
+            <a href="/settings" class="profile-menu-item" role="menuitem">Settings</a>
+            <a href="/help" class="profile-menu-item" role="menuitem">Help</a>
+            <a href="/logout" class="profile-menu-item danger" role="menuitem">Sign out</a>
+          </div>
+        </div>
       </div>
     </div>
     <div class="content">{% block content %}{% endblock %}</div>

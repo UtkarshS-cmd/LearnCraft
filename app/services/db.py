@@ -1,6 +1,6 @@
 """Database helpers exposed through the structured app package."""
 
-from database import (
+from app.database.connection import (
     add_student,
     create_note,
     create_user,

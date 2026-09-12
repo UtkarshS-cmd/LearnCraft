@@ -1,6 +1,6 @@
 """Auth route helpers exposed under the app package namespace."""
 
-from server import (
+from app.main import (
     auth_login,
     auth_logout,
     auth_me,

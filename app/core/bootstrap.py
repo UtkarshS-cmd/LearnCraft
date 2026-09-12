@@ -1,6 +1,6 @@
 """Initialization helpers for the structured LearnCraft app package."""
 
-from database import initialize_database
+from app.database.connection import initialize_database
 
 
 def bootstrap_app() -> None:

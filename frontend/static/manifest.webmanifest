@@ -1,0 +1,9 @@
+{
+  "name": "LearnCraft Student OS",
+  "short_name": "LearnCraft",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#4F46E5",
+  "description": "Offline-first learning tools and simulation launcher."
+}

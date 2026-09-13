@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ title or "LearnCraft" }} · LearnCraft OS</title>
+<link rel="manifest" href="/static/manifest.webmanifest">
+<meta name="theme-color" content="#4F46E5">
 <link rel="stylesheet" href="/static/css/design-system.css">
 </head>
 <body>
@@ -62,6 +64,13 @@
 <script src="/static/js/app.js"></script>
 <script src="/static/js/sandbox-engine.js"></script>
 <script src="/static/js/offline-store.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/static/js/service-worker.js').catch(function () {});
+  });
+}
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

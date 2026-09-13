@@ -321,6 +321,11 @@ def logout_page():
     return redirect("/login")
 
 
+@app.route("/offline")
+def offline_page():
+    return render_template("offline.html", title="Offline mode")
+
+
 @app.post("/auth/register")
 def auth_register():
     payload = request.get_json(silent=True) or request.form.to_dict(flat=True) or {}

@@ -33,6 +33,7 @@ The OTP expires after 10 minutes and is stored only as a hash. In tests, email d
 - `tests/` — unit, integration, and e2e tests
 - `docs/` — architecture and API documentation
 - `data/curriculum/` — versioned CBSE/NCERT structured seed packages
+- `data/curriculum/ncert_class10_syllabus.json` — extracted Class 10 NCERT Science and Social Studies question bank used by Ask AI for exact offline answers
 - `scripts/validate_content.py` — fail-fast content validation
 - `scripts/import_content.py` — transactional catalog import
 - `scripts/ingest_sources.py` — official-source download/checksum helper

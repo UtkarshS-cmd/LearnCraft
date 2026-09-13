@@ -35,7 +35,9 @@ def chat():
         return jsonify({"success": False, "message": "Ask a question to continue.", "code": "MESSAGE_REQUIRED"}), 400
     if len(question) > 4000:
         return jsonify({"success": False, "message": "Please keep your question under 4000 characters.", "code": "MESSAGE_TOO_LONG"}), 400
-    conversation_id = str(payload.get("conversation_id", "")).strip() or create_conversation(user_id, payload)
+    # The first browser request sends conversation_id as JSON null. Treat it
+    # as absent instead of converting it to the literal string "None".
+    conversation_id = str(payload.get("conversation_id") or "").strip() or create_conversation(user_id, payload)
     if not get_conversation(user_id, conversation_id):
         return jsonify({"success": False, "message": "Conversation not found.", "code": "CONVERSATION_NOT_FOUND"}), 404
     context = ai_context_from_payload(payload)

@@ -179,31 +179,111 @@ def student_subjects(user_id):
     rows = get_user_progress(user_id)
     by_subject = {}
     for row in rows:
-        by_subject.setdefault(row["subject_slug"], []).append(row["percent_complete"])
+        if not row.get("subject_slug"):
+            continue
+        by_subject.setdefault(row["subject_slug"], []).append(int(row.get("percent_complete", 0) or 0))
     subjects = []
     catalog_subjects = list_academic_subjects()
     for subject in catalog_subjects:
         values = by_subject.get(subject["slug"], [])
         progress_pct = round(sum(values) / len(values)) if values else 0
+        current_chapter = "Start your first lesson" if not values else (
+            "Continue your next lesson" if progress_pct < 100 else "Topic complete"
+        )
         subjects.append({**subject, "icon": "◈", "color": "#4F46E5", "bg": "#EEF2FF",
                          "chapters": 0, "progress": progress_pct,
                          "completed": sum(value == 100 for value in values),
                          "tag": "In progress" if progress_pct else "Not started",
-                         "current_chapter": "Continue your first lesson" if progress_pct else "Start your first lesson"})
+                         "current_chapter": current_chapter})
     return subjects
 
 
+def build_user_progress_dashboard(user_id):
+    rows = sorted(get_user_progress(user_id), key=lambda row: (int(row.get("percent_complete", 0) or 0), row.get("updated_at") or ""))
+    subject_cards = student_subjects(user_id)
+    next_row = None
+    for row in rows:
+        if int(row.get("percent_complete", 0) or 0) < 100:
+            next_row = row
+            break
+    next_action = {
+        "title": "Start learning",
+        "detail": "Your profile has no lesson progress yet.",
+        "reason": "Choose any subject to begin your first chapter.",
+        "href": "/subjects",
+        "action": "Browse subjects"
+    }
+    if next_row:
+        subject = next_row.get("subject_slug") or "subjects"
+        detail = next_row.get("last_activity") or f"{next_row.get('percent_complete', 0)}% complete"
+        next_action = {
+            "title": f"{subject.replace('-', ' ').title()} progress",
+            "detail": f"{detail} · next learning checkpoint",
+            "reason": "This is your current learning progress from your profile data.",
+            "href": f"/subjects/{subject}",
+            "action": "Continue"
+        }
+    pending_work = []
+    for row in rows[:5]:
+        if int(row.get("percent_complete", 0) or 0) >= 100:
+            continue
+        title = row.get("lesson_id") or row.get("subject_slug") or "Learning task"
+        pending_work.append({
+            "kind": "Lesson" if row.get("lesson_id") else "Module",
+            "title": title.replace("-", " ").title(),
+            "detail": f"{row.get('percent_complete', 0)}% complete · {row.get('last_activity') or 'recent activity'}",
+            "href": "/my-learning",
+            "action": "Resume"
+        })
+    activity_history = []
+    for row in rows[:4]:
+        pct = int(row.get("percent_complete", 0) or 0)
+        activity_history.append({
+            "title": row.get("subject_slug") or "Learning activity",
+            "detail": f"{pct}% complete · {row.get('last_activity') or 'Saved locally'}",
+            "time": row.get("updated_at") or "Recently",
+            "tone": "ok" if pct >= 80 else "info"
+        })
+    achievements = [
+        {"name": "First step", "desc": "Started learning", "icon": "★", "earned": any(int(row.get("percent_complete", 0) or 0) > 0 for row in rows)},
+        {"name": "Momentum", "desc": "50%+ progress", "icon": "⚡", "earned": any(int(row.get("percent_complete", 0) or 0) >= 50 for row in rows)},
+        {"name": "Chapter done", "desc": "100% complete", "icon": "✓", "earned": any(int(row.get("percent_complete", 0) or 0) >= 100 for row in rows)},
+    ]
+    return {
+        "subjects": subject_cards,
+        "next_action": next_action,
+        "pending_work": pending_work or [{"kind": "Profile", "title": "No active tasks", "detail": "Fresh profile — start the first subject.", "href": "/subjects", "action": "Open subjects"}],
+        "activity_history": activity_history or [{"title": "Fresh start", "detail": "No learning activity yet", "time": "Just now", "tone": "muted"}],
+        "achievements": achievements,
+    }
+
+
 def continue_learning(user_id):
-    rows = get_user_progress(user_id)
+    rows = sorted(get_user_progress(user_id), key=lambda row: (int(row.get("percent_complete", 0) or 0), row.get("updated_at") or ""))
     if not rows:
         return None
-    lesson = L.get_lesson(rows[0]["lesson_id"])
+    row = rows[0]
+    lesson = L.get_lesson(row.get("lesson_id")) if row.get("lesson_id") else None
     if not lesson:
-        return None
+        subject = next((subject for subject in list_academic_subjects() if subject["slug"] == row.get("subject_slug")), None)
+        subject_slug = row.get("subject_slug") or "subjects"
+        subject_name = subject["name"] if subject else subject_slug.replace('-', ' ').title()
+        return {
+            "subject": subject_name,
+            "subject_slug": subject_slug,
+            "subject_color": "#6366F1",
+            "subject_bg": "#EEF2FF",
+            "chapter": "Current progress",
+            "lesson": "Continue learning",
+            "progress_pct": int(row.get("percent_complete", 0) or 0),
+            "time_left": "Based on profile data",
+            "last_activity": row.get("last_activity") or "Saved on this device",
+            "resume_url": f"/subjects/{subject_slug}"
+        }
     return {"subject": lesson["subject_name"], "subject_slug": lesson["subject_slug"],
             "subject_color": "#6366F1", "subject_bg": "#EEF2FF", "chapter": lesson["chapter_label"],
-            "lesson": lesson["title"], "progress_pct": rows[0]["percent_complete"],
-            "time_left": lesson["est"], "last_activity": "Saved on this device",
+            "lesson": lesson["title"], "progress_pct": int(row.get("percent_complete", 0) or 0),
+            "time_left": lesson["est"], "last_activity": row.get("last_activity") or "Saved on this device",
             "resume_url": f"/subjects/{lesson['subject_slug']}/lessons/{lesson['id']}"}
 
 
@@ -408,9 +488,11 @@ def student_home():
 @app.route("/my-learning")
 @require_auth
 def my_learning():
+    user = current_user()
     return render_template("pages/my_learning.html", title="My Learning",
-                           items=M.MY_LEARNING, cont=M.CONTINUE_LEARNING,
-                           lesson_map=L.FIRST_LESSON, **shell_ctx("my-learning", current_user()))
+                           my_subjects=student_subjects(user["id"]),
+                           cont=continue_learning(user["id"]),
+                           **shell_ctx("my-learning", user))
 
 
 @app.route("/subjects")
@@ -479,9 +561,38 @@ def lesson_player(slug, lesson_id):
 @app.route("/practical")
 @require_auth
 def practical():
+    user = current_user()
+    subjects = student_subjects(user["id"])
+    subject = next((item for item in subjects if item["progress"] > 0), subjects[0]) if subjects else {
+        "name": "Practice",
+        "slug": "physics",
+        "bg": "#FFF7ED",
+        "color": "#EA580C",
+        "progress": 0,
+        "current_chapter": "Start your first practical"
+    }
+    workspace = {
+        "subject": subject["name"],
+        "subject_bg": subject["bg"],
+        "subject_color": subject["color"],
+        "title": f"{subject['name']} Practical Lab",
+        "environment": "Local lab workspace",
+        "step": f"{subject['progress']}% complete",
+        "progress": subject["progress"],
+        "time": "Based on profile progress",
+        "mode": "code",
+        "instructions": "Complete the practical exercise for your current subject progress. This value updates from your real learning data.",
+        "requirements": ["Review current progress", "Work in the lab", "Save your result"],
+        "starter_code": "# Write your code here\nprint(\"Practice started\")\n",
+        "tests": [
+            {"id": "p1", "name": "Progress check", "detail": "Ensures the lab is aligned with your current profile progress."},
+            {"id": "p2", "name": "Completion check", "detail": "Tracks the latest saved result for this profile."},
+        ],
+    }
     return render_template("pages/practical.html", title="Practical",
-                           practicals=M.PRACTICALS, workspace=M.PRACTICAL_WORKSPACE,
-                           **shell_ctx("practical", current_user()))
+                           practicals=[{"title": workspace["title"], "subject": subject["name"], "status": "In progress", "progress": subject["progress"], "href": "/practical"}],
+                           workspace=workspace,
+                           **shell_ctx("practical", user))
 
 
 @app.route("/assignments")
@@ -504,12 +615,35 @@ def sandbox():
 @app.route("/progress")
 @require_auth
 def progress():
+    user = current_user()
+    dashboard = build_user_progress_dashboard(user["id"])
     return render_template("pages/progress.html", title="Progress",
-                           subjects=M.SUBJECTS, weekly=M.WEEKLY,
-                           progress_subjects=M.PROGRESS_SUBJECTS,
-                           next_action=M.PROGRESS_NEXT, pending_work=M.PROGRESS_PENDING,
-                           activity_history=M.PROGRESS_ACTIVITY,
-                           achievements=M.ACHIEVEMENTS, **shell_ctx("progress", current_user()))
+                           subjects=dashboard["subjects"], weekly=[],
+                           progress_subjects=[{
+                               "name": s["name"],
+                               "slug": s["slug"],
+                               "icon": s["icon"],
+                               "bg": s["bg"],
+                               "color": s["color"],
+                               "progress": s["progress"],
+                               "current_chapter": s["current_chapter"],
+                               "modules": [{
+                                   "title": "Current learning",
+                                   "progress": s["progress"],
+                                   "chapters": [{
+                                       "title": s["current_chapter"],
+                                       "progress": s["progress"],
+                                       "status": "Completed" if s["progress"] >= 100 else ("In Progress" if s["progress"] > 0 else "Not started"),
+                                       "activity": [
+                                           {"name": "Lesson", "status": "Completed" if s["progress"] >= 100 else ("In progress" if s["progress"] > 0 else "Not started")},
+                                           {"name": "Lab", "status": "Completed" if s["progress"] >= 100 else ("In progress" if s["progress"] > 0 else "Not started")},
+                                       ]
+                                   }]
+                               }]
+                           } for s in dashboard["subjects"]],
+                           next_action=dashboard["next_action"], pending_work=dashboard["pending_work"],
+                           activity_history=dashboard["activity_history"],
+                           achievements=dashboard["achievements"], **shell_ctx("progress", user))
 
 
 @app.route("/notes")

@@ -1,15 +1,39 @@
-{% extends "base.html" %}{% from "components.html" import progressbar, badge, empty_state %}
+{% extends "base.html" %}{% from "components.html" import progressbar %}
 {% block content %}
-<div class="page-head"><div><div class="h1">My Learning</div><p>Pick up exactly where you left off. One tap to resume.</p></div><a class="btn btn-primary" href="/home">▶ Continue: {{ cont.lesson }}</a></div>
-<div class="tabs"><button class="tab active" onclick="toast('Filtered: In progress')">In progress</button><button class="tab" onclick="toast('Filtered: Completed')">Completed</button><button class="tab" onclick="toast('Filtered: Saved')">Saved</button></div>
-<div class="grid grid-3">
-{% for c in items %}
-<div class="card hover" data-search="{{ c.subject }} {{ c.chapter }} {{ c.lesson }}">
-  <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><div class="tile-icon" style="background:{{ c.bg }};color:{{ c.color }}">▶</div><div><b>{{ c.subject }}</b><div class="caption">{{ c.chapter }}</div></div><span style="margin-left:auto">{{ badge(c.status.replace('_',' ').title(), 'ok' if c.status=='completed' else 'info') }}</span></div>
-  <div class="h3" style="margin-bottom:4px">{{ c.lesson }}</div><div class="caption" style="margin-bottom:10px">{{ c.time }}</div>
-  {{ progressbar(c.progress) }}
-  <div style="display:flex;gap:8px;margin-top:14px"><a class="btn btn-primary btn-sm" style="flex:1" href="{% if c.slug in lesson_map %}/subjects/{{ c.slug }}/lessons/{{ lesson_map[c.slug] }}{% else %}/subjects/{{ c.slug }}{% endif %}">{{ 'Review' if c.status=='completed' else 'Resume' }} →</a><button class="btn btn-secondary btn-sm" onclick="toast('Saved to your list')">♡</button></div>
+<style>
+.self-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.page-sub{color:var(--muted);font-size:13.5px;margin-top:6px}
+@media(max-width:860px){.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+
+<div class="page-head">
+  <div>
+    <div class="h1">My Learning</div>
+    <p class="page-sub">Fresh subject progress for your profile, starting from a clean learning path.</p>
+  </div>
+  {% if cont %}
+  <a class="btn btn-primary" href="{{ cont.resume_url }}">▶ Continue: {{ cont.lesson }}</a>
+  {% else %}
+  <a class="btn btn-primary" href="/subjects">Browse subjects</a>
+  {% endif %}
 </div>
-{% endfor %}
+
+<div class="grid grid-4">
+  {% for s in my_subjects %}
+  <div class="card hover" data-search="{{ s.name }} {{ s.current_chapter }}">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+      <div class="tile-icon" style="background:{{ s.bg }};color:{{ s.color }}">{{ s.icon }}</div>
+      <div>
+        <b>{{ s.name }}</b>
+        <div class="caption">{{ s.current_chapter }}</div>
+      </div>
+    </div>
+    {{ progressbar(s.progress) }}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <span class="caption">{{ s.progress }}% complete</span>
+      <a href="/subjects/{{ s.slug }}" style="font-size:13px;font-weight:800">Continue →</a>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 {% endblock %}

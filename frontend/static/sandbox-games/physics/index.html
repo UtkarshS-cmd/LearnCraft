@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Offline Physics Learning Game: Newton's Laws, Inertia, Motion and Force. 100% offline, runs from USB.">
+<title>⚛️ Physics Adventure Lab — Offline Game</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="bg-atoms" aria-hidden="true"><span>⚛️</span><span>🚀</span><span>🍎</span><span>🎈</span><span>🥌</span><span>⚖️</span><span>🧲</span><span>💡</span></div>
+
+<header class="topbar">
+  <button id="navBack" class="icon-btn" aria-label="Back">⬅</button>
+  <div id="navTitle" class="title">⚛️ Physics Adventure Lab</div>
+  <div class="hud">
+    <span class="pill">✨ <b id="hudXp">0</b> XP</span>
+    <span class="pill">🏆 Lv <b id="hudLevel">1</b></span>
+    <span class="pill" id="hudStreak">🔥0</span>
+    <button id="muteBtn" class="icon-btn" aria-label="Mute">🔊</button>
+    <button id="helpBtn" class="icon-btn" aria-label="Help">❓</button>
+  </div>
+</header>
+<div class="level-line"><div id="hudLevelFill"></div></div>
+
+<main class="container">
+
+  <!-- ================= MAIN MENU ================= -->
+  <section id="screen-menu" class="screen active">
+    <div class="card hero">
+      <h1>⚛️ Physics Adventure Lab 🚀</h1>
+      <p class="subtitle">Don't just read physics — <b>play</b> it! Push carts, launch rockets, catch inertia red-handed. 💯 Offline!</p>
+    </div>
+    <div class="menu-grid">
+      <button class="menu-card c1" data-go="screen-law1"><span class="mc-emoji">🥌</span><span class="mc-t">Newton's 1st Law</span><small>Law of Inertia</small></button>
+      <button class="menu-card c2" data-go="screen-law2"><span class="mc-emoji">🚀</span><span class="mc-t">Newton's 2nd Law</span><small>F = ma Lab</small></button>
+      <button class="menu-card c3" data-go="screen-law3"><span class="mc-emoji">🎈</span><span class="mc-t">Newton's 3rd Law</span><small>Action–Reaction</small></button>
+      <button class="menu-card c4" data-go="screen-inertia"><span class="mc-emoji">🪙</span><span class="mc-t">Inertia</span><small>Coin, bus &amp; more</small></button>
+      <button class="menu-card c5" data-go="screen-inertia" data-itab="motion"><span class="mc-emoji">🧭</span><span class="mc-t">Types of Inertia</span><small>Rest • Motion • Direction</small></button>
+      <button class="menu-card c6" data-go="screen-challenge"><span class="mc-emoji">🏅</span><span class="mc-t">Physics Challenge</span><small>4 mini-games!</small></button>
+      <button class="menu-card c7" data-go="screen-lab"><span class="mc-emoji">🔬</span><span class="mc-t">Free Experiment Lab</span><small>You control everything</small></button>
+    </div>
+    <div class="two-col">
+      <div class="card"><h2>🎖 My Badges</h2><div id="badgeShelf" class="badge-shelf"></div>
+        <button id="resetBtn" class="link-btn">🗑 Erase saved progress</button></div>
+      <div class="card"><h2>📖 How it works</h2>
+        <p class="small">Every simulation runs <b>real physics</b> (F = ma, friction, momentum) on this computer. Earn XP, streaks &amp; badges — all saved offline. Press <kbd>M</kbd> to mute.</p></div>
+    </div>
+  </section>
+
+  <!-- ================= LAW 1 ================= -->
+  <section id="screen-law1" class="screen">
+    <div class="card">
+      <h2>🥌 1st Law: objects keep doing what they're doing!</h2>
+      <p class="small">No net force → <b>rest stays rest, motion stays motion</b>. Push the 📦, fight friction (μ), then release and watch it coast!</p>
+      <canvas id="c1" class="sim"></canvas>
+      <div id="banner1" class="banner">Press ▶ Start!</div>
+      <div class="controls">
+        <label>Push force: <b id="f1ForceV">8 N</b><input id="f1Force" type="range" min="0" max="20" step="1" value="8"></label>
+        <label>Friction: <b id="f1MuV">μ = 0.10</b><input id="f1Mu" type="range" min="0" max="0.5" step="0.01" value="0.1"></label>
+      </div>
+      <div class="row">
+        <button id="f1Apply" class="big-btn half">💪 Apply Force</button>
+        <button id="f1Remove" class="ghost-btn">🚫 Remove Force</button>
+        <button id="f1Start" class="ghost-btn">▶ Start</button>
+        <button id="f1Reset" class="ghost-btn">↺ Reset</button>
+      </div>
+      <div class="readouts">
+        <span>💪 F: <b id="r1F">0 N</b></span><span>🧱 friction: <b id="r1Ff">0 N</b></span>
+        <span>⚖️ Net F: <b id="r1Net">0 N</b></span><span>🏃 v: <b id="r1V">0 m/s</b></span><span>🚀 a: <b id="r1A">0 m/s²</b></span>
+      </div>
+    </div>
+    <div class="card"><h2>🎬 Real-life mysteries — solve them!</h2><p class="small">Watch each scene, then answer. True physics, +25 XP each!</p></div>
+    <div id="law1Scenarios"></div>
+  </section>
+
+  <!-- ================= LAW 2 ================= -->
+  <section id="screen-law2" class="screen">
+    <div class="card">
+      <h2>🚀 2nd Law: F = m × a</h2>
+      <p class="small">Bigger force → bigger acceleration. Bigger mass → smaller acceleration. Frictionless track = pure F = ma!</p>
+      <div class="formula" id="f2Eq">F = m × a</div>
+      <canvas id="c2" class="sim"></canvas>
+      <div class="controls">
+        <label>Mass: <b id="r2M">5 kg</b><input id="f2Mass" type="range" min="1" max="10" step="1" value="5"></label>
+        <label>Force: <b id="r2F">20 N</b><input id="f2Force" type="range" min="0" max="60" step="1" value="20"></label>
+      </div>
+      <div class="row">
+        <button id="f2Start" class="big-btn half">▶ Start</button>
+        <button id="f2Reset" class="ghost-btn">↺ Reset</button>
+      </div>
+      <div class="readouts">
+        <span>🚀 a = F/m: <b id="r2A">4 m/s²</b></span><span>🏃 v: <b id="r2V">0 m/s</b></span><span>📏 x: <b id="r2X">0 m</b></span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🎯 Challenge: hit the target acceleration!</h2>
+      <p class="small" id="c2Target">…</p>
+      <div class="row">
+        <button id="c2NewTarget" class="ghost-btn">🎲 New target</button>
+        <button id="c2Test" class="big-btn half">🧪 TEST my F &amp; m!</button>
+      </div>
+      <p id="c2Verdict" class="feedback hidden"></p>
+    </div>
+  </section>
+
+  <!-- ================= LAW 3 ================= -->
+  <section id="screen-law3" class="screen">
+    <div class="card">
+      <h2>🎈 3rd Law: every action has an equal &amp; opposite reaction!</h2>
+      <div class="row">
+        <button class="choice selected" data-l3mode="carts">🛒 Carts</button>
+        <button class="choice" data-l3mode="rocket">🚀 Rocket</button>
+        <button class="choice" data-l3mode="balloon">🎈 Balloon</button>
+      </div>
+    </div>
+    <div id="l3pCarts" class="card">
+      <h3>🛒 Two carts shove each other</h3>
+      <p class="small">Change the masses, press PUSH! Equal forces → lighter cart flies faster (a = F/m), total momentum stays ≈ 0.</p>
+      <canvas id="c3" class="sim"></canvas>
+      <div class="controls">
+        <label>Cart A: <b id="f3mAV">2 kg</b><input id="f3mA" type="range" min="1" max="5" step="1" value="2"></label>
+        <label>Cart B: <b id="f3mBV">2 kg</b><input id="f3mB" type="range" min="1" max="5" step="1" value="2"></label>
+      </div>
+      <div class="row"><button id="f3Push" class="big-btn half">💥 PUSH!</button><button id="f3Reset" class="ghost-btn">↺ Reset</button></div>
+      <div class="readouts"><span>vA: <b id="r3vA">0 m/s</b></span><span>vB: <b id="r3vB">0 m/s</b></span><span>Total p: <b id="r3p">0</b></span></div>
+    </div>
+    <div id="l3pRocket" class="card hidden">
+      <h3>🚀 Rocket propulsion (in space — no gravity, no air!)</h3>
+      <p class="small">Engine throws gas backward, rocket moves forward. Same force both ways!</p>
+      <canvas id="c3r" class="sim"></canvas>
+      <div class="controls"><label>Thrust: <b id="f3ThrustV">40 N</b><input id="f3Thrust" type="range" min="10" max="100" step="5" value="40"></label></div>
+      <div class="row"><button id="f3Launch" class="big-btn half">🚀 LAUNCH!</button><button id="f3ResetR" class="ghost-btn">↺ Reset</button></div>
+      <p class="readouts"><span id="r3r">a = …</span></p>
+    </div>
+    <div id="l3pBalloon" class="card hidden">
+      <h3>🎈 Balloon propulsion</h3>
+      <p class="small">Air rushes out the back → balloon zooms forward. More air = longer flight!</p>
+      <canvas id="c3b" class="sim"></canvas>
+      <div class="controls"><label>Air: <b id="f3AirV">70%</b><input id="f3Air" type="range" min="20" max="100" step="5" value="70"></label></div>
+      <div class="row"><button id="f3Blow" class="big-btn half">💨 RELEASE!</button></div>
+      <p class="readouts"><span id="r3b">Air left: …</span></p>
+    </div>
+  </section>
+
+  <!-- ================= INERTIA LAB ================= -->
+  <section id="screen-inertia" class="screen">
+    <div class="card">
+      <h2>🧭 Inertia Lab — matter resists change!</h2>
+      <div class="row">
+        <button class="choice selected" data-intab="rest">🪙 Rest</button>
+        <button class="choice" data-intab="motion">🚌 Motion</button>
+        <button class="choice" data-intab="direction">↩️ Direction</button>
+      </div>
+    </div>
+    <div id="intab-rest" class="card">
+      <h3>🪙 1. Inertia of REST — coin &amp; card</h3>
+      <p class="small">The card is flicked fast. The coin gets <b>no horizontal force</b>, so it stays put and gravity drops it in the glass!</p>
+      <canvas id="ciRest" class="sim"></canvas>
+      <div class="row"><button id="ciRunRest" class="big-btn half">👆 Flick the card!</button></div>
+      <div id="ciQuizRest"></div>
+    </div>
+    <div id="intab-motion" class="card hidden">
+      <h3>🚌 2. Inertia of MOTION — the braking bus</h3>
+      <p class="small">The bus brakes (big backward force on the bus). The passenger gets <b>no such force</b>, so they keep gliding forward!</p>
+      <canvas id="ciMotion" class="sim"></canvas>
+      <div class="row"><button id="ciRunMotion" class="big-btn half">🛑 Brake the bus!</button></div>
+      <div id="ciQuizMotion"></div>
+    </div>
+    <div id="intab-direction" class="card hidden">
+      <h3>↩️ 3. Inertia of DIRECTION — the sharp turn</h3>
+      <p class="small">Top view! The car turns but the passenger's velocity points <b>straight ahead</b> until the door pushes them.</p>
+      <canvas id="ciDir" class="sim"></canvas>
+      <div class="row"><button id="ciRunDir" class="big-btn half">↩️ Turn the car!</button></div>
+      <div id="ciQuizDirection"></div>
+    </div>
+  </section>
+
+  <!-- ================= CHALLENGE HUB ================= -->
+  <section id="screen-challenge" class="screen">
+    <div class="card hero"><h1>🏅 Challenge Arena</h1><p class="subtitle">Four mini-games. Real physics. Big XP. Go! ⚡</p></div>
+    <div class="menu-grid">
+      <button class="menu-card c1" data-go="screen-g1"><span class="mc-emoji">🎯</span><span class="mc-t">Force Challenge</span><small>Land the cart on the flag</small></button>
+      <button class="menu-card c2" data-go="screen-g2"><span class="mc-emoji">🔍</span><span class="mc-t">Inertia Detective</span><small>Rest? Motion? Direction?</small></button>
+      <button class="menu-card c3" data-go="screen-g3"><span class="mc-emoji">🍎</span><span class="mc-t">Law Match</span><small>Match life to the law</small></button>
+      <button class="menu-card c4" data-go="screen-g4"><span class="mc-emoji">🔮</span><span class="mc-t">Predict the Motion</span><small>Pause… guess… watch!</small></button>
+    </div>
+    <div class="two-col">
+      <div class="card"><h2>⭐ Best Scores</h2><div id="bestList" class="best-list"></div></div>
+      <div class="card"><h2>🎖 Badges</h2><div id="badgeShelfCh" class="badge-shelf"></div></div>
+    </div>
+  </section>
+
+  <!-- ================= G1 ================= -->
+  <section id="screen-g1" class="screen">
+    <div class="card">
+      <h2>🎯 Force Challenge</h2>
+      <p class="small" id="g1Target">…</p>
+      <canvas id="g1c" class="sim"></canvas>
+      <div class="controls"><label>Push force: <b id="g1ForceV">18 N</b><input id="g1Force" type="range" min="5" max="40" step="1" value="18"></label></div>
+      <div class="row"><button id="g1Start" class="ghost-btn">🔁 New tournament</button><button id="g1Launch" class="big-btn half">🚀 LAUNCH!</button></div>
+      <p id="g1Info" class="feedback hidden"></p>
+      <p class="readouts"><span id="g1Score">Score: 0 pts</span></p>
+    </div>
+  </section>
+
+  <!-- ================= G2 ================= -->
+  <section id="screen-g2" class="screen">
+    <div class="card">
+      <h2>🔍 Inertia Detective</h2>
+      <p class="small">Watch the case replay (press 1–3 to answer). Which inertia is it?</p>
+      <canvas id="g2c" class="sim"></canvas>
+      <div class="row"><button id="g2Start" class="big-btn half">📂 Open new cases</button></div>
+      <div id="g2Opts" class="opts"></div>
+      <p id="g2Fb" class="feedback hidden"></p>
+      <p class="readouts"><span id="g2Score">Solved: 0/0</span></p>
+    </div>
+  </section>
+
+  <!-- ================= G3 ================= -->
+  <section id="screen-g3" class="screen">
+    <div class="card">
+      <h2>🍎 Newton's Law Match</h2>
+      <p class="small">Read the situation. Name the law. (keys 1–3)</p>
+      <div class="row"><button id="g3Start" class="big-btn half">▶ Start matching</button></div>
+      <h3 id="g3Sit">Press Start!</h3>
+      <div id="g3Opts" class="opts"></div>
+      <p id="g3Fb" class="feedback hidden"></p>
+      <p class="readouts"><span id="g3Score">Matched: 0/0</span></p>
+    </div>
+  </section>
+
+  <!-- ================= G4 ================= -->
+  <section id="screen-g4" class="screen">
+    <div class="card">
+      <h2>🔮 Predict the Motion</h2>
+      <p class="small">Simulation PAUSED. Predict, then watch real physics decide! (keys 1–4)</p>
+      <canvas id="g4c" class="sim"></canvas>
+      <div class="row"><button id="g4Start" class="big-btn half">▶ New predictions</button></div>
+      <div id="g4Opts" class="opts"></div>
+      <p id="g4Fb" class="feedback hidden"></p>
+      <p class="readouts"><span id="g4Score">Predicted: 0/0</span></p>
+    </div>
+  </section>
+
+  <!-- ================= FREE LAB ================= -->
+  <section id="screen-lab" class="screen">
+    <div class="card">
+      <h2>🔬 Free Experiment Lab — Game 5!</h2>
+      <p class="small">You are the physicist: mass, force, friction, starting speed. Everything obeys F = ma live!</p>
+      <canvas id="labC" class="sim"></canvas>
+      <div class="controls">
+        <label>Mass: <b id="labMV">3.0 kg</b><input id="labM" type="range" min="1" max="10" step="0.5" value="3"></label>
+        <label>Force: <b id="labFV">10 N</b><input id="labF" type="range" min="-30" max="30" step="1" value="10"></label>
+        <label>Friction: <b id="labMuV">μ = 0.15</b><input id="labMu" type="range" min="0" max="0.6" step="0.01" value="0.15"></label>
+        <label>Start speed: <b id="labV0V">0.0 m/s</b><input id="labV0" type="range" min="-6" max="6" step="0.5" value="0"></label>
+      </div>
+      <div class="row">
+        <label class="check"><input id="labForceOn" type="checkbox" checked> Force ON</label>
+        <button id="labStart" class="big-btn half">▶ Start</button>
+        <button id="labReset" class="ghost-btn">↺ Reset</button>
+      </div>
+      <div class="readouts">
+        <span>F: <b id="labRF">10 N</b></span><span>m: <b id="labRM">3 kg</b></span>
+        <span>Net: <b id="labRNet">0 N</b></span><span>a: <b id="labRA">0</b></span>
+        <span>v: <b id="labRV">0</b></span><span>x: <b id="labRX">0</b></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- overlays -->
+  <div id="toast" class="toast"></div>
+  <div id="floatLayer" aria-hidden="true"></div>
+  <div id="badgePop" class="modal hidden"><div class="modal-card center">
+    <div id="badgePopIcon" class="big-emoji">🏆</div>
+    <h2 id="badgePopName">Badge!</h2><p id="badgePopDesc"></p><p class="small muted">Tap to continue 👆</p>
+  </div></div>
+  <div id="levelUpOverlay" class="levelup hidden"><div class="levelup-inner">
+    <div class="levelup-rays"></div><div class="levelup-title">🎉 LEVEL UP! 🎉</div>
+    <div id="levelUpText" class="levelup-sub"></div><div class="levelup-stars">⭐🌟✨🌟⭐</div>
+    <div class="small">Tap to continue 👆</div>
+  </div></div>
+  <div id="helpModal" class="modal hidden"><div class="modal-card">
+    <h2>❓ How to play (100% offline!)</h2>
+    <ol class="how">
+      <li>Pick a topic card — each runs <b>real physics</b> on this computer.</li>
+      <li>Drag sliders, push buttons, watch arrows &amp; graphs.</li>
+      <li>Answer quizzes &amp; games for <b>XP, streaks &amp; badges</b>.</li>
+      <li>Keys <kbd>1</kbd>–<kbd>4</kbd> answer, <kbd>M</kbd> mutes, <kbd>Esc</kbd> goes back.</li>
+      <li>Everything saves on this computer. No internet ever needed! 💾</li>
+    </ol>
+    <button id="closeHelp" class="big-btn">Got it! 👍</button>
+  </div></div>
+  <div id="confetti" aria-hidden="true"></div>
+</main>
+
+<footer class="footer">💯 100% Offline • Real F = ma physics • No login • Runs from USB 💾</footer>
+
+<script src="js/physics.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/app.js"></script>
+<script src="js/simulations.js"></script>
+<script src="js/games.js"></script>
+<script>
+  window.addEventListener("DOMContentLoaded", function () {
+    APP.init(); SIM.init(); GAMES.init();
+  });
+</script>
+</body>
+</html>

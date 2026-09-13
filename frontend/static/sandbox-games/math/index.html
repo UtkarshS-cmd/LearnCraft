@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Offline Math Learning Game for school students. 100% offline, no internet needed.">
+<title>Math Adventure! 🎮 Offline Learning Game</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="bg-shapes" aria-hidden="true">
+  <span>➕</span><span>➗</span><span>✖️</span><span>➖</span>
+  <span>🔢</span><span>⭐</span><span>🎈</span><span>🧮</span>
+</div>
+
+<header class="topbar">
+  <div class="logo">🧮 Math Adventure!</div>
+  <div class="top-actions">
+    <button id="muteBtn" class="icon-btn" title="Sound on/off" aria-label="Toggle sound">🔊</button>
+    <button id="helpBtn" class="icon-btn" title="How to play" aria-label="How to play">❓</button>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ============ HOME SCREEN ============ -->
+  <section id="homeScreen" class="screen active">
+    <div class="hero card">
+      <h1>🎉 Math Adventure! 🚀</h1>
+      <p class="subtitle">Have fun and become a Math Star! No internet needed — play anywhere! 🌈</p>
+      <div class="profile-strip">
+        <div class="pill">🏆 Level <b id="homeLevel">1</b></div>
+        <div class="pill">✨ XP <b id="homeXp">0</b></div>
+        <div class="pill">🔥 Best Streak <b id="homeBestStreak">0</b></div>
+        <div class="pill">🎮 Games <b id="homeGames">0</b></div>
+      </div>
+      <div class="level-bar"><div id="homeLevelFill"></div></div>
+      <p id="homeLevelText" class="small muted"></p>
+    </div>
+
+    <div class="card">
+      <h2>1️⃣ Choose your mission</h2>
+      <div class="btn-grid ops" role="radiogroup" aria-label="Operation">
+        <button class="choice op-btn" data-op="addition">➕<span>Addition</span></button>
+        <button class="choice op-btn" data-op="subtraction">➖<span>Subtraction</span></button>
+        <button class="choice op-btn" data-op="multiplication">✖️<span>Multiplication</span></button>
+        <button class="choice op-btn" data-op="division">➗<span>Division</span></button>
+        <button class="choice op-btn selected" data-op="mixed">🎲<span>Mixed Fun</span></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2️⃣ Pick difficulty</h2>
+      <div class="btn-grid diffs" role="radiogroup" aria-label="Difficulty">
+        <button class="choice diff-btn selected" data-diff="easy">🌱<span>Easy</span><small>Small numbers</small></button>
+        <button class="choice diff-btn" data-diff="medium">🌟<span>Medium</span><small>Bigger challenge</small></button>
+        <button class="choice diff-btn" data-diff="hard">🔥<span>Hard</span><small>Math Master!</small></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3️⃣ How many questions?</h2>
+      <div class="btn-grid counts" role="radiogroup" aria-label="Questions count">
+        <button class="choice count-btn" data-count="5">5<span>Quick</span></button>
+        <button class="choice count-btn selected" data-count="10">10<span>Classic</span></button>
+        <button class="choice count-btn" data-count="15">15<span>Long</span></button>
+        <button class="choice count-btn" data-count="20">20<span>Marathon</span></button>
+      </div>
+      <button id="startBtn" class="big-btn">▶ Start Playing! 🎮</button>
+      <p class="small muted center">You get ❤️❤️❤️ 3 lives &amp; a timer for each question. Streaks earn bonus points! 🔥</p>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <h2>🏅 My Best Scores <span class="small">(saved on this computer)</span></h2>
+        <div id="bestScores" class="best-list"></div>
+        <button id="resetScoresBtn" class="link-btn">🗑 Clear saved scores</button>
+      </div>
+      <div class="card">
+        <h2>🎖 My Badges</h2>
+        <div id="badgeShelf" class="badge-shelf"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GAME SCREEN ============ -->
+  <section id="gameScreen" class="screen">
+    <div class="hud card">
+      <div class="hud-row">
+        <div class="hud-item" id="scorePill">⭐ Score<br><b id="scoreVal">0</b></div>
+        <div class="hud-item" id="livesPill">❤️ Lives<br><b id="livesVal">❤️❤️❤️</b></div>
+        <div class="hud-item" id="streakPill">🔥 Streak<br><b id="streakVal">0</b></div>
+        <div class="hud-item">🏆 Level<br><b id="levelVal">1</b></div>
+      </div>
+      <div class="hud-row2">
+        <span id="qProgressText">Question 1 / 10</span>
+        <span id="modeLabel">🎲 Mixed • 🌱 Easy</span>
+      </div>
+      <div class="progress"><div id="progressFill"></div></div>
+      <div class="timer-row">
+        <span>⏱ <b id="timeVal">20</b>s</span>
+        <div class="timer-bar" id="timerBar"><div id="timerFill"></div></div>
+      </div>
+    </div>
+
+    <div class="card question-card" id="qCard">
+      <div id="qAnim">
+        <div id="streakPop" class="streak-pop hidden">🔥 Streak x3! Bonus +15!</div>
+        <div id="visualWrap">
+          <div id="visual" class="visual" aria-hidden="true"></div>
+          <div id="visualCaption" class="vcap small muted"></div>
+        </div>
+        <div id="questionText" class="question" aria-live="polite">7 + 5 = ?</div>
+        <div id="feedback" class="feedback hidden" aria-live="polite"></div>
+        <div id="answers" class="answers"></div>
+      </div>
+      <div id="floatLayer" aria-hidden="true"></div>
+      <p class="small muted center">Tip: press keys <kbd>1</kbd>–<kbd>4</kbd> to answer! ⌨️</p>
+    </div>
+
+    <div class="center row">
+      <button id="quitBtn" class="ghost-btn">🏳 Quit round</button>
+      <button id="muteBtn2" class="ghost-btn">🔊 Sound</button>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS SCREEN ============ -->
+  <section id="resultsScreen" class="screen">
+    <div class="card center" id="resultsCard">
+      <div id="resultEmoji" class="big-emoji">🏆</div>
+      <h1 id="resultTitle">Great Job!</h1>
+      <p id="newBestBadge" class="newbest hidden">🎉 NEW BEST SCORE! 🎉</p>
+      <div class="final-score"><span id="finalScore">0</span><small>points</small></div>
+      <div id="stars" class="stars">⭐⭐⭐</div>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat">✅ Correct<br><b id="rCorrect">0</b></div>
+        <div class="stat">❌ Wrong<br><b id="rWrong">0</b></div>
+        <div class="stat">🎯 Accuracy<br><b id="rAcc">0%</b></div>
+        <div class="stat">🔥 Max Streak<br><b id="rStreak">0</b></div>
+        <div class="stat">🏅 Best Score<br><b id="rBest">0</b></div>
+        <div class="stat">✨ XP Earned<br><b id="rXp">+0</b></div>
+      </div>
+      <div class="acc-bar"><div id="accFill"></div></div>
+      <div id="earnedBadges" class="earned"></div>
+      <div class="row center">
+        <button id="againBtn" class="big-btn">🔁 Play Again</button>
+        <button id="homeBtn" class="ghost-btn">🏠 Change Mode</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🎖 All Badges</h2>
+      <div id="badgeShelf2" class="badge-shelf"></div>
+    </div>
+  </section>
+
+  <!-- ============ HELP MODAL ============ -->
+  <div id="helpModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="How to play">
+    <div class="modal-card">
+      <h2>❓ How to Play</h2>
+      <ol class="how">
+        <li>Pick a mission (➕ ➖ ✖️ ➗ 🎲), difficulty and number of questions.</li>
+        <li>Answer each question before the ⏱ timer runs out.</li>
+        <li>You have ❤️❤️❤️ 3 lives. Wrong or slow answers lose a life.</li>
+        <li>Correct answers earn ⭐ points + ⏱ time bonus.</li>
+        <li>Answer many in a row to build a 🔥 streak and earn bonus points!</li>
+        <li>Watch the pictures: fruits slide together, cookies fly away, groups pop up and share equally! 👀</li>
+        <li>Earn 🏆 levels, 🎖 badges and beat your best score — all saved on this computer, no internet needed!</li>
+      </ol>
+      <button id="closeHelp" class="big-btn">Got it! 👍</button>
+    </div>
+  </div>
+
+  <!-- ============ LEVEL UP OVERLAY ============ -->
+  <div id="levelUpOverlay" class="levelup hidden" role="alert" aria-label="Level up!">
+    <div class="levelup-inner">
+      <div class="levelup-rays" aria-hidden="true"></div>
+      <div class="levelup-title">🎉 LEVEL UP! 🎉</div>
+      <div id="levelUpText" class="levelup-sub">You are now Level 2! 🏆</div>
+      <div class="levelup-stars">⭐🌟✨🌟⭐</div>
+      <div id="levelUpHint" class="small">New level, new brain power! 🧠</div>
+      <div class="small">Tap anywhere to continue 👆</div>
+    </div>
+  </div>
+
+  <div id="confetti" aria-hidden="true"></div>
+
+</main>
+
+<footer class="footer">
+  <span>💯 100% Offline • No internet, no login, no installation • Runs from USB 💾</span>
+</footer>
+
+<script src="js/game.js"></script>
+</body>
+</html>

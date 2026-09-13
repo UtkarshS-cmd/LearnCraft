@@ -4,6 +4,12 @@
   <div><div class="eyebrow">Learn by building</div><div class="h1">Sandbox Lab</div><p>Build a circuit, observe what it does, and change one thing at a time.</p></div>
   <div class="sandbox-loop"><span class="loop-done">BUILD</span><span>→</span><span>OBSERVE</span><span>→</span><span>MODIFY</span><span>→</span><span>TRY AGAIN</span></div>
 </div>
+<div class="sandbox-activities" role="tablist" aria-label="Sandbox activities">
+  <button class="sandbox-activity-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="sandbox-circuit" data-sandbox-tab="circuit" onclick="showSandboxActivity('circuit')"><span>⚡</span><span><b>Circuit Workshop</b><small>Electricity</small></span></button>
+  <button class="sandbox-activity-tab" type="button" role="tab" aria-selected="false" aria-controls="sandbox-physics" data-sandbox-tab="physics" onclick="showSandboxActivity('physics')"><span>⚛</span><span><b>Physics Adventure</b><small>Newton's laws</small></span></button>
+  <button class="sandbox-activity-tab" type="button" role="tab" aria-selected="false" aria-controls="sandbox-math" data-sandbox-tab="math" onclick="showSandboxActivity('math')"><span>∑</span><span><b>Math Adventure</b><small>Practice games</small></span></button>
+</div>
+<section class="sandbox-activity is-active" id="sandbox-circuit" data-sandbox-panel="circuit" role="tabpanel" aria-label="Circuit Workshop">
 <div class="sandbox-layout">
   <main class="card circuit-lab">
     <div class="lab-heading"><div><span class="badge info">Physics · Electricity</span><div class="h2" style="margin-top:10px">Circuit Workshop</div><p class="caption">Arrange the parts, then close the switch to test the path.</p></div><span class="badge ok">Offline lab</span></div>
@@ -30,4 +36,29 @@
   </aside>
 </div>
 <section class="card sandbox-footer"><div><div class="h3">Keep experimenting</div><div class="caption">There is no wrong state here. Change one part, observe the result, then make a new prediction.</div></div><button class="btn btn-ghost btn-sm" onclick="resetCircuit()">↺ Reset circuit</button></section>
+</section>
+<section class="sandbox-activity sandbox-game-panel" id="sandbox-physics" data-sandbox-panel="physics" role="tabpanel" aria-label="Physics Adventure Lab" hidden>
+  <div class="sandbox-game-heading"><div><div class="h2">Physics Adventure Lab</div><p class="caption">Explore Newton's laws, inertia, forces, and motion through offline simulations and challenges.</p></div><span class="badge ok">Runs offline</span></div>
+  <iframe class="sandbox-game-frame physics-game-frame" src="/static/sandbox-games/physics/index.html" title="Physics Adventure Lab"></iframe>
+</section>
+<section class="sandbox-activity sandbox-game-panel" id="sandbox-math" data-sandbox-panel="math" role="tabpanel" aria-label="Math Adventure" hidden>
+  <div class="sandbox-game-heading"><div><div class="h2">Math Adventure</div><p class="caption">Practice arithmetic with timed rounds, visual explanations, streaks, and saved scores.</p></div><span class="badge ok">Runs offline</span></div>
+  <iframe class="sandbox-game-frame math-game-frame" src="/static/sandbox-games/math/index.html" title="Math Adventure"></iframe>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function showSandboxActivity(activity) {
+  document.querySelectorAll('[data-sandbox-panel]').forEach(function (panel) {
+    var active = panel.dataset.sandboxPanel === activity;
+    panel.classList.toggle('is-active', active);
+    panel.hidden = !active;
+  });
+  document.querySelectorAll('[data-sandbox-tab]').forEach(function (tab) {
+    var active = tab.dataset.sandboxTab === activity;
+    tab.classList.toggle('is-active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+}
+</script>
 {% endblock %}

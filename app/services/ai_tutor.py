@@ -2,15 +2,38 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
+from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from app.database.connection import get_connection
 from app.services.content_catalog import get_lesson, list_questions
+
+
+@lru_cache(maxsize=1)
+def ncert_questions() -> tuple[dict, ...]:
+    """Load the extracted Class 10 NCERT question bank once per process."""
+    path = Path(__file__).resolve().parents[2] / "data" / "curriculum" / "ncert_class10_syllabus.json"
+    if not path.exists():
+        return ()
+    data = json.loads(path.read_text(encoding="utf-8"))
+    questions = []
+    for subject, grades in data.items():
+        for chapter in grades.get("10", grades.get(10, [])):
+            for item in chapter.get("questions", []):
+                questions.append({
+                    **item,
+                    "subject": subject,
+                    "chapter_name": chapter.get("chapter_name", ""),
+                    "chapter_number": chapter.get("chapter_number"),
+                })
+    return tuple(questions)
 
 
 @dataclass
@@ -122,7 +145,7 @@ class AIService:
             return {"state": "online", "provider": self.cloud.name}
         if self.local.available():
             return {"state": "offline", "provider": self.local.name}
-        return {"state": "unavailable", "provider": None, "reason": "Configure an online provider or local model command."}
+        return {"state": "offline", "provider": "built-in", "reason": "Using LearnCraft's built-in offline assistant."}
 
     def answer(self, question: str, context: AIContext, history: list[dict]) -> tuple[str, str]:
         retrieved = retrieve_context(context, question)
@@ -139,12 +162,119 @@ class AIService:
             except RuntimeError as exc:
                 errors.append(str(exc))
                 continue
-        limitation = "AI is unavailable right now. "
-        if errors:
-            limitation += errors[-1]
-        else:
-            limitation += "Configure an online provider or local model to continue."
-        return limitation, "unavailable"
+        # Keep Ask AI useful in the default offline installation. A configured
+        # provider is preferred, but the app must still answer common questions
+        # when no model/API key has been installed.
+        return offline_answer(question, context, retrieved), "offline"
+
+
+def offline_answer(question: str, context: AIContext, chunks: list[dict]) -> str:
+    """Provide a deterministic local answer when no external model is configured."""
+    text = (question or "").strip().lower()
+    normalized_question = _normalize_question(question)
+
+    # Prefer the exact curriculum question and its stored explanation over a
+    # generic fallback. This keeps answers specific when the user asks a known
+    # question from the question bank.
+    best_match = None
+    best_score = 0.0
+    for item in (*list_questions(), *ncert_questions()):
+        prompt = _normalize_question(item.get("prompt", ""))
+        if not prompt:
+            prompt = _normalize_question(item.get("question", ""))
+        if not prompt:
+            continue
+        score = _question_similarity(normalized_question, prompt)
+        if score > best_score:
+            best_match = item
+            best_score = score
+    if best_match is not None and best_score >= 0.55:
+        return (
+            f"Subject: {best_match.get('subject', context.subject or 'Class 10')}\n"
+            f"Chapter: {best_match.get('chapter_name', context.chapter or 'Relevant topic')}\n\n"
+            f"Answer: {best_match.get('answer', 'No answer recorded.')}\n\n"
+            f"Explanation: {best_match.get('explanation') or 'Use the answer as the starting point and review the related chapter.'}"
+        )
+
+    app_terms = (
+        "app", "login", "log in", "sign in", "password", "otp", "forgot password",
+        "sign out", "logout", "settings", "profile", "progress", "dashboard",
+        "not saving", "app error", "app issue", "app problem", "not working",
+    )
+
+    if any(term in text for term in app_terms) or "app" in (context.mode or "").lower():
+        if "password" in text or "otp" in text or "forgot" in text:
+            return (
+                "To reset your LearnCraft password: open the login page, choose "
+                "Forgot password, enter your registered email, and submit the six-digit "
+                "OTP sent to your inbox. Enter the OTP with your new password within "
+                "10 minutes. If no email arrives, check spam and verify the email address."
+            )
+        if "login" in text or "log in" in text or "sign in" in text:
+            return (
+                "For a LearnCraft login issue, first verify your email and password. "
+                "If the password is incorrect, use Forgot password to request a six-digit "
+                "OTP. If the page still does not load, refresh the browser and try again "
+                "with cookies enabled."
+            )
+        if "sign out" in text or "logout" in text:
+            return (
+                "Open your profile menu from the top-right avatar or the sidebar profile "
+                "card, then select Sign out. This clears the current session and returns "
+                "you to the login page."
+            )
+        if "progress" in text or "dashboard" in text or "lab" in text:
+            return (
+                "LearnCraft tracks progress per profile. Open My Learning or Progress to "
+                "see saved lesson and lab completion. Start or resume the subject card; "
+                "your percentage updates from the latest saved activity rather than a "
+                "shared preset."
+            )
+        if "settings" in text or "profile" in text:
+            return (
+                "Open the profile avatar in the top-right corner or the sidebar profile "
+                "card. The menu contains Profile, Settings, Help, and Sign out."
+            )
+        return (
+            "I can help with LearnCraft app issues. Tell me the exact screen, the action "
+            "you took, and the message you saw. For example: login, OTP/password reset, "
+            "profile menu, progress tracking, settings, or a lab not saving."
+        )
+
+    # Use locally retrieved curriculum evidence when the user asks a subject question.
+    question_chunk = next((chunk for chunk in chunks if chunk["source_id"] not in {"doc:README", "doc:OFFLINE_FIRST"}), None)
+    if question_chunk:
+        return (
+            f"Here is the available LearnCraft context for {context.subject or 'this topic'}:\n\n"
+            f"{question_chunk['text']}\n\n"
+            "Use this explanation as a starting point. If you share the exact question or "
+            "your working, I can guide you step by step."
+        )
+    if context.subject or context.lesson_id:
+        return (
+            f"I can help with {context.subject or 'this lesson'}."
+            f" Start with the concept in {context.chapter or 'your current lesson'}, "
+            "then share the exact question or answer choices so I can guide you step by step."
+        )
+    return (
+        "I am ready to help. Ask a LearnCraft app question or include the subject, "
+        "chapter, and exact question you want explained."
+    )
+
+
+def _normalize_question(value: str) -> str:
+    return re.sub(r"[^a-z0-9\s]", " ", str(value or "").lower()).strip()
+
+
+def _question_similarity(left: str, right: str) -> float:
+    left_words = set(left.split())
+    right_words = set(right.split())
+    if not left_words or not right_words:
+        return 0.0
+    overlap = len(left_words & right_words) / len(right_words)
+    if left == right:
+        return 1.0
+    return overlap
 
 
 def retrieve_context(context: AIContext, question: str) -> list[dict]:
@@ -156,17 +286,49 @@ def retrieve_context(context: AIContext, question: str) -> list[dict]:
                            "topic_id": lesson["topic_id"], "content_version": "2026-27",
                            "text": f"{lesson['title']}: {lesson['summary']} " +
                                    " ".join(block.get("text") or block.get("body", "") for block in lesson["blocks"])})
-    for item in list_questions():
-        haystack = f"{item['prompt']} {item['answer']} {item['explanation']}".lower()
+    for item in (*list_questions(), *ncert_questions()):
+        prompt = item.get("prompt", item.get("question", ""))
+        haystack = f"{prompt} {item.get('answer', '')} {item.get('explanation', '')}".lower()
         if any(term in haystack for term in question.lower().split() if len(term) > 3):
-            chunks.append({"source_id": item["question_id"], "chapter_id": item["chapter_id"],
-                           "topic_id": item.get("topic_id"), "content_version": "2026-27",
-                           "text": f"Question: {item['prompt']} Answer: {item['answer']} Explanation: {item['explanation']}"})
-    return chunks[:5]
+            source_id = item.get("question_id") or f"ncert:{item.get('subject', 'subject')}:{item.get('chapter_number', 0)}"
+            chunks.append({"source_id": source_id, "chapter_id": item.get("chapter_id") or item.get("chapter_name"),
+                           "topic_id": item.get("topic_id"), "content_version": "ncert-class10",
+                           "text": f"Question: {prompt} Answer: {item.get('answer', '')} Explanation: {item.get('explanation', '')}"})
+
+    # Detect app-related queries and add local documentation as context when relevant.
+    app_keywords = {"app", "error", "issue", "login", "logout", "crash", "cannot", "unable", "bug", "not working", "help", "settings", "sign out", "signout"}
+    qlower = (question or "").lower()
+    mode_lower = (context.mode or "").lower()
+    if any(k in qlower for k in app_keywords) or "app" in mode_lower or "help" in mode_lower:
+        try:
+            from pathlib import Path
+            base = Path(__file__).resolve().parents[2]
+            readme = base / "README.md"
+            offline = base / "OFFLINE_FIRST.md"
+            if readme.exists():
+                text = readme.read_text(encoding="utf-8")
+                chunks.insert(0, {"source_id": "doc:README", "chapter_id": None, "topic_id": None, "content_version": "docs", "text": text[:3000]})
+            if offline.exists():
+                text2 = offline.read_text(encoding="utf-8")
+                chunks.insert(0, {"source_id": "doc:OFFLINE_FIRST", "chapter_id": None, "topic_id": None, "content_version": "docs", "text": text2[:2000]})
+        except Exception:
+            pass
+
+    return chunks[:6]
 
 
 def build_system_prompt(context: AIContext, chunks: list[dict]) -> str:
     evidence = "\n\n".join(f"[{chunk['source_id']}] {chunk['text']}" for chunk in chunks)
+    # If any retrieved chunk originates from local app docs, switch to app troubleshooting persona.
+    if any(str(chunk.get("source_id", "")).startswith("doc:") for chunk in chunks):
+        return (
+            "You are LearnCraft's App Assistant. Help the user troubleshoot, diagnose, and resolve issues with the LearnCraft application. "
+            "Provide clear, safe, step-by-step instructions, recommend diagnostics to collect (logs, steps to reproduce, screenshots), and explain next steps. "
+            "Do NOT fabricate internal logs or claim access to remote systems; if information is missing, ask the user for specific diagnostics. "
+            f"Mode: {context.mode}. Subject: {context.subject}. Chapter: {context.chapter}. Topic: {context.topic}.\n"
+            f"Retrieved application documentation and evidence:\n{evidence or 'No application documentation retrieved.'}"
+        )
+
     return (
         "You are LearnCraft's CBSE Class X tutor. Explain simply, guide reasoning, and do not invent "
         "curriculum facts. If evidence is insufficient, say it cannot be verified from available curriculum content. "

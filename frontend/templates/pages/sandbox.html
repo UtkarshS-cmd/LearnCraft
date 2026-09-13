@@ -1,64 +1,135 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head sandbox-head">
-  <div><div class="eyebrow">Learn by building</div><div class="h1">Sandbox Lab</div><p>Build a circuit, observe what it does, and change one thing at a time.</p></div>
-  <div class="sandbox-loop"><span class="loop-done">BUILD</span><span>→</span><span>OBSERVE</span><span>→</span><span>MODIFY</span><span>→</span><span>TRY AGAIN</span></div>
+  <div>
+    <div class="eyebrow">Learn through real tools</div>
+    <div class="h1">Simulation Sandbox</div>
+    <p>Choose a subject and launch an official simulation, lab, graphing tool, or programming experience.</p>
+  </div>
+  <div class="sandbox-loop"><span class="loop-done">CHOOSE</span><span>→</span><span>EXPLORE</span><span>→</span><span>REFLECT</span></div>
 </div>
-<div class="sandbox-activities" role="tablist" aria-label="Sandbox activities">
-  <button class="sandbox-activity-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="sandbox-circuit" data-sandbox-tab="circuit" onclick="showSandboxActivity('circuit')"><span>⚡</span><span><b>Circuit Workshop</b><small>Electricity</small></span></button>
-  <button class="sandbox-activity-tab" type="button" role="tab" aria-selected="false" aria-controls="sandbox-physics" data-sandbox-tab="physics" onclick="showSandboxActivity('physics')"><span>⚛</span><span><b>Physics Adventure</b><small>Newton's laws</small></span></button>
-  <button class="sandbox-activity-tab" type="button" role="tab" aria-selected="false" aria-controls="sandbox-math" data-sandbox-tab="math" onclick="showSandboxActivity('math')"><span>∑</span><span><b>Math Adventure</b><small>Practice games</small></span></button>
-</div>
-<section class="sandbox-activity is-active" id="sandbox-circuit" data-sandbox-panel="circuit" role="tabpanel" aria-label="Circuit Workshop">
-<div class="sandbox-layout">
-  <main class="card circuit-lab">
-    <div class="lab-heading"><div><span class="badge info">Physics · Electricity</span><div class="h2" style="margin-top:10px">Circuit Workshop</div><p class="caption">Arrange the parts, then close the switch to test the path.</p></div><span class="badge ok">Offline lab</span></div>
-    <div class="circuit-board" id="circuitBoard" aria-label="Circuit construction board">
-      <div class="board-label">YOUR WORKBENCH</div>
-      <div class="circuit-path" id="circuitPath">
-        <div class="circuit-node battery-node"><span class="component-symbol">+</span><strong>Battery</strong><small>source</small></div><div class="wire-segment"></div>
-        <div class="circuit-node bulb-node"><span class="bulb-symbol">◉</span><strong>Bulb</strong><small id="bulbState">dark</small></div><div class="wire-segment"></div>
-        <button class="circuit-node switch-node" id="switchControl" onclick="toggleCircuitSwitch()" aria-pressed="false"><span class="switch-symbol">⌁</span><strong>Switch</strong><small id="switchState">open</small></button><div class="wire-segment"></div>
-        <div class="circuit-node return-node"><span class="wire-symbol">↩</span><strong>Wire</strong><small>path</small></div>
-      </div>
-      <div class="board-note" id="boardNote">The gap at the switch is part of the experiment.</div>
+
+<section class="sandbox-provider-shell">
+  <div class="sandbox-provider-toolbar">
+    <div>
+      <div class="h2">Subjectwise simulation providers</div>
+      <p class="caption">LearnCraft keeps the launcher local and sends you to the provider only when you choose a resource.</p>
     </div>
-    <div class="component-tray"><div><div class="h3">Build the system</div><div class="caption">Remove a part to see which role it plays.</div></div><div class="component-buttons">
-      <button class="component-toggle active" data-component="battery" onclick="toggleCircuitComponent('battery')"><span>＋</span> Battery</button><button class="component-toggle active" data-component="bulb" onclick="toggleCircuitComponent('bulb')"><span>◉</span> Bulb</button><button class="component-toggle active" data-component="switch" onclick="toggleCircuitComponent('switch')"><span>⌁</span> Switch</button><button class="component-toggle active" data-component="wire" onclick="toggleCircuitComponent('wire')"><span>↩</span> Wire</button>
-    </div></div>
-  </main>
-  <aside class="sandbox-side">
-    <section class="concept-panel" id="conceptPanel" aria-live="polite"><div class="concept-top"><span class="eyebrow">What your system says</span><button class="icon-btn" onclick="dismissConcept()" aria-label="Dismiss explanation" title="Dismiss explanation">×</button></div><div class="concept-status" id="conceptStatus">Open circuit</div><div class="h2" id="conceptTitle">The bulb stays dark</div>
-      <div class="concept-row"><b>What happened?</b><p id="conceptHappened"></p></div><div class="concept-row"><b>Why did it happen?</b><p id="conceptWhy"></p></div><div class="concept-highlight"><span class="concept-icon">✦</span><div><b>Relevant concept</b><p id="conceptText"></p></div></div><div class="formula" id="conceptFormula"></div><button class="btn btn-secondary btn-sm" id="conceptAction" onclick="applyConceptAction()">Close the switch and observe</button>
-    </section>
-    <button class="revisit-button" id="revisitButton" onclick="showConcept()">↗ Revisit this explanation</button>
-    <section class="card experiment-card"><div class="eyebrow">Experiment trail</div><div class="h3" style="margin-top:5px">Your observations</div><div id="experimentTrail" class="experiment-trail"></div></section>
-  </aside>
-</div>
-<section class="card sandbox-footer"><div><div class="h3">Keep experimenting</div><div class="caption">There is no wrong state here. Change one part, observe the result, then make a new prediction.</div></div><button class="btn btn-ghost btn-sm" onclick="resetCircuit()">↺ Reset circuit</button></section>
+    <span class="badge ok" id="sandboxConnectivity">Checking connection…</span>
+  </div>
+  <div class="sandbox-offline-note" id="sandboxOfflineNote" hidden>
+    These provider experiences are hosted by their official websites and need an internet connection. Your LearnCraft notes and progress remain available offline.
+  </div>
+  <div class="sandbox-provider-grid" role="list" aria-label="Subject simulation providers">
+    <article class="sandbox-provider-card" role="listitem" data-provider-card>
+      <div class="sandbox-provider-icon">⌘</div>
+      <div class="sandbox-provider-copy"><span class="badge info">Programming · Computer Science</span><div class="h3">CodeCombat</div><p>Learn programming by solving game challenges with real code.</p></div>
+      <button class="btn btn-primary btn-sm sandbox-launch" type="button" data-provider="CodeCombat" data-url="https://codecombat.com/" data-online-only>Run in LearnCraft</button>
+    </article>
+    <article class="sandbox-provider-card" role="listitem" data-provider-card>
+      <div class="sandbox-provider-icon">♧</div>
+      <div class="sandbox-provider-copy"><span class="badge info">Biology · Chemistry · Health Science</span><div class="h3">Labster</div><p>Explore immersive virtual labs and science scenarios.</p></div>
+      <button class="btn btn-primary btn-sm sandbox-launch" type="button" data-provider="Labster" data-url="https://www.labster.com/" data-online-only>Run in LearnCraft</button>
+    </article>
+    <article class="sandbox-provider-card" role="listitem" data-provider-card>
+      <div class="sandbox-provider-icon">△</div>
+      <div class="sandbox-provider-copy"><span class="badge info">Mathematics</span><div class="h3">GeoGebra</div><p>Build interactive geometry, algebra, graphing, and 3D models.</p></div>
+      <button class="btn btn-primary btn-sm sandbox-launch" type="button" data-provider="GeoGebra" data-url="https://www.geogebra.org/" data-online-only>Run in LearnCraft</button>
+    </article>
+    <article class="sandbox-provider-card" role="listitem" data-provider-card>
+      <div class="sandbox-provider-icon">∿</div>
+      <div class="sandbox-provider-copy"><span class="badge info">Mathematics · Graphing</span><div class="h3">Desmos</div><p>Explore functions, equations, data, and visual graphs.</p></div>
+      <button class="btn btn-primary btn-sm sandbox-launch" type="button" data-provider="Desmos" data-url="https://www.desmos.com/" data-online-only>Run in LearnCraft</button>
+    </article>
+    <article class="sandbox-provider-card" role="listitem" data-provider-card>
+      <div class="sandbox-provider-icon">✦</div>
+      <div class="sandbox-provider-copy"><span class="badge info">Physics · Chemistry · Mathematics · Biology</span><div class="h3">PhET Interactive Simulations</div><p>Use research-based interactive simulations for core science and maths concepts.</p></div>
+      <button class="btn btn-primary btn-sm sandbox-launch" type="button" data-provider="PhET Interactive Simulations" data-url="https://phet.colorado.edu/en/simulations/filter?subjects=physics,chemistry,math,biology" data-online-only>Run in LearnCraft</button>
+    </article>
+    <article class="sandbox-provider-card" role="listitem" data-provider-card>
+      <div class="sandbox-provider-icon">◉</div>
+      <div class="sandbox-provider-copy"><span class="badge info">Space · Earth Science</span><div class="h3">NASA Interactives</div><p>Investigate space missions, Earth systems, climate, and exploration.</p></div>
+      <button class="btn btn-primary btn-sm sandbox-launch" type="button" data-provider="NASA Interactives" data-url="https://www.nasa.gov/interactives/" data-online-only>Run in LearnCraft</button>
+    </article>
+    <article class="sandbox-provider-card" role="listitem" data-provider-card>
+      <div class="sandbox-provider-icon">✈</div>
+      <div class="sandbox-provider-copy"><span class="badge info">Aerodynamics</span><div class="h3">NASA Aeronautics Simulations</div><p>Experiment with flight, forces, propulsion, and aircraft design.</p></div>
+      <button class="btn btn-primary btn-sm sandbox-launch" type="button" data-provider="NASA Aeronautics Simulations" data-url="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/bga-simulations/" data-online-only>Run in LearnCraft</button>
+    </article>
+  </div>
 </section>
-<section class="sandbox-activity sandbox-game-panel" id="sandbox-physics" data-sandbox-panel="physics" role="tabpanel" aria-label="Physics Adventure Lab" hidden>
-  <div class="sandbox-game-heading"><div><div class="h2">Physics Adventure Lab</div><p class="caption">Explore Newton's laws, inertia, forces, and motion through offline simulations and challenges.</p></div><span class="badge ok">Runs offline</span></div>
-  <iframe class="sandbox-game-frame physics-game-frame" src="/static/sandbox-games/physics/index.html" title="Physics Adventure Lab"></iframe>
+
+<section class="sandbox-runtime card" id="sandboxRuntime" hidden aria-live="polite">
+  <div class="sandbox-runtime-head">
+    <div><div class="eyebrow">LearnCraft runtime</div><div class="h2" id="sandboxRuntimeTitle">Simulation</div></div>
+    <button class="btn btn-ghost btn-sm" type="button" id="closeSandboxRuntime">Close</button>
+  </div>
+  <div class="sandbox-runtime-offline" id="sandboxRuntimeOffline" hidden>
+    This provider is not available offline because its simulation is hosted externally. Reconnect to the internet to run it inside LearnCraft.
+  </div>
+  <iframe id="sandboxRuntimeFrame" class="sandbox-runtime-frame" title="Selected educational simulation" hidden allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <div class="sandbox-runtime-fallback" id="sandboxRuntimeFallback" hidden>
+    <p id="sandboxRuntimeFallbackText"></p>
+    <a id="sandboxRuntimeExternal" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">Open official provider</a>
+  </div>
 </section>
-<section class="sandbox-activity sandbox-game-panel" id="sandbox-math" data-sandbox-panel="math" role="tabpanel" aria-label="Math Adventure" hidden>
-  <div class="sandbox-game-heading"><div><div class="h2">Math Adventure</div><p class="caption">Practice arithmetic with timed rounds, visual explanations, streaks, and saved scores.</p></div><span class="badge ok">Runs offline</span></div>
-  <iframe class="sandbox-game-frame math-game-frame" src="/static/sandbox-games/math/index.html" title="Math Adventure"></iframe>
+
+<section class="card sandbox-footer">
+  <div><div class="h3">Offline-first note</div><div class="caption">The launcher, subject map, saved LearnCraft data, and learning notes work offline. The external provider experiences above are online-only unless the provider supplies its own installed or cached app.</div></div>
+  <span class="badge ok">LearnCraft local shell</span>
 </section>
 {% endblock %}
 {% block scripts %}
 <script>
-function showSandboxActivity(activity) {
-  document.querySelectorAll('[data-sandbox-panel]').forEach(function (panel) {
-    var active = panel.dataset.sandboxPanel === activity;
-    panel.classList.toggle('is-active', active);
-    panel.hidden = !active;
+(function () {
+  function updateProviderAvailability() {
+    var online = navigator.onLine;
+    var badge = document.getElementById('sandboxConnectivity');
+    var note = document.getElementById('sandboxOfflineNote');
+    badge.textContent = online ? 'Online providers ready' : 'Offline mode';
+    badge.className = 'badge ' + (online ? 'ok' : 'warn');
+    note.hidden = online;
+    var runtime = document.getElementById('sandboxRuntime');
+    if (runtime && !online && !runtime.hidden) {
+      document.getElementById('sandboxRuntimeFrame').src = 'about:blank';
+      document.getElementById('sandboxRuntimeFrame').hidden = true;
+      document.getElementById('sandboxRuntimeFallback').hidden = true;
+      document.getElementById('sandboxRuntimeOffline').hidden = false;
+    }
+    document.querySelectorAll('[data-online-only]').forEach(function (button) {
+      button.disabled = !online;
+      button.title = online ? 'Run the official provider inside LearnCraft' : 'Connect to the internet to run this provider';
+    });
+  }
+  document.querySelectorAll('[data-provider]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      if (!navigator.onLine) return;
+      var runtime = document.getElementById('sandboxRuntime');
+      var frame = document.getElementById('sandboxRuntimeFrame');
+      var fallback = document.getElementById('sandboxRuntimeFallback');
+      var fallbackText = document.getElementById('sandboxRuntimeFallbackText');
+      document.getElementById('sandboxRuntimeTitle').textContent = button.dataset.provider;
+      document.getElementById('sandboxRuntimeExternal').href = button.dataset.url;
+      document.getElementById('sandboxRuntimeOffline').hidden = true;
+      fallback.hidden = true;
+      frame.hidden = false;
+      frame.src = button.dataset.url;
+      runtime.hidden = false;
+      runtime.scrollIntoView({behavior: 'smooth', block: 'start'});
+      frame.onload = function () {
+        fallback.hidden = false;
+        fallbackText.textContent = 'If the provider blocks embedding in this browser, use the official link below. The LearnCraft window remains open.';
+      };
+    });
   });
-  document.querySelectorAll('[data-sandbox-tab]').forEach(function (tab) {
-    var active = tab.dataset.sandboxTab === activity;
-    tab.classList.toggle('is-active', active);
-    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+  document.getElementById('closeSandboxRuntime').addEventListener('click', function () {
+    var frame = document.getElementById('sandboxRuntimeFrame');
+    frame.src = 'about:blank';
+    document.getElementById('sandboxRuntime').hidden = true;
   });
-}
+  window.addEventListener('online', updateProviderAvailability);
+  window.addEventListener('offline', updateProviderAvailability);
+  document.addEventListener('DOMContentLoaded', updateProviderAvailability);
+})();
 </script>
 {% endblock %}

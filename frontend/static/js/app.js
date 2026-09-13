@@ -27,31 +27,6 @@ document.addEventListener('DOMContentLoaded',()=>{initProfileMenus();});
 const NOTES_KEY='learncraft_notes_v1';
 function loadNotes(){try{return JSON.parse(localStorage.getItem(NOTES_KEY))||null;}catch{return null;}}
 function saveNotes(n){localStorage.setItem(NOTES_KEY,JSON.stringify(n));}
-// Sandbox state is observed locally so each explanation is deterministic and revisitable.
-const CIRCUIT_DEFAULT = {components:['battery','bulb','switch','wire'],switchClosed:false};
-let circuitState = {components:[...CIRCUIT_DEFAULT.components],switchClosed:CIRCUIT_DEFAULT.switchClosed};
-let lastCircuitObservation = null;
-const CIRCUIT_KEY = 'learncraft_circuit_v1';
-function getCircuitState(){try{return JSON.parse(localStorage.getItem(CIRCUIT_KEY))||null;}catch{return null;}}
-function saveCircuit(){localStorage.setItem(CIRCUIT_KEY,JSON.stringify(circuitState));window.LearnCraftOffline?.persist('progress','sandbox:circuit',circuitState,'in_progress');}
-function circuitHas(name){return circuitState.components.includes(name);}
-function observeCircuit(){if(!window.LearnCraftSandbox)return;lastCircuitObservation=window.LearnCraftSandbox.observeSandbox('circuit',circuitState);renderCircuit();recordExperiment(lastCircuitObservation);}
-function renderCircuit(){const observation=lastCircuitObservation;if(!observation)return;document.querySelectorAll('.component-toggle').forEach(button=>button.classList.toggle('active',circuitHas(button.dataset.component)));document.getElementById('switchControl').classList.toggle('closed',circuitState.switchClosed);document.getElementById('switchControl').setAttribute('aria-pressed',circuitState.switchClosed);document.getElementById('switchState').textContent=circuitHas('switch')?(circuitState.switchClosed?'closed':'open'):'missing';document.getElementById('bulbState').textContent=observation.key==='closed'?'lit':(circuitHas('bulb')?'dark':'missing');document.getElementById('circuitBoard').classList.toggle('circuit-live',observation.key==='closed');document.getElementById('boardNote').textContent=observation.key==='closed'?'A complete path is carrying current. Change one part and compare.':observation.action;document.getElementById('conceptStatus').textContent=observation.status;document.getElementById('conceptTitle').textContent=observation.title;document.getElementById('conceptHappened').textContent=observation.happened;document.getElementById('conceptWhy').textContent=observation.why;document.getElementById('conceptText').textContent=observation.concept;document.getElementById('conceptFormula').textContent=observation.formula;document.getElementById('conceptAction').textContent=observation.action;document.getElementById('conceptPanel').dataset.tone=observation.tone;}
-function toggleCircuitSwitch(){if(!circuitHas('switch')){toast('Add the switch to change the circuit',false);return;}circuitState.switchClosed=!circuitState.switchClosed;saveCircuit();observeCircuit();}
-function toggleCircuitComponent(name){const index=circuitState.components.indexOf(name);if(index===-1)circuitState.components.push(name);else circuitState.components.splice(index,1);if(name==='switch'&&index!==-1)circuitState.switchClosed=false;saveCircuit();observeCircuit();}
-function dismissConcept(){document.getElementById('conceptPanel').classList.add('is-dismissed');document.getElementById('revisitButton').classList.add('visible');}
-function showConcept(){document.getElementById('conceptPanel').classList.remove('is-dismissed');document.getElementById('revisitButton').classList.remove('visible');}
-function applyConceptAction(){
-	if(!lastCircuitObservation){return;}
-	if(lastCircuitObservation.key==='open'||lastCircuitObservation.key==='closed'){toggleCircuitSwitch();return;}
-	const missing=CIRCUIT_DEFAULT.components.find(component=>!circuitHas(component));
-	if(missing){toggleCircuitComponent(missing);return;}
-	showConcept();
-}
-function recordExperiment(observation){const trail=document.getElementById('experimentTrail');if(!trail||!observation)return;const prior=trail.querySelector('[data-key="'+observation.key+'"]');if(prior){prior.classList.add('trail-pulse');setTimeout(()=>prior.classList.remove('trail-pulse'),400);return;}const item=document.createElement('button');item.className='trail-item';item.dataset.key=observation.key;item.innerHTML='<span class="trail-dot"></span><span><b>'+observation.status+'</b><small>'+observation.concept+'</small></span>';item.onclick=showConcept;trail.prepend(item);}
-function resetCircuit(){circuitState={components:[...CIRCUIT_DEFAULT.components],switchClosed:false};saveCircuit();observeCircuit();showConcept();toast('Circuit reset for another experiment');}
-function initCircuitSandbox(){const saved=getCircuitState();if(saved&&Array.isArray(saved.components))circuitState=saved;observeCircuit();}
-document.addEventListener('DOMContentLoaded',()=>{if(document.getElementById('circuitBoard'))initCircuitSandbox();});
 
 // Practical workspace: local draft -> saved -> submitted state machine.
 const PRACTICAL_KEY = 'learncraft_practical_loops_v1';

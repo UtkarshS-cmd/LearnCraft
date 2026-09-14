@@ -13,7 +13,12 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from app.database.connection import get_connection
-from app.services.content_catalog import get_lesson, list_questions
+from app.services.content_catalog import (
+    get_lesson,
+    list_class10_subjects,
+    list_class9_subjects,
+    list_questions,
+)
 
 
 @lru_cache(maxsize=1)
@@ -34,6 +39,26 @@ def ncert_questions() -> tuple[dict, ...]:
                     "chapter_number": chapter.get("chapter_number"),
                 })
     return tuple(questions)
+
+
+@lru_cache(maxsize=1)
+def feature_curriculum() -> tuple[dict, ...]:
+    """Flatten the portable Features Class IX/X chapters for local retrieval."""
+    items = []
+    for class_level, subjects in (("Class IX", list_class9_subjects()), ("Class X", list_class10_subjects())):
+        for subject in subjects:
+            for chapter in subject.get("chapters", []):
+                items.append({
+                    "source_id": f"features:{class_level.lower().replace(' ', '-')}-{subject['slug']}-ch{chapter['number']}",
+                    "content_version": "features-2026-27",
+                    "subject": subject["name"],
+                    "class_level": class_level,
+                    "chapter_number": chapter["number"],
+                    "chapter_name": chapter["title"],
+                    "text": chapter["summary"],
+                    "source_reference": subject.get("pdf_url", ""),
+                })
+    return tuple(items)
 
 
 @dataclass
@@ -141,6 +166,11 @@ class AIService:
         self.local = LocalProvider()
 
     def status(self) -> dict:
+        mode = os.environ.get("LEARNCRAFT_AI_MODE", "OFFLINE").upper()
+        if mode not in {"ONLINE", "AUTO"}:
+            if self.local.available():
+                return {"state": "offline", "provider": self.local.name}
+            return {"state": "offline", "provider": "built-in", "reason": "Using LearnCraft's built-in offline assistant."}
         if self.cloud.available():
             return {"state": "online", "provider": self.cloud.name}
         if self.local.available():
@@ -151,8 +181,8 @@ class AIService:
         retrieved = retrieve_context(context, question)
         system = build_system_prompt(context, retrieved)
         messages = [{"role": "system", "content": system}] + history[-8:] + [{"role": "user", "content": question}]
-        mode = os.environ.get("LEARNCRAFT_AI_MODE", "AUTO").upper()
-        providers = [self.cloud, self.local] if mode == "AUTO" else ([self.cloud] if mode == "ONLINE" else [self.local])
+        mode = os.environ.get("LEARNCRAFT_AI_MODE", "OFFLINE").upper()
+        providers = [self.local, self.cloud] if mode == "AUTO" else ([self.cloud] if mode == "ONLINE" else [self.local])
         errors = []
         for provider in providers:
             if not provider.available():
@@ -190,10 +220,11 @@ def offline_answer(question: str, context: AIContext, chunks: list[dict]) -> str
             best_score = score
     if best_match is not None and best_score >= 0.55:
         return (
-            f"Subject: {best_match.get('subject', context.subject or 'Class 10')}\n"
+            f"Direct answer\n{best_match.get('answer', 'No answer recorded.')}\n\n"
+            f"Why it matters\n{best_match.get('explanation') or 'Review the related chapter and connect this idea to an example.'}\n\n"
+            f"Study context\nSubject: {best_match.get('subject', context.subject or 'Class 10')}\n"
             f"Chapter: {best_match.get('chapter_name', context.chapter or 'Relevant topic')}\n\n"
-            f"Answer: {best_match.get('answer', 'No answer recorded.')}\n\n"
-            f"Explanation: {best_match.get('explanation') or 'Use the answer as the starting point and review the related chapter.'}"
+            "Next step\nTry explaining the answer in your own words and solve one similar question."
         )
 
     app_terms = (
@@ -245,20 +276,20 @@ def offline_answer(question: str, context: AIContext, chunks: list[dict]) -> str
     question_chunk = next((chunk for chunk in chunks if chunk["source_id"] not in {"doc:README", "doc:OFFLINE_FIRST"}), None)
     if question_chunk:
         return (
-            f"Here is the available LearnCraft context for {context.subject or 'this topic'}:\n\n"
-            f"{question_chunk['text']}\n\n"
-            "Use this explanation as a starting point. If you share the exact question or "
-            "your working, I can guide you step by step."
+            f"Concept\n{question_chunk['text']}\n\n"
+            "How to use it\nIdentify the known values or key terms, connect them to this concept, and work through one example.\n\n"
+            "Practice\nWrite one sentence explaining the idea, then share your working if you want a step-by-step check."
         )
     if context.subject or context.lesson_id:
         return (
-            f"I can help with {context.subject or 'this lesson'}."
-            f" Start with the concept in {context.chapter or 'your current lesson'}, "
-            "then share the exact question or answer choices so I can guide you step by step."
+            f"Focus\n{context.subject or 'This lesson'} · {context.chapter or 'Current topic'}\n\n"
+            "Plan\nStart with the lesson concept, identify what the question is asking, and list the information you already know.\n\n"
+            "Next step\nSend the exact question, answer choices, or your working for a guided solution."
         )
     return (
-        "I am ready to help. Ask a LearnCraft app question or include the subject, "
-        "chapter, and exact question you want explained."
+        "I am ready to help.\n\n"
+        "Ask about a LearnCraft app issue or include the class, subject, chapter, and exact question.\n\n"
+        "I will answer using the local curriculum and show the explanation and next practice step."
     )
 
 
@@ -279,6 +310,7 @@ def _question_similarity(left: str, right: str) -> float:
 
 def retrieve_context(context: AIContext, question: str) -> list[dict]:
     chunks = []
+    feature_chunks = []
     if context.lesson_id:
         lesson = get_lesson(context.lesson_id)
         if lesson:
@@ -294,6 +326,27 @@ def retrieve_context(context: AIContext, question: str) -> list[dict]:
             chunks.append({"source_id": source_id, "chapter_id": item.get("chapter_id") or item.get("chapter_name"),
                            "topic_id": item.get("topic_id"), "content_version": "ncert-class10",
                            "text": f"Question: {prompt} Answer: {item.get('answer', '')} Explanation: {item.get('explanation', '')}"})
+
+    query_terms = {term for term in _normalize_question(question).split() if len(term) > 3}
+    for item in feature_curriculum():
+        haystack = _normalize_question(f"{item['subject']} {item['chapter_name']} {item['text']}")
+        if (context.subject and _normalize_question(context.subject) in haystack) or query_terms.intersection(haystack.split()):
+            feature_chunks.append({
+                "source_id": item["source_id"],
+                "chapter_id": f"{item['subject']}-ch{item['chapter_number']}",
+                "topic_id": None,
+                "content_version": item["content_version"],
+                "text": f"{item['class_level']} {item['subject']} · Chapter {item['chapter_number']}: {item['chapter_name']}. {item['text']}",
+            })
+
+    # Keep exact question-bank matches first for source accuracy. For broader
+    # topic questions, put matching Features chapters ahead of generic matches.
+    normalized_question = _normalize_question(question)
+    exact_question = any(
+        normalized_question == _normalize_question(item.get("prompt") or item.get("question", ""))
+        for item in (*list_questions(), *ncert_questions())
+    )
+    chunks = chunks + feature_chunks if exact_question else feature_chunks + chunks
 
     # Detect app-related queries and add local documentation as context when relevant.
     app_keywords = {"app", "error", "issue", "login", "logout", "crash", "cannot", "unable", "bug", "not working", "help", "settings", "sign out", "signout"}

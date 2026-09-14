@@ -84,6 +84,23 @@ class AITutorTests(unittest.TestCase):
         self.assertEqual(provider, "offline")
         self.assertIn("step by step", answer)
 
+    def test_local_answer_has_multiple_guidance_sections(self):
+        service = AIService()
+        answer, provider = service.answer(
+            "Explain resources and development.",
+            AIContext(subject="Social Science", chapter="Resources and Development"),
+            [],
+        )
+        self.assertEqual(provider, "offline")
+        self.assertGreaterEqual(answer.count("\n\n"), 2)
+        self.assertIn("Practice", answer)
+
+    def test_features_curriculum_is_retrievable_offline(self):
+        from app.services.ai_tutor import retrieve_context
+
+        chunks = retrieve_context(AIContext(subject="Science"), "motion and force")
+        self.assertTrue(any(chunk["content_version"] == "features-2026-27" for chunk in chunks))
+
 
 if __name__ == "__main__":
     unittest.main()

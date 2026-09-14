@@ -34,29 +34,13 @@
   let conversationId=null, mode='Explain';
   const context={lesson_id:{{ (lesson.lesson_id if lesson else '')|tojson }},subject:{{ (lesson.subject_name if lesson else '')|tojson }},chapter:{{ (lesson.chapter_label if lesson else '')|tojson }},topic:{{ (lesson.topic_title if lesson else '')|tojson }}};
   function add(role,text){const el=document.createElement('div');el.className='ai-msg '+role;const body=document.createElement('div');body.textContent=text;el.appendChild(body);if(role==='assistant'){const tools=document.createElement('div');tools.className='ai-tools';const copy=document.createElement('button');copy.className='btn btn-ghost btn-sm';copy.textContent='Copy';copy.onclick=()=>navigator.clipboard.writeText(text);const save=document.createElement('button');save.className='btn btn-ghost btn-sm';save.textContent='Save to Notes';save.onclick=async()=>{const r=await fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'AI tutor answer',body:text,subject:context.subject||'General',chapter:context.chapter,source_type:'ai',source_id:conversationId,source_title:'LearnCraft AI Tutor'})});feedback.textContent=r.ok?'Answer saved to Notes.':'Could not save answer to Notes.';};tools.append(copy,save);el.appendChild(tools);}messages.appendChild(el);messages.scrollTop=messages.scrollHeight;}
-  function localAnswer(question){
-    const text=question.toLowerCase();
-    if(text.includes('password')||text.includes('otp')||text.includes('forgot')){
-      return 'Open the login page, choose Forgot password, enter your registered email, and submit the six-digit OTP from your inbox. Set a new password within 10 minutes. Check your spam folder if the email is missing.';
-    }
-    if(text.includes('login')||text.includes('log in')||text.includes('sign in')){
-      return 'Check your email and password first. If the password is wrong, choose Forgot password and reset it with the six-digit OTP. If the page does not load, refresh the browser and keep cookies enabled.';
-    }
-    if(text.includes('progress')||text.includes('dashboard')||text.includes('lab')){
-      return 'Open My Learning or Progress to see your profile-specific lesson and lab progress. Resume the subject card to update the saved percentage.';
-    }
-    if(text.includes('setting')||text.includes('profile')||text.includes('sign out')||text.includes('logout')){
-      return 'Click the profile avatar in the top-right corner or the sidebar profile card. The menu contains Profile, Settings, Help, and Sign out.';
-    }
-    return 'I can help with LearnCraft app issues such as login, OTP/password reset, profile menu, settings, progress tracking, and labs. Tell me the screen, action, and exact error message.';
-  }
   document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('.mode').forEach(x=>x.classList.remove('btn-primary'));b.classList.add('btn-primary');});
   fetch('/api/v1/ai/status').then(r=>r.json()).then(s=>{document.getElementById('aiStatus').textContent=s.state==='online'?'AI Online':s.state==='offline'?'AI Offline':'AI Unavailable';document.getElementById('aiDot').className='ai-dot '+s.state;}).catch(()=>document.getElementById('aiStatus').textContent='AI status unavailable');
   async function ask(){const text=input.value.trim();if(!text)return;input.value='';add('user',text);send.disabled=true;feedback.textContent='Tutor is thinking…';try{const r=await fetch('/api/v1/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...context,message:text,mode,conversation_id:conversationId})});const data=await r.json();if(!r.ok)throw new Error(data.message||'AI request failed');  conversationId=data.conversation_id;
-  add('assistant',data.provider==='unavailable'?localAnswer(text):data.answer);
+  add('assistant',data.answer);
             // Show whether the answer was grounded in curriculum content or app documentation
-            if(data.provider === 'unavailable'){
-                feedback.textContent = 'Showing built-in offline help.';
+            if(data.provider === 'offline'){
+              feedback.textContent = 'Answered locally from LearnCraft curriculum and app data.';
             } else if(Array.isArray(data.sources) && data.sources.some(s => String(s.source_id || '').startsWith('doc:'))){
                 feedback.textContent = 'Based on LearnCraft application documentation.';
             } else if(Array.isArray(data.sources) && data.sources.length){
@@ -65,8 +49,8 @@
                 feedback.textContent = 'No matching curriculum evidence was found.';
             }
           }catch(e){
-            add('assistant',localAnswer(text));
-            feedback.textContent='Showing built-in offline help.';
+            add('assistant','The local tutor could not complete that request. Please try again with the subject, chapter, and exact question.');
+            feedback.textContent='Local tutor unavailable for this request.';
           }finally{send.disabled=false;input.focus();}}
   send.onclick=ask;input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask();}});
   document.getElementById('clear').onclick=()=>{messages.innerHTML='';conversationId=null;feedback.textContent='Chat cleared.';};

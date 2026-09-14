@@ -43,6 +43,8 @@ The OTP expires after 10 minutes and is stored only as a hash. In tests, email d
 - `app/` — application package with core, API, services, repositories, models, and utilities
 - `data/` — SQLite DB and seed assets
 - `frontend/` — templates and static frontend assets
+- `frontend/static/sandbox-games/circuits/` — bundled offline electrical circuits lab integrated from the Simulations project
+- `frontend/static/sandbox-games/coding/` — bundled offline Coding Adventure with guided JavaScript missions
 - `tests/` — unit, integration, and e2e tests
 - `docs/` — architecture and API documentation
 - `data/curriculum/` — versioned CBSE/NCERT structured seed packages

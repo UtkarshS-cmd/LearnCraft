@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Offline electrical circuits lab for exploring batteries, switches, bulbs, current and resistance.">
+  <title>Electrical Circuits Lab · LearnCraft</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="back-link" href="/sandbox" aria-label="Back to LearnCraft Sandbox">← LearnCraft Sandbox</a>
+    <div class="brand">⚡ Electrical Circuits Lab</div>
+    <span class="offline-pill">100% Offline</span>
+  </header>
+
+  <main class="container">
+    <section class="hero card">
+      <p class="eyebrow">Science · Classes IX-X</p>
+      <h1>Build a working circuit</h1>
+      <p>Explore how a power source, load and switch work together. Toggle the switch to close the loop and observe current using Ohm's law.</p>
+    </section>
+
+    <div class="lab-layout">
+      <section class="card lab-card" aria-labelledby="circuit-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="circuit-title">Your circuit</h2>
+            <p class="muted">A complete circuit needs all three components.</p>
+          </div>
+          <button id="resetBtn" class="secondary-btn" type="button">Reset</button>
+        </div>
+
+        <div id="board" class="board" data-live="false">
+          <div class="board-label">CIRCUIT DIAGRAM</div>
+          <div class="circuit-path" aria-label="Battery, switch and bulb circuit">
+            <div class="component battery">
+              <span class="symbol" aria-hidden="true">🔋</span>
+              <strong>Battery</strong>
+              <small>9 V source</small>
+            </div>
+            <div class="wire" aria-hidden="true"></div>
+            <button id="switchBtn" class="component switch" type="button" aria-pressed="false">
+              <span id="switchSymbol" class="symbol" aria-hidden="true">⏻</span>
+              <strong>Switch</strong>
+              <small id="switchState">Open</small>
+            </button>
+            <div class="wire" aria-hidden="true"></div>
+            <div class="component bulb">
+              <span class="symbol">💡</span>
+              <strong>Bulb</strong>
+              <small>10 Ω resistance</small>
+            </div>
+          </div>
+          <p id="boardNote" class="board-note" aria-live="polite">The switch is open, so the path is broken.</p>
+        </div>
+
+        <div class="readouts" aria-live="polite">
+          <div><span>Voltage</span><strong id="voltage">9.00 V</strong></div>
+          <div><span>Resistance</span><strong id="resistance">10.00 Ω</strong></div>
+          <div><span>Current</span><strong id="current">0.00 A</strong></div>
+          <div><span>Power</span><strong id="power">0.00 W</strong></div>
+        </div>
+      </section>
+
+      <aside class="card concept-card" aria-labelledby="concept-title">
+        <p class="eyebrow">Concept card</p>
+        <h2 id="concept-title">Electrical Circuits 101</h2>
+        <div id="status" class="status neutral">Open circuit</div>
+        <p id="explanation">Electric current needs a continuous path from the source, through the load, and back to the source.</p>
+        <div class="formula">V = I × R</div>
+        <div class="tip">
+          <strong>Try this</strong>
+          <p>Press the switch and compare the current before and after the circuit closes.</p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="card checklist">
+      <h2>What makes a circuit work?</h2>
+      <div class="checks">
+        <div class="check done"><span aria-hidden="true">✓</span><span><strong>Power source</strong><small>The battery provides electrical energy.</small></span></div>
+        <div class="check done"><span aria-hidden="true">✓</span><span><strong>Load</strong><small>The bulb converts electrical energy to light.</small></span></div>
+        <div id="switchCheck" class="check"><span aria-hidden="true">○</span><span><strong>Closed path</strong><small>Close the switch to let current flow.</small></span></div>
+      </div>
+    </section>
+  </main>
+  <script src="js/circuit.js"></script>
+</body>
+</html>

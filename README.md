@@ -11,6 +11,19 @@ pip install -r requirements.txt
 python server.py
 ```
 
+## Desktop application
+
+Run the same local-first application in an app-style browser window:
+
+```powershell
+.venv\Scripts\python.exe desktop.py
+```
+
+The launcher selects an available loopback port, starts the Flask server
+without the debug reloader, and opens Microsoft Edge or Chrome in app mode.
+If neither browser is installed, it opens the default browser instead. Stop
+the desktop application with `Ctrl+C`.
+
 ## Password reset email
 
 On an incorrect login, users can request a six-digit OTP from the "Forgot password?" link. Configure SMTP before deploying:

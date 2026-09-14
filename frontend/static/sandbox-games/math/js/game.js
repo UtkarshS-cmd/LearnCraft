@@ -462,6 +462,7 @@
   }
 
   function startRound() {
+    try { fetch('/api/v1/events', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({event_type:'GAME_STARTED', activity_type:'game', activity_id:'maths-explorer', subject_slug:'mathematics', detail:'Maths Explorer started'})}).catch(function(){}); } catch (e) {}
     state.index = 0; state.score = 0; state.lives = 3;
     state.streak = 0; state.maxStreak = 0;
     state.correct = 0; state.wrong = 0;
@@ -695,6 +696,7 @@
     var oldLevel = getLevel(); // before XP is added
     var totalQ = state.correct + state.wrong;
     var acc = totalQ === 0 ? 0 : Math.round((state.correct / totalQ) * 100);
+    try { fetch('/api/v1/events', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({event_type:'GAME_COMPLETED', activity_type:'game', activity_id:'maths-explorer', subject_slug:'mathematics', detail:'Maths Explorer round completed', score:state.score, metadata:{operation:state.op, difficulty:state.diff, accuracy:acc}})}).catch(function(){}); } catch (e) {}
     var k = key(state.op, state.diff);
     var prevBest = bestScores[k] || 0;
     var isNewBest = state.score > prevBest;

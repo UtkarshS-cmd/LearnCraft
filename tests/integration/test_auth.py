@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from app.core.security import hash_password
+
 DB_PATH = os.path.join(tempfile.gettempdir(), f"learncraft_test_{os.getpid()}.db")
 os.environ["LEARNCRAFT_DB_PATH"] = DB_PATH
 os.environ["LEARNCRAFT_SECRET_KEY"] = "test-secret-key"
@@ -37,6 +39,36 @@ class LearnCraftAuthTests(unittest.TestCase):
         )
         self.assertEqual(login.status_code, 200)
         self.assertTrue(login.get_json()["success"])
+
+    def test_teacher_login_portal_requires_teacher_role(self):
+        teacher = self._create_user("Teacher User", "teacher-login@example.com", "TEACHER")
+        response = self.client.post("/auth/login", json={
+            "email": teacher["email"], "password": "Password123!", "portal": "teacher"
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["user"]["role"], "TEACHER")
+
+        student = self._create_user("Student User", "student-portal@example.com", "STUDENT")
+        denied = self.client.post("/auth/login", json={
+            "email": student["email"], "password": "Password123!", "portal": "teacher"
+        })
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(denied.get_json()["code"], "TEACHER_ACCOUNT_REQUIRED")
+
+    def test_teacher_registration_creates_teacher_and_redirects_to_dashboard(self):
+        response = self.client.post("/auth/register", json={
+            "name": "New Teacher", "email": "new-teacher@example.com",
+            "password": "Password123!", "account_type": "teacher",
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["user"]["role"], "TEACHER")
+        dashboard = self.client.get("/teacher")
+        self.assertEqual(dashboard.status_code, 200)
+
+    def _create_user(self, name, email, role):
+        from app.database.connection import create_user
+
+        return create_user(name, email, hash_password("Password123!"), role=role)
 
     def test_duplicate_email_rejected(self):
         self.client.post(

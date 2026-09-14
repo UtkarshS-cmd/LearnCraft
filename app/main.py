@@ -49,10 +49,12 @@ from app.services.content_catalog import (
     class10_subject,
     class9_lesson,
     class9_subject,
+    load_feature_simulations,
     simulation_covers_chapter,
     simulations_for_subject,
     subject_detail as get_academic_subject,
 )
+from app.services.teacher_control import access_allowed, record_event, student_announcements, student_assignments, teacher_classes
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 app = Flask(
@@ -70,6 +72,7 @@ from app.api.v1.progress import bp as progress_api_bp
 from app.api.v1.quizzes import bp as quizzes_api_bp
 from app.api.v1.subjects import bp as subjects_api_bp
 from app.api.v1.users import bp as users_api_bp
+from app.api.v1.teacher import bp as teacher_api_bp
 
 for blueprint in (
     api_bp,
@@ -81,6 +84,7 @@ for blueprint in (
     quizzes_api_bp,
     subjects_api_bp,
     users_api_bp,
+    teacher_api_bp,
 ):
     app.register_blueprint(blueprint)
 app.config.update(
@@ -142,6 +146,14 @@ def current_user():
     if not user_id:
         return None
     return user_payload(get_user_by_id(user_id))
+
+
+def is_teacher_user(user=None):
+    return bool(user) and user.get("role") in {"TEACHER", "ADMIN"}
+
+
+def landing_for(user=None):
+    return "/teacher" if is_teacher_user(user) else "/home"
 
 
 def require_auth(view):
@@ -313,12 +325,60 @@ def continue_learning(user_id):
 
 
 def shell_ctx(active, user=None):
-    return dict(nav=M.NAV, student=build_student_profile(user), active=active, pending_count=0)
+    pending = 0
+    if user and user.get("role") == "STUDENT":
+        try:
+            pending = len(student_assignments(user["id"]))
+        except Exception:
+            pending = 0
+    return dict(nav=M.NAV, student=build_student_profile(user), active=active, pending_count=pending,
+                is_teacher=is_teacher_user(user))
+
+
+def live_today_work(user_id):
+    """Live teacher-sent work for the student home 'Today's work' rail."""
+    items = []
+    try:
+        assignments = student_assignments(user_id)
+    except Exception:
+        assignments = []
+    try:
+        announcements = student_announcements(user_id)
+    except Exception:
+        announcements = []
+    for item in (assignments or [])[:5]:
+        meta = str(item.get("resource_type") or "activity")
+        if item.get("resource_id"):
+            meta = f"{meta} · {item.get('resource_id')}"
+        items.append({
+            "kind": "Assignment",
+            "title": item.get("title") or "Assignment from your teacher",
+            "due": item.get("due_at") or "No due date",
+            "meta": meta,
+            "href": "/assignments#from-teacher",
+            "action": "Open",
+            "urgent": bool(item.get("due_at")),
+        })
+    for note in (announcements or [])[:3]:
+        message = str(note.get("message") or "Announcement")
+        items.append({
+            "kind": "Announcement",
+            "title": message[:90],
+            "due": note.get("created_at") or "",
+            "meta": "From your teacher",
+            "href": "/assignments#from-teacher",
+            "action": "View",
+            "urgent": False,
+        })
+    return items, len(assignments or [])
 
 
 @app.route("/")
 def index():
-    return redirect("/home" if current_user() else "/login")
+    user = current_user()
+    if not user:
+        return redirect("/login")
+    return redirect(landing_for(user))
 
 
 @app.route("/favicon.ico")
@@ -328,20 +388,25 @@ def favicon():
 
 @app.route("/login")
 def login_page():
-    if current_user():
-        return redirect("/home")
+    user = current_user()
+    if user:
+        return redirect(landing_for(user))
     return render_template("login.html", title="Login")
 
 
 @app.route("/register")
 def register_page():
-    if current_user():
-        return redirect("/home")
+    user = current_user()
+    if user:
+        return redirect(landing_for(user))
     return render_template("login.html", title="Create account")
 
 
 @app.route("/logout")
 def logout_page():
+    user = current_user()
+    if user:
+        record_event(user["id"], "USER_LOGOUT", detail=f"{user['name']} signed out")
     session.clear()
     return redirect("/login")
 
@@ -381,7 +446,11 @@ def auth_register():
         return json_error("An account with this email already exists.", "EMAIL_EXISTS", 409)
 
     password_hash = hash_password(password)
-    user = create_user(name=name, email=email, password_hash=password_hash, role="STUDENT")
+    account_type = str(payload.get("account_type", "student")).strip().lower()
+    if account_type not in {"student", "teacher"}:
+        return json_error("Invalid account type.", "VALIDATION_ERROR", 400)
+    role = "TEACHER" if account_type == "teacher" else "STUDENT"
+    user = create_user(name=name, email=email, password_hash=password_hash, role=role)
     session.clear()
     session["user_id"] = user["id"]
     session.permanent = True
@@ -405,10 +474,14 @@ def auth_login():
             "INVALID_CREDENTIALS",
             401,
         )
+    portal = str(payload.get("portal", "student")).strip().lower()
+    if portal == "teacher" and user.get("role") not in {"TEACHER", "ADMIN"}:
+        return json_error("This account is not a teacher account.", "TEACHER_ACCOUNT_REQUIRED", 403)
 
     session.clear()
     session["user_id"] = user["id"]
     session.permanent = True
+    record_event(user["id"], "USER_LOGIN", detail=f"{user['name']} signed in")
     return json_success("Login successful.", "LOGIN_SUCCESS", {"user": user_payload(user)}, 200)
 
 
@@ -444,6 +517,9 @@ def confirm_password_reset():
 
 @app.post("/auth/logout")
 def auth_logout():
+    user = current_user()
+    if user:
+        record_event(user["id"], "USER_LOGOUT", detail=f"{user['name']} signed out")
     session.clear()
     return json_success("Signed out successfully.", "LOGOUT_SUCCESS", None, 200)
 
@@ -486,41 +562,38 @@ def auth_update_profile():
 
 
 @app.route("/teacher")
+@require_roles("TEACHER", "ADMIN")
 def teacher():
-    students = get_users()
-    rows = ""
-    for student in students:
-        rows += f"""
-        <tr>
-            <td>{student['email']}</td>
-            <td>{student['name']}</td>
-            <td>🟢 Connected</td>
-        </tr>
-        """
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head><title>Teacher Dashboard</title></head>
-    <body>
-      <h1>LearnCraft — Teacher Dashboard</h1>
-      <h3>Students Registered: {len(students)}</h3>
-      <table border="1" cellpadding="10"><tr><th>Email</th><th>Name</th><th>Status</th></tr>{rows}</table>
-      <br><a href="/">Student Portal</a>
-    </body>
-    </html>
-    """
+    user = current_user()
+    try:
+        existing_classes = teacher_classes(user["id"])
+    except Exception:
+        existing_classes = []
+    is_fresh = len(existing_classes) == 0
+    show_onboarding = is_fresh or request.args.get("fresh") == "1"
+    return render_template(
+        "teacher_dashboard.html",
+        title="Teacher Control Center",
+        user=user,
+        is_fresh=is_fresh,
+        show_onboarding=show_onboarding,
+    )
 
 
 @app.route("/home")
 @require_auth
 def student_home():
     user = current_user()
+    # Teachers get their own fresh Control Center instead of the student home.
+    if is_teacher_user(user):
+        return redirect("/teacher")
+    today_work, pending_assign = live_today_work(user["id"])
     ctx = shell_ctx("home", user)
     cont = continue_learning(user["id"])
     return render_template("pages/home.html", title="Home",
-                           cont=cont, today_work=[], my_subjects=student_subjects(user["id"]), activity=[],
+                           cont=cont, today_work=today_work, my_subjects=student_subjects(user["id"]), activity=[],
                            note_count=len(get_notes(user["id"])),
-                           pending_assign=0, pending_practicals=0,
+                           pending_assign=pending_assign, pending_practicals=0,
                            greeting_sub="Your local learning workspace is ready.",
                            **ctx)
 
@@ -545,6 +618,9 @@ def subjects():
 @app.route("/subjects/<slug>")
 @require_auth
 def subject_detail(slug):
+    user = current_user()
+    if user and user.get("role") == "STUDENT" and not access_allowed(user["id"], "subject", slug):
+        return "This subject is currently unavailable.", 403
     feature = class9_subject(slug) or class10_subject(slug)
     if feature:
         chapters = feature["chapters"]
@@ -580,7 +656,7 @@ def subject_detail(slug):
                 "answer": chapter["title"],
             })
             for sim in chapter_sims:
-                page["sims"].append({"title": f"Chapter {chapter['number']} · {sim['name']}", "description": sim["description"], "href": sim["runtime_path"], "software_type": sim["software_type"]})
+                page["sims"].append({"title": f"Chapter {chapter['number']} · {sim['name']}", "description": sim["description"], "href": f"/student/simulation/{sim['id']}", "software_type": sim["software_type"]})
             page["practicals"].append({"title": f"{chapter['title']} activity", "env": "Offline guided practical", "steps": "3 steps", "due": "Self paced", "status": "Available"})
             page["assignments"].append({"title": f"{chapter['title']} review sheet", "meta": "Notes + 5-minute recall", "due": "Self paced", "status": "Not started"})
             page["notes"].append({"title": f"{chapter['title']} study note", "body": chapter["summary"], "updated": "Curriculum seed"})
@@ -693,6 +769,9 @@ def subject_detail(slug):
 @app.route("/subjects/<slug>/lessons/<lesson_id>")
 @require_auth
 def lesson_player(slug, lesson_id):
+    user = current_user()
+    if user and user.get("role") == "STUDENT" and not access_allowed(user["id"], "lesson", lesson_id):
+        return "This lesson is currently unavailable.", 403
     lesson = get_academic_lesson(lesson_id) or L.get_lesson(lesson_id)
     if lesson is None and (class9_subject(slug) or class10_subject(slug)):
         prefix = f"{slug}-ch"
@@ -755,11 +834,33 @@ def practical():
 @app.route("/assignments")
 @require_auth
 def assignments():
+    user = current_user()
     pending = sum(1 for a in M.ASSIGNMENTS if a["status"] != "Submitted")
+    try:
+        live_assignments = student_assignments(user["id"])
+    except Exception:
+        live_assignments = []
+    try:
+        live_announcements = student_announcements(user["id"])
+    except Exception:
+        live_announcements = []
     return render_template("pages/assignments.html", title="Assignments",
                            assignments=M.ASSIGNMENTS, assignment=M.ASSIGNMENT_WORKSPACE,
-                           assignment_types=M.ASSIGNMENT_TYPES, pending=pending,
-                           **shell_ctx("assignments", current_user()))
+                           assignment_types=M.ASSIGNMENT_TYPES, pending=pending + len(live_assignments),
+                           live_assignments=live_assignments, live_announcements=live_announcements,
+                           **shell_ctx("assignments", user))
+
+
+@app.get("/api/v1/assignments")
+@require_auth
+def api_student_assignments():
+    return jsonify({"items": student_assignments(current_user()["id"])})
+
+
+@app.get("/api/v1/announcements")
+@require_auth
+def api_student_announcements():
+    return jsonify({"items": student_announcements(current_user()["id"])})
 
 
 @app.route("/sandbox")
@@ -767,6 +868,18 @@ def assignments():
 def sandbox():
     return render_template("pages/sandbox.html", title="Sandbox",
                            cards=M.SANDBOX_CARDS, **shell_ctx("sandbox", current_user()))
+
+
+@app.get("/student/simulation/<simulation_id>")
+@require_auth
+def student_simulation(simulation_id):
+    user = current_user()
+    simulation = next((item for item in load_feature_simulations() if item.get("id") == simulation_id), None)
+    if not simulation:
+        return "Simulation not found.", 404
+    if user.get("role") == "STUDENT" and not access_allowed(user["id"], "simulation", simulation_id):
+        return "This simulation is currently unavailable.", 403
+    return redirect(simulation["runtime_path"])
 
 
 @app.route("/progress")
@@ -903,9 +1016,14 @@ def api_local_state():
             percent = int(payload.get("percent_complete") or record.get("percent") or (len(visited) * 20 if isinstance(visited, list) else 0))
             prog_status = "completed" if (status in {"completed", "SUBMITTED", "submitted"} or record.get("done")) else ("practiced" if status == "practiced" else "in_progress")
             save_learning_progress(user["id"], lesson_id=lesson_id, status=prog_status, percent_complete=min(100, max(0, percent)))
+            record_event(user["id"], "LESSON_COMPLETED" if prog_status == "completed" else "LESSON_STARTED",
+                         activity_type="lesson", activity_id=lesson_id, detail=f"{lesson_id} · {prog_status}")
 
     if status in {"SUBMITTED", "submitted", "completed"} or kind == "submission":
         event_id = enqueue_sync_event(kind, record_id, "upsert", record, event_id=client_event_id)
+        if user:
+            record_event(user["id"], "ASSIGNMENT_SUBMITTED" if kind == "submission" else "ACTIVITY_COMPLETED",
+                         activity_type=kind, activity_id=record_id, detail=f"{record_id} saved locally")
 
     return json_success("Local state saved.", "LOCAL_STATE_SAVED", {
         "storage": "sqlite",

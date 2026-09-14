@@ -6,6 +6,17 @@
 <link rel="manifest" href="/static/manifest.webmanifest">
 <meta name="theme-color" content="#4F46E5">
 <link rel="stylesheet" href="/static/css/design-system.css">
+<style>
+.notif-wrap{position:relative}
+.notif-btn{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 10px;font-size:16px;cursor:pointer;line-height:1}
+.notif-count{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:999px;background:#DC2626;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+.notif-menu{position:absolute;right:0;top:calc(100% + 10px);width:min(340px,82vw);max-height:380px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-lg);padding:8px;z-index:40}
+.notif-head{display:flex;align-items:center;justify-content:space-between;padding:6px 8px}
+.notif-head a{font-size:12.5px;font-weight:800}
+.notif-item{display:block;padding:9px 10px;border-radius:10px;color:inherit;text-decoration:none}
+.notif-item:hover{background:var(--surface-2)}
+.notif-item b{display:block;font-size:13.5px}
+</style>
 </head>
 <body>
 {% from "components.html" import icon %}
@@ -41,6 +52,15 @@
       <button class="btn btn-secondary btn-sm menu-btn" onclick="document.body.classList.toggle('nav-open')">☰ Menu</button>
       <div class="search">⌕ <input id="globalSearch" placeholder="Search lessons, practicals, assignments…" oninput="filterCards(this.value)"></div>
       <div class="top-actions">
+        {% if not is_teacher %}
+        <div class="notif-wrap">
+          <button class="notif-btn" id="notifBell" type="button" aria-expanded="false" aria-controls="notifMenu" aria-label="Notifications">🔔<span class="notif-count" id="notifCount" hidden>0</span></button>
+          <div class="notif-menu" id="notifMenu" hidden role="menu" aria-label="Notifications">
+            <div class="notif-head"><b>Notifications</b><a href="/assignments#from-teacher">View all →</a></div>
+            <div id="notifList"><div class="empty" style="padding:12px">Checking for teacher updates…</div></div>
+          </div>
+        </div>
+        {% endif %}
         <span class="pill">▲ {{ student.streak_days }}-day streak</span>
         <span class="pill xp">★ {{ student.xp }} XP</span>
         <div class="profile-menu-wrap top-profile-wrap">
@@ -56,7 +76,7 @@
         </div>
       </div>
     </div>
-    <div class="content">{% block content %}{% endblock %}</div>
+    <div class="content">{% if is_teacher %}<div class="card" style="margin-bottom:14px;border-color:#C7D2FE;background:linear-gradient(135deg,#EEF2FF,#F5F3FF)"><div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><b>Teacher preview</b><div class="caption">You are viewing the student side. Your Control Center is still open in the other tab.</div></div><a class="btn btn-primary btn-sm" href="/teacher">← Back to Teacher Control Center</a></div></div>{% endif %}{% block content %}{% endblock %}</div>
   </div>
 </div>
 <div class="modal-back" id="modalBack"><div class="modal" id="modalBox"></div></div>
@@ -65,6 +85,46 @@
 <script src="/static/js/sandbox-engine.js"></script>
 <script src="/static/js/offline-store.js"></script>
 <script>
+(function(){
+  var bell=document.getElementById('notifBell');
+  if(!bell) return;
+  var count=document.getElementById('notifCount');
+  var menu=document.getElementById('notifMenu');
+  var list=document.getElementById('notifList');
+  var KEY='lc_seen_teacher_items';
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function seen(){try{return JSON.parse(localStorage.getItem(KEY)||'[]');}catch(e){return [];}}
+  function saveSeen(ids){try{localStorage.setItem(KEY,JSON.stringify(ids));}catch(e){}}
+  function short(s,n){s=String(s||'');return s.length>n?s.slice(0,n)+'…':s;}
+  async function getJSON(url){var r=await fetch(url);if(!r.ok) throw new Error('bad');return r.json();}
+  async function refresh(){
+    try{
+      var res=await Promise.all([getJSON('/api/v1/assignments'),getJSON('/api/v1/announcements')]);
+      var items=[];
+      (res[0].items||[]).forEach(function(a){items.push({key:'asg:'+a.id,kind:'Assignment',cls:'warn',title:a.title||'New assignment',sub:(a.due_at?'Due: '+a.due_at:'No due date')});});
+      (res[1].items||[]).forEach(function(n){items.push({key:'ann:'+n.id,kind:'Announcement',cls:'info',title:short(n.message,90),sub:(n.created_at||'From your teacher')});});
+      var s=seen();
+      var fresh=items.filter(function(i){return s.indexOf(i.key)<0;});
+      if(fresh.length){count.hidden=false;count.textContent=fresh.length>9?'9+':String(fresh.length);}
+      else{count.hidden=true;}
+      list._keys=items.map(function(i){return i.key;});
+      if(!items.length){list.innerHTML='<div class="empty" style="padding:12px">No notifications yet. Teacher announcements will appear here.</div>';return;}
+      list.innerHTML=items.slice(0,8).map(function(i){
+        return '<a class="notif-item" href="/assignments#from-teacher"><span class="badge '+i.cls+'">'+esc(i.kind)+'</span> <b style="margin-top:4px">'+esc(i.title)+'</b><div class="caption">'+esc(i.sub)+'</div></a>';
+      }).join('');
+    }catch(e){/* offline: keep last state */}
+  }
+  bell.addEventListener('click',function(e){
+    e.stopPropagation();
+    var willOpen=menu.hidden;
+    menu.hidden=!willOpen;
+    bell.setAttribute('aria-expanded',String(willOpen));
+    if(willOpen){saveSeen(list._keys||seen());count.hidden=true;}
+  });
+  document.addEventListener('click',function(e){if(!menu.hidden&&!e.target.closest('.notif-wrap')){menu.hidden=true;}});
+  refresh();
+  setInterval(refresh,30000);
+})();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(function () {});

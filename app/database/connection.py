@@ -360,6 +360,127 @@ def initialize_database():
     connection.execute("CREATE INDEX IF NOT EXISTS idx_ai_conversations_user ON ai_conversations(user_id)")
     connection.execute("CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation ON ai_messages(conversation_id)")
 
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_classes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            grade TEXT,
+            section TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS class_members (
+            class_id INTEGER NOT NULL,
+            student_id INTEGER NOT NULL,
+            joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (class_id, student_id),
+            FOREIGN KEY (class_id) REFERENCES teacher_classes(id) ON DELETE CASCADE,
+            FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS activity_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id TEXT NOT NULL UNIQUE,
+            user_id INTEGER NOT NULL,
+            event_type TEXT NOT NULL,
+            subject_slug TEXT,
+            activity_type TEXT,
+            activity_id TEXT,
+            detail TEXT NOT NULL DEFAULT '',
+            score REAL,
+            duration_seconds INTEGER,
+            metadata_json TEXT NOT NULL DEFAULT '{}',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS access_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scope_type TEXT NOT NULL,
+            scope_id TEXT NOT NULL,
+            resource_type TEXT NOT NULL,
+            resource_id TEXT NOT NULL,
+            state TEXT NOT NULL,
+            updated_by INTEGER NOT NULL,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(scope_type, scope_id, resource_type, resource_id),
+            FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_assignments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            class_id INTEGER,
+            resource_type TEXT NOT NULL,
+            resource_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            start_at TIMESTAMP,
+            due_at TIMESTAMP,
+            attempts INTEGER,
+            difficulty TEXT,
+            time_limit_minutes INTEGER,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (class_id) REFERENCES teacher_classes(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS assignment_targets (
+            assignment_id INTEGER NOT NULL,
+            student_id INTEGER NOT NULL,
+            PRIMARY KEY (assignment_id, student_id),
+            FOREIGN KEY (assignment_id) REFERENCES teacher_assignments(id) ON DELETE CASCADE,
+            FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_announcements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            class_id INTEGER,
+            message TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (class_id) REFERENCES teacher_classes(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            event_id INTEGER,
+            kind TEXT NOT NULL,
+            message TEXT NOT NULL,
+            read_at TIMESTAMP,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (event_id) REFERENCES activity_events(id) ON DELETE SET NULL
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            action TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            previous_state TEXT,
+            new_state TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_activity_events_user_time ON activity_events(user_id, created_at)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_activity_events_type_time ON activity_events(event_type, created_at)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_class_members_student ON class_members(student_id)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_teacher_notifications_teacher ON teacher_notifications(teacher_id, created_at)")
+
     connection.commit()
     connection.close()
 

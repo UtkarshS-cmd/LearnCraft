@@ -1,5 +1,71 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="card" id="from-teacher" style="margin-bottom:18px;border-color:#D9DCFF">
+  <div class="eyebrow">From your teacher · <span id="fromTeacherLive">live</span></div>
+  <div class="h2" style="margin:6px 0 2px" id="liveAssignHead">Assigned to you ({{ live_assignments|length }})</div>
+  <div id="liveAssignList">
+  {% if live_assignments %}
+  <div class="grid grid-2" style="margin-top:10px">
+    {% for a in live_assignments %}
+    <div class="row-item today {% if a.due_at %}urgent{% endif %}">
+      <div style="flex:1">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:3px">
+          <span class="badge {{ 'warn' if a.due_at else 'muted' }}">Assignment</span>
+          <span class="caption">{{ a.due_at or 'No due date' }}</span>
+        </div>
+        <b>{{ a.title }}</b>
+        <div class="caption">{{ a.resource_type }}{% if a.resource_id %} · {{ a.resource_id }}{% endif %}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="caption" style="margin:8px 0 0">No teacher assignments yet. Jab teacher tumhare class ko assignment bhejega, wo yahan turant dikhega.</p>
+  {% endif %}
+  </div>
+  <div id="liveAnnBlock">
+  {% if live_announcements %}
+  <div class="h2" style="margin:14px 0 2px">Announcements ({{ live_announcements|length }})</div>
+  {% for n in live_announcements %}
+  <div class="row-item"><div style="flex:1"><b>{{ n.message }}</b><div class="caption">{{ n.created_at }}</div></div></div>
+  {% endfor %}
+  {% endif %}
+  </div>
+</div>
+<script>
+(function(){
+  var list=document.getElementById('liveAssignList');
+  if(!list) return;
+  var head=document.getElementById('liveAssignHead');
+  var ann=document.getElementById('liveAnnBlock');
+  var live=document.getElementById('fromTeacherLive');
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  async function getJSON(url){var r=await fetch(url);if(!r.ok) throw new Error('bad');return r.json();}
+  async function refreshFromTeacher(){
+    try{
+      var res=await Promise.all([getJSON('/api/v1/assignments'),getJSON('/api/v1/announcements')]);
+      var items=res[0].items||[];
+      if(head)head.textContent='Assigned to you ('+items.length+')';
+      list.innerHTML=items.length?'<div class="grid grid-2" style="margin-top:10px">'+items.map(function(a){
+        return '<div class="row-item today '+(a.due_at?'urgent':'')+'"><div style="flex:1">'
+          +'<div style="display:flex;gap:8px;align-items:center;margin-bottom:3px">'
+          +'<span class="badge '+(a.due_at?'warn':'muted')+'">Assignment</span>'
+          +'<span class="caption">'+esc(a.due_at||'No due date')+'</span></div>'
+          +'<b>'+esc(a.title)+'</b><div class="caption">'+esc(a.resource_type||'')+(a.resource_id?' · '+esc(a.resource_id):'')+'</div>'
+          +'</div></div>';
+      }).join('')+'</div>'
+        :'<p class="caption" style="margin:8px 0 0">No teacher assignments yet. Jab teacher tumhare class ko assignment bhejega, wo yahan turant dikhega.</p>';
+      var notes=res[1].items||[];
+      if(ann)ann.innerHTML=notes.length?'<div class="h2" style="margin:14px 0 2px">Announcements ('+notes.length+')</div>'+notes.map(function(n){
+        return '<div class="row-item"><div style="flex:1"><b>'+esc(n.message)+'</b><div class="caption">'+esc(n.created_at||'')+'</div></div></div>';
+      }).join(''):'';
+      if(live)live.textContent='live · '+new Date().toLocaleTimeString();
+    }catch(e){/* offline: keep last state */}
+  }
+  refreshFromTeacher();
+  setInterval(refreshFromTeacher,30000);
+})();
+</script>
 <div class="assignment-topbar"><div class="assignment-context"><div class="workspace-subject" style="background:{{ assignment.subject_bg }};color:{{ assignment.subject_color }}">◈</div><div><div class="eyebrow">{{ assignment.subject }} · Assignment</div><div class="workspace-title">{{ assignment.title }}</div><div class="caption">{{ assignment.instructions }}</div></div></div><div class="assignment-meta"><span><b>{{ assignment.estimated_time }}</b><small>estimated</small></span><span><b>{{ assignment.marks }}</b><small>marks</small></span><span><b>{{ assignment.deadline }}</b><small>deadline</small></span><span class="state-pill not-started" id="assignmentState">NOT STARTED</span></div></div>
 <div class="assignment-progress"><div class="assignment-progress-label"><b id="assignmentProgress">0 of {{ assignment.tasks|length }} answered</b><span id="assignmentSaveInfo">Saved locally as you work</span></div><div class="pbar"><i id="assignmentProgressBar" style="width:0%"></i></div></div>
 <div class="assignment-layout"><main><div class="assignment-instructions"><div class="eyebrow">Before you begin</div><p>{{ assignment.instructions }}</p><div class="type-legend">{% for kind in assignment_types %}<span class="type-chip">{{ 'MCQ' if kind == 'mcq' else kind|replace('_', ' ')|title }}</span>{% endfor %}</div></div>

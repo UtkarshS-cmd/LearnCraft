@@ -26,10 +26,28 @@
               "content_blocks": [{"type": "text", "text": "A chemical equation is balanced when each element has the same number of atoms on both sides. Change coefficients, never subscripts."}, {"type": "example", "text": "2H₂ + O₂ → 2H₂O has four hydrogen atoms and two oxygen atoms on each side."}, {"type": "summary", "text": "Balancing follows the law of conservation of mass."}],
               "concepts": [{"concept_id": "cbse-x-2026-27-science-concept-conservation", "title": "Conservation of mass", "explanation": "Atoms are rearranged in a reaction; they are not created or destroyed."}],
               "source_reference": "NCERT Science Class X, Chapter 1, https://ncert.nic.in/textbook.php"
+            },
+            {
+              "lesson_id": "cbse-x-2026-27-science-reactions-types",
+              "slug": "types-of-reactions",
+              "title": "Types of Chemical Reactions",
+              "summary": "Identify combination, decomposition, displacement and double-displacement reactions.",
+              "learning_objectives": ["Classify reactions by pattern", "Predict simple products"],
+              "prerequisites": ["Balancing chemical equations"],
+              "estimated_minutes": 18,
+              "difficulty": "EASY",
+              "content_blocks": [
+                {"type": "text", "text": "Many reactions follow one of four patterns: combination (A + B → AB), decomposition (AB → A + B), displacement (A + BC → AC + B) and double displacement (AB + CD → AD + CB)."},
+                {"type": "example", "text": "Fe + CuSO₄ → FeSO₄ + Cu is a displacement reaction; 2H₂O₂ → 2H₂O + O₂ is a decomposition reaction."},
+                {"type": "summary", "text": "Look at which atoms pair up — the pattern decides the reaction type."}
+              ],
+              "concepts": [{"concept_id": "cbse-x-2026-27-science-concept-reaction-types", "title": "Reaction types", "explanation": "Combination, decomposition, displacement and double displacement patterns."}],
+              "source_reference": "NCERT Science Class X, Chapter 1, https://ncert.nic.in/textbook.php"
             }
           ],
           "questions": [
-            {"question_id": "cbse-x-2026-27-science-q-balance-001", "difficulty": "EASY", "question_type": "MCQ", "marks": 1, "skill": "Apply", "prompt": "Which coefficient balances H₂ + O₂ → H₂O?", "answer": "2, 1, 2", "explanation": "Two water molecules require two hydrogen molecules and one oxygen molecule.", "options": [{"option_id": "a", "text": "1, 1, 1", "is_correct": false}, {"option_id": "b", "text": "2, 1, 2", "is_correct": true}, {"option_id": "c", "text": "1, 2, 1", "is_correct": false}]}
+            {"question_id": "cbse-x-2026-27-science-q-balance-001", "difficulty": "EASY", "question_type": "MCQ", "marks": 1, "skill": "Apply", "prompt": "Which coefficient balances H₂ + O₂ → H₂O?", "answer": "2, 1, 2", "explanation": "Two water molecules require two hydrogen molecules and one oxygen molecule.", "options": [{"option_id": "a", "text": "1, 1, 1", "is_correct": false}, {"option_id": "b", "text": "2, 1, 2", "is_correct": true}, {"option_id": "c", "text": "1, 2, 1", "is_correct": false}]},
+            {"question_id": "cbse-x-2026-27-science-q-types-001", "difficulty": "EASY", "question_type": "MCQ", "marks": 1, "skill": "Understand", "prompt": "2H₂O₂ → 2H₂O + O₂ is which type of reaction?", "answer": "Decomposition", "explanation": "A single compound breaks down into two or more products.", "options": [{"option_id": "a", "text": "Combination", "is_correct": false}, {"option_id": "b", "text": "Decomposition", "is_correct": true}, {"option_id": "c", "text": "Displacement", "is_correct": false}]}
           ]
         }
       ]
@@ -63,6 +81,43 @@
           ],
           "questions": [
             {"question_id": "cbse-x-2026-27-science-q-photo-001", "difficulty": "MEDIUM", "question_type": "SHORT_ANSWER", "marks": 2, "skill": "Understand", "prompt": "Why is chlorophyll essential for photosynthesis?", "answer": "It absorbs light energy used to drive photosynthesis.", "explanation": "Chlorophyll transfers captured light energy into the chemical process.", "options": []}
+          ]
+        },
+        {
+          "topic_id": "cbse-x-2026-27-science-life-processes-respiration",
+          "slug": "respiration",
+          "title": "Respiration in Organisms",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-science-life-processes-respiration",
+              "slug": "respiration",
+              "title": "Respiration: Breaking Down Food for Energy",
+              "summary": "Contrast aerobic and anaerobic respiration and locate the respiratory organs.",
+              "learning_objectives": ["Compare aerobic and anaerobic respiration", "Trace gas exchange in plants and animals"],
+              "prerequisites": ["Photosynthesis: Making Food"],
+              "estimated_minutes": 16,
+              "difficulty": "MEDIUM",
+              "content_blocks": [
+                {"type": "text", "text": "Respiration releases energy from glucose. Aerobic respiration uses oxygen to yield CO₂, water and more ATP; anaerobic respiration runs without oxygen and produces ethanol or lactic acid with less ATP."},
+                {"type": "formula", "text": "C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O + energy (aerobic)"},
+                {"type": "summary", "text": "Oxygen availability decides whether respiration is aerobic or anaerobic."}
+              ],
+              "concepts": [{"concept_id": "cbse-x-2026-27-science-concept-respiration", "title": "Respiration", "explanation": "The process of releasing energy from glucose inside living cells."}],
+              "source_reference": "NCERT Science Class X, Chapter 6, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {
+              "question_id": "cbse-x-2026-27-science-q-respiration-001",
+              "difficulty": "MEDIUM",
+              "question_type": "SHORT_ANSWER",
+              "marks": 2,
+              "skill": "Compare",
+              "prompt": "Why does anaerobic respiration release less energy than aerobic respiration?",
+              "answer": "Glucose is incompletely oxidised in anaerobic respiration, so less energy is extracted.",
+              "explanation": "Complete oxidation of glucose captures much more chemical energy as ATP.",
+              "options": []
+            }
           ]
         }
       ]

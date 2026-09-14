@@ -8,7 +8,15 @@ os.environ["LEARNCRAFT_SECRET_KEY"] = "content-test-secret"
 
 from app.main import app
 from app.database.connection import initialize_database
-from app.services.content_catalog import import_packages, list_questions, list_subjects, load_packages, validate_packages
+from app.services.content_catalog import (
+    get_lesson,
+    import_packages,
+    list_questions,
+    list_subject_lessons,
+    list_subjects,
+    load_packages,
+    validate_packages,
+)
 
 
 class AcademicContentTests(unittest.TestCase):
@@ -22,7 +30,23 @@ class AcademicContentTests(unittest.TestCase):
         packages = load_packages()
         self.assertEqual(validate_packages(packages), [])
         self.assertEqual({item["slug"] for item in list_subjects()}, {"mathematics", "science", "social-science"})
-        self.assertEqual(len(list_questions()), 6)
+        # Each subject ships at least two questions per chapter.
+        self.assertGreaterEqual(len(list_questions()), 12)
+
+    def test_every_subject_has_curriculum_lessons(self):
+        for subject in list_subjects():
+            lessons = list_subject_lessons(subject["slug"])
+            self.assertTrue(lessons, f"{subject['slug']} has no lessons")
+            for lesson in lessons:
+                payload = get_lesson(lesson["lesson_id"])
+                self.assertIsNotNone(payload, lesson["lesson_id"])
+                self.assertIn("blocks", payload)
+                self.assertTrue(payload["blocks"], f"{lesson['lesson_id']} has no blocks")
+                for block in payload["blocks"]:
+                    # The lesson player requires these keys to render correctly.
+                    self.assertIn("stage", block, block)
+                    self.assertIn("title", block, block)
+                    self.assertIn("body", block, block)
 
     def test_content_api_exposes_source_mapped_questions(self):
         response = self.client.get("/api/v1/subjects")

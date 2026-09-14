@@ -99,6 +99,9 @@ input[type=range]{width:100%}
   {% elif b.type == 'apply' %}
     <div class="banner ok">✓ <span>{{ b.task }}</span></div>
     <div style="display:flex;gap:8px;margin-top:10px"><a class="btn btn-secondary btn-sm" href="/notes?context_subject={{ lesson.subject_name|urlencode }}&context_chapter={{ lesson.chapter_label|urlencode }}&source_type=lesson&source_id={{ lesson.id|urlencode }}&source_title={{ lesson.title|urlencode }}">Save in Notes →</a><a class="btn btn-secondary btn-sm" href="/sandbox">Open Sandbox →</a></div>
+
+  {% else %}
+    <p class="body">{{ b.body or b.text or '' }}</p>
   {% endif %}
 </section>
 {% endfor %}

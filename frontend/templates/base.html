@@ -67,7 +67,7 @@
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/static/js/service-worker.js').catch(function () {});
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(function () {});
   });
 }
 </script>

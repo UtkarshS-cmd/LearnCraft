@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 from app.database.connection import get_connection
 from app.services.content_catalog import (
     get_lesson,
+    load_packages,
     list_class10_subjects,
     list_class9_subjects,
     list_questions,
@@ -43,7 +44,13 @@ def ncert_questions() -> tuple[dict, ...]:
 
 @lru_cache(maxsize=1)
 def feature_curriculum() -> tuple[dict, ...]:
-    """Flatten the portable Features Class IX/X chapters for local retrieval."""
+    """Flatten available Class IX/X chapters for local retrieval.
+
+    The optional sibling ``Features`` project contains richer curriculum
+    metadata, but LearnCraft must remain useful when this repository is used
+    on its own. In that case, the bundled curriculum packages are the source
+    of truth.
+    """
     items = []
     for class_level, subjects in (("Class IX", list_class9_subjects()), ("Class X", list_class10_subjects())):
         for subject in subjects:
@@ -58,6 +65,21 @@ def feature_curriculum() -> tuple[dict, ...]:
                     "text": chapter["summary"],
                     "source_reference": subject.get("pdf_url", ""),
                 })
+    if items:
+        return tuple(items)
+
+    for package in load_packages():
+        for chapter in package.get("chapters", []):
+            items.append({
+                "source_id": f"bundled:{package['slug']}-ch{chapter['chapter_number']}",
+                "content_version": "features-2026-27",
+                "subject": package["name"],
+                "class_level": package.get("class_level", "Class X"),
+                "chapter_number": chapter["chapter_number"],
+                "chapter_name": chapter["title"],
+                "text": chapter["summary"],
+                "source_reference": chapter.get("source_reference", package.get("source_reference", "")),
+            })
     return tuple(items)
 
 

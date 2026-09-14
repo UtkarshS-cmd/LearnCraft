@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request, session
 
 from app.database.connection import get_user_progress, save_learning_progress
+from app.services.teacher_control import record_event
 
 bp = Blueprint("progress_v1", __name__, url_prefix="/api/v1")
 
@@ -35,4 +36,7 @@ def save_progress():
                            lesson_id=lesson_id, status=status, percent_complete=percent,
                            score=payload.get("score", 0),
                            last_activity=datetime.now(timezone.utc).isoformat())
+    record_event(user_id, "LESSON_COMPLETED" if status == "completed" else "LESSON_STARTED",
+                 subject_slug=subject_slug, activity_type="lesson", activity_id=lesson_id,
+                 detail=f"{lesson_id} · {status}", score=payload.get("score"))
     return jsonify({"success": True, "lesson_id": lesson_id, "percent_complete": percent, "status": status}), 200

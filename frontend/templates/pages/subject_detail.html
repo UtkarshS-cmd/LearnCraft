@@ -29,7 +29,7 @@
   <div class="meta">
     <div class="h1">{{ page.name }}</div>
     <p class="body-sm" style="margin:4px 0 6px;color:var(--muted)">{{ page.description }}</p>
-    <div>{% for t in page.tags %}{{ badge(t, 'info') }} {% endfor %}</div>
+    <div>{% for t in page.tags %}{{ badge(t, 'info') }} {% endfor %}{% if page.pdf_url %}<a class="badge info" href="{{ page.pdf_url }}" target="_blank" rel="noopener">NCERT textbook portal ↗</a>{% endif %}</div>
   </div>
   <div class="card" style="min-width:250px;flex:1;max-width:340px">
     <div style="display:flex;justify-content:space-between"><b class="body-sm">Overall progress</b><b class="body-sm">{{ page.progress }}%</b></div>
@@ -40,7 +40,7 @@
 
 <!-- NAV: same 8 tabs for every subject -->
 <div class="sub-tabs" role="tablist">
-  {% for t in ['Overview','Learn','Practice','Sandbox','Practical','Assignments','Notes','Progress'] %}
+  {% for t in ['Overview','Learn','Practice','Sandbox','Practical','Assignments','Notes','References','Progress'] %}
   <button class="tab {% if loop.first %}active{% endif %}" data-pane="pane-{{ t|lower }}" role="tab">{{ t }}</button>
   {% endfor %}
 </div>
@@ -107,7 +107,7 @@
 <!-- PRACTICE -->
 <div class="pane" id="pane-practice">
   {% for p in page.practice %}
-  <div class="row-item">{{ state_icon(p.status) }}<div style="flex:1"><b>{{ p.title }}</b><div class="caption">{{ p.meta }}</div></div>{{ state_badge(p.status) }}
+  <div class="row-item">{{ state_icon(p.status) }}<div style="flex:1"><b>{{ p.title }}</b><div class="caption">{{ p.meta }}</div>{% if p.prompt %}<div class="body-sm" style="margin-top:6px">{{ p.prompt }}</div><div class="caption">Answer: {{ p.answer }}</div>{% endif %}</div>{{ state_badge(p.status) }}
   <button class="btn btn-{{ 'primary' if p.status in ['In Progress','Available'] else 'secondary' }} btn-sm" onclick="toast('Opening practice (mock)')">{{ 'Review' if p.status=='Completed' else 'Start →' }}</button></div>
   {% endfor %}
 </div>
@@ -115,7 +115,7 @@
 <!-- SANDBOX -->
 <div class="pane" id="pane-sandbox">
   <div class="grid grid-2">{% for s in page.sims %}
-    <div class="card hover"><div class="tile-icon" style="background:{{ page.bg }};color:{{ page.color }};margin-bottom:10px">◈</div><div class="h3">{{ s }}</div><div class="caption" style="margin:4px 0 10px">Offline · auto-saves · no setup</div><div style="display:flex;gap:8px"><a class="btn btn-primary btn-sm" href="/sandbox">Open sim →</a><button class="btn btn-secondary btn-sm" onclick="toast('Guide saved (mock)')">Guide</button></div></div>
+    <div class="card hover"><div class="tile-icon" style="background:{{ page.bg }};color:{{ page.color }};margin-bottom:10px">◈</div><div class="h3">{{ s.title }}</div><div class="caption" style="margin:4px 0 10px">{{ s.software_type }} · Offline · no setup</div><p class="body-sm">{{ s.description }}</p><div style="display:flex;gap:8px"><a class="btn btn-primary btn-sm" href="{{ s.href }}">Open sim →</a><button class="btn btn-secondary btn-sm" onclick="toast('Guide saved locally')">Guide</button></div></div>
   {% endfor %}</div>
 </div>
 
@@ -140,6 +140,13 @@
   <div class="card" style="margin-bottom:12px"><div class="h3" style="margin-bottom:8px">{{ page.name }} notes (offline)</div>
     {% for n in page.notes %}<div class="activity"><span class="dot" style="color:{{ page.color }};margin-top:7px"></span><div style="flex:1"><b>{{ n.title }}</b><div class="caption">{{ n.body }} · {{ n.updated }}</div></div></div>{% endfor %}
     <div style="display:flex;gap:8px;margin-top:10px"><a class="btn btn-secondary btn-sm" href="/notes">Open all notes →</a><button class="btn btn-primary btn-sm" onclick="toast('Note saved (mock)')">+ Quick note</button></div>
+  </div>
+</div>
+
+<!-- REFERENCES -->
+<div class="pane" id="pane-references">
+  <div class="card"><div class="h3" style="margin-bottom:10px">Chapter references</div>
+    {% for r in page.references %}<div class="activity"><span class="dot" style="color:{{ page.color }};margin-top:7px"></span><div style="flex:1"><b>{{ r.title }}</b><div class="caption">{{ r.chapter }}</div></div><a class="btn btn-secondary btn-sm" href="{{ r.url }}" target="_blank" rel="noopener">Open source ↗</a></div>{% endfor %}
   </div>
 </div>
 

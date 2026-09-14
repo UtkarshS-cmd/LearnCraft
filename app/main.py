@@ -40,7 +40,15 @@ from app.services.content_catalog import (
     first_lesson_for_chapter as get_academic_lesson_for_chapter,
     import_packages,
     list_subjects as list_academic_subjects,
+    list_class9_subjects,
+    list_class10_subjects,
     load_packages,
+    class10_lesson,
+    class10_subject,
+    class9_lesson,
+    class9_subject,
+    simulation_covers_chapter,
+    simulations_for_subject,
     subject_detail as get_academic_subject,
 )
 
@@ -195,6 +203,18 @@ def student_subjects(user_id):
                          "completed": sum(value == 100 for value in values),
                          "tag": "In progress" if progress_pct else "Not started",
                          "current_chapter": current_chapter})
+    for subject in list_class9_subjects():
+        subjects.append({
+            "slug": subject["slug"], "name": subject["name"], "description": subject["description"],
+            "icon": "◈", "color": "#0F766E", "bg": "#ECFDF5", "chapters": len(subject["chapters"]),
+            "progress": 0, "completed": 0, "tag": "Not started", "current_chapter": "Start your first lesson",
+        })
+    for subject in list_class10_subjects():
+        subjects.append({
+            "slug": subject["slug"], "name": subject["name"], "description": subject["description"],
+            "icon": "◈", "color": "#B45309", "bg": "#FFFBEB", "chapters": len(subject["chapters"]),
+            "progress": 0, "completed": 0, "tag": "Not started", "current_chapter": "Start your first lesson",
+        })
     return subjects
 
 
@@ -510,6 +530,51 @@ def subjects():
 @app.route("/subjects/<slug>")
 @require_auth
 def subject_detail(slug):
+    feature = class9_subject(slug) or class10_subject(slug)
+    if feature:
+        chapters = feature["chapters"]
+        is_class10 = class10_subject(slug) is not None
+        build_lesson = class10_lesson if is_class10 else class9_lesson
+        feature_sims = simulations_for_subject(slug)
+        first = build_lesson(slug, chapters[0]["number"])
+        class_label = "X" if is_class10 else "IX"
+        color, bg = ("#B45309", "#FFFBEB") if is_class10 else ("#0F766E", "#ECFDF5")
+        page = {
+            "slug": slug, "name": feature["name"], "description": feature["description"],
+            "icon": "◈", "color": color, "bg": bg,
+            "tags": [f"CBSE Class {class_label}", "2026-27", "NCERT aligned"], "pdf_url": feature["pdf_url"], "progress": 0,
+            "continue": {"href": f"/subjects/{slug}/lessons/{first['lesson_id']}", "cta": "Start learning",
+                          "chapter_label": f"Chapter {chapters[0]['number']} · {chapters[0]['title']}",
+                          "lesson": first["title"], "time_left": first["est"], "progress": 0},
+            "units": [{"id": "u1", "title": "CBSE Class IX chapters", "desc": "Learn, practise and review in NCERT chapter order.", "chapters": []}],
+            "practice": [], "sims": [], "practicals": [], "assignments": [], "notes": [], "references": []
+        }
+        for chapter in chapters:
+            lesson = build_lesson(slug, chapter["number"])
+            chapter_sims = [sim for sim in feature_sims if simulation_covers_chapter(sim, slug, chapter["number"])]
+            page["units"][0]["chapters"].append({
+                "n": chapter["number"], "title": chapter["title"], "est": "20 min",
+                "lessons_count": 1, "status": "Available", "progress": 0,
+                "is_current": chapter["number"] == 1, "is_next": chapter["number"] == 1,
+                "prereq": "", "sim": chapter_sims[0]["name"] if chapter_sims else "Concept sandbox", "practical": "Guided activity", "quiz": "1 MCQ",
+            })
+            page["practice"].append({
+                "title": f"Chapter {chapter['number']} MCQ · {chapter['title']}",
+                "meta": "Original concept check · 1 question", "status": "Available",
+                "prompt": f"Which topic is the focus of Chapter {chapter['number']}?",
+                "answer": chapter["title"],
+            })
+            for sim in chapter_sims:
+                page["sims"].append({"title": f"Chapter {chapter['number']} · {sim['name']}", "description": sim["description"], "href": sim["runtime_path"], "software_type": sim["software_type"]})
+            page["practicals"].append({"title": f"{chapter['title']} activity", "env": "Offline guided practical", "steps": "3 steps", "due": "Self paced", "status": "Available"})
+            page["assignments"].append({"title": f"{chapter['title']} review sheet", "meta": "Notes + 5-minute recall", "due": "Self paced", "status": "Not started"})
+            page["notes"].append({"title": f"{chapter['title']} study note", "body": chapter["summary"], "updated": "Curriculum seed"})
+            for sim in chapter_sims:
+                page["notes"].extend({"title": f"{chapter['title']} · Lab note", "body": note, "updated": "Simulation guide"} for note in sim["notes"])
+                page["references"].extend({"title": ref["title"], "url": ref["url"], "chapter": chapter["title"]} for ref in sim["references"])
+                page["practice"].extend({"title": f"{chapter['title']} practice set", "meta": "Offline simulation reflection", "status": "Available", "prompt": prompt} for prompt in sim["practice_set"])
+        return render_template("pages/subject_detail.html", title=feature["name"], page=page,
+                               first_lesson=first["lesson_id"], **shell_ctx("subjects", current_user()))
     catalog = get_academic_subject(slug)
     if catalog:
         subject = catalog["subject"]
@@ -524,7 +589,10 @@ def subject_detail(slug):
                                      "lessons_count": 1, "status": "Available", "progress": 0,
                                      "is_current": False, "is_next": c["chapter_number"] == chapters[0]["chapter_number"],
                                      "prereq": "", "sim": "Practice", "practical": "Notes", "quiz": "Test"} for c in chapters]}],
-            "practice": [], "sims": [], "practicals": []
+            "practice": [{"title": "Chapter review", "meta": "Use the lesson notes and check your understanding.", "status": "Available"}],
+            "sims": ["Concept practice"], "practicals": [{"title": "Guided chapter activity", "env": "Offline workspace", "steps": "3 steps", "due": "Self paced", "status": "Available"}],
+            "assignments": [{"title": f"{subject['name']} chapter review", "meta": "Lesson recap and recall", "due": "Self paced", "status": "Not started"}],
+            "notes": [{"title": f"{subject['name']} study notes", "body": "Save key definitions, examples and questions while you learn.", "updated": "Ready"}]
         }
         first = None
         for chapter in chapters:
@@ -552,6 +620,11 @@ def subject_detail(slug):
 @require_auth
 def lesson_player(slug, lesson_id):
     lesson = get_academic_lesson(lesson_id) or L.get_lesson(lesson_id)
+    if lesson is None and (class9_subject(slug) or class10_subject(slug)):
+        prefix = f"{slug}-ch"
+        if lesson_id.startswith(prefix) and lesson_id.endswith("-overview"):
+            chapter_number = int(lesson_id[len(prefix):-len("-overview")])
+            lesson = class10_lesson(slug, chapter_number) if class10_subject(slug) else class9_lesson(slug, chapter_number)
     if lesson is None or lesson["subject_slug"] != slug:
         return redirect(f"/subjects/{slug}")
     seen, stages = set(), []

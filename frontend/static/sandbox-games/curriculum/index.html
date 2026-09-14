@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Curriculum Concept Lab</title>
+<style>
+:root{color-scheme:dark;--ink:#e5e7eb;--muted:#9ca3af;--panel:#111827;--line:#374151;--accent:#34d399;--warm:#fbbf24}*{box-sizing:border-box}body{margin:0;background:#07111f;color:var(--ink);font:16px/1.5 system-ui,sans-serif}main{max-width:980px;margin:auto;padding:28px 18px 48px}h1,h2,p{margin-top:0}.eyebrow{color:var(--accent);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.intro{display:flex;gap:20px;justify-content:space-between;align-items:end;border-bottom:1px solid var(--line);padding-bottom:22px}.intro p{color:var(--muted);max-width:620px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}.tabs button,.run{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:10px 14px;cursor:pointer}.tabs button.active,.run{background:var(--accent);border-color:var(--accent);color:#052e24;font-weight:700}.lab{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}.control{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;margin:16px 0}.control input{width:100%}.value{color:var(--warm);font-weight:700;text-align:right}.result{min-height:150px;background:#06101c;border:1px solid var(--line);border-radius:8px;padding:14px;white-space:pre-wrap}.hint{color:var(--muted);font-size:14px}.hidden{display:none}@media(max-width:700px){.intro,.lab{display:block}.intro h1{margin-bottom:8px}.panel{margin-bottom:14px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="intro"><div><div class="eyebrow">LearnCraft offline software</div><h1>Curriculum Concept Lab</h1><p>Small deterministic models for science and social science. Change an input, run the model, and record what the result means.</p></div><div class="hint">No network. No account. Local only.</div></div>
+  <nav class="tabs" aria-label="Simulation models">
+    <button class="active" data-model="matter">Matter</button><button data-model="ecosystem">Ecosystem</button><button data-model="population">Population</button><button data-model="resources">Resources</button>
+  </nav>
+  <section class="lab">
+    <div class="panel"><h2 id="modelTitle">Matter and temperature</h2><p class="hint" id="modelPrompt">Model evaporation as temperature changes. This is a teaching model, not a laboratory prediction.</p>
+      <div class="control"><label for="inputRange" id="inputLabel">Temperature (C)</label><input id="inputRange" type="range" min="0" max="100" value="40"><span class="value" id="inputValue">40</span></div>
+      <button class="run" id="run" type="button">Run model</button>
+      <div class="result" id="result" aria-live="polite">Ready. Set an input and run the model.</div>
+    </div>
+    <aside class="panel"><h2>Observe</h2><p class="hint">Before you run:</p><ul><li>Predict the direction of change.</li><li>Change one input at a time.</li><li>Write one limitation in Notes.</li></ul><p class="hint">Your last result is saved in this browser.</p></aside>
+  </section>
+</main>
+<script>
+(function(){
+  var models={
+    matter:{title:'Matter and temperature',prompt:'Model evaporation as temperature changes. This is a teaching model, not a laboratory prediction.',label:'Temperature (C)',min:0,max:100,value:40,run:function(v){return 'Temperature: '+v+' C\\nRelative evaporation: '+Math.round(v*0.85)+'%\\nObservation: higher temperature increases the modelled rate.';}},
+    ecosystem:{title:'Food-chain balance',prompt:'Explore how a simple food chain responds when plant energy changes.',label:'Plant energy',min:10,max:100,value:60,run:function(v){var herb=Math.round(v*.55),pred=Math.round(herb*.28);return 'Plant energy: '+v+' units\\nHerbivores supported: '+herb+'\\nPredators supported: '+pred+'\\nObservation: energy decreases at each trophic level.';}},
+    population:{title:'Population change',prompt:'Compare a simple population model with different growth pressures.',label:'Growth pressure',min:-10,max:20,value:5,run:function(v){var start=100,after=Math.round(start*(1+v/100));return 'Starting population: '+start+'\\nGrowth pressure: '+v+'%\\nNext period: '+after+'\\nObservation: growth rate changes the slope, not just the final value.';}},
+    resources:{title:'Resource balance',prompt:'See how use and replenishment affect a renewable resource.',label:'Use per period',min:5,max:40,value:20,run:function(v){var stock=Math.max(0,100+15-v*4);return 'Starting stock: 100 units\\nUse per period: '+v+' units\\nReplenishment: 15 units\\nNext stock: '+stock+' units\\nObservation: use above replenishment reduces the stock.';}}
+  };
+  var current='matter', range=document.getElementById('inputRange'), value=document.getElementById('inputValue'), result=document.getElementById('result');
+  function select(name){current=name;var m=models[name];document.getElementById('modelTitle').textContent=m.title;document.getElementById('modelPrompt').textContent=m.prompt;document.getElementById('inputLabel').textContent=m.label;range.min=m.min;range.max=m.max;range.value=m.value;value.textContent=m.value;result.textContent='Ready. Set an input and run the model.';document.querySelectorAll('.tabs button').forEach(function(b){b.classList.toggle('active',b.dataset.model===name);});}
+  range.addEventListener('input',function(){value.textContent=range.value;});
+  document.getElementById('run').addEventListener('click',function(){var text=models[current].run(Number(range.value));result.textContent=text;localStorage.setItem('learncraft_concept_lab_last',JSON.stringify({model:current,input:range.value,result:text}));});
+  document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){select(b.dataset.model);});});
+  try{var saved=JSON.parse(localStorage.getItem('learncraft_concept_lab_last'));if(saved&&models[saved.model]){select(saved.model);range.value=saved.input;value.textContent=saved.input;result.textContent=saved.result;}}catch(e){}
+})();
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ from app.database.connection import get_connection
 
 ROOT = Path(__file__).resolve().parents[2]
 CURRICULUM_DIR = ROOT / "data" / "curriculum"
+FEATURES_DIR = ROOT.parent / "Features"
 ACADEMIC_YEAR = "2026-27"
 BOARD = "CBSE"
 CLASS_LEVEL = "Class X"
@@ -19,6 +20,104 @@ VALID_QUESTION_TYPES = {"MCQ", "MULTIPLE_CORRECT", "ASSERTION_REASON", "FILL_BLA
 def _read_json(path: Path) -> dict:
     with path.open(encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def _read_feature(filename: str) -> dict:
+    path = FEATURES_DIR / filename
+    if not path.exists():
+        return {"subjects": []}
+    return _read_json(path)
+
+
+def load_feature_simulations() -> list[dict]:
+    """Load the portable offline simulation catalog owned by Features."""
+    return _read_feature("simulations_catalog.json").get("simulations", [])
+
+
+def simulations_for_subject(subject_slug: str) -> list[dict]:
+    return [item for item in load_feature_simulations() if subject_slug in item.get("subjects", [])]
+
+
+def simulation_covers_chapter(simulation: dict, subject_slug: str, chapter_number: int) -> bool:
+    chapter_maps = simulation.get("chapter_maps", {})
+    mapped = chapter_maps.get(subject_slug, simulation.get("chapters", []))
+    return mapped == "all" or chapter_number in mapped
+
+
+def class9_subject(slug: str) -> dict | None:
+    for subject in _read_feature("class9_curriculum.json").get("subjects", []):
+        if subject.get("slug") == slug:
+            return subject
+    return None
+
+
+def list_class9_subjects() -> list[dict]:
+    return _read_feature("class9_curriculum.json").get("subjects", [])
+
+
+def class10_subject(slug: str) -> dict | None:
+    for subject in _read_feature("class10_curriculum.json").get("subjects", []):
+        if subject.get("slug") == slug:
+            return subject
+    return None
+
+
+def list_class10_subjects() -> list[dict]:
+    return _read_feature("class10_curriculum.json").get("subjects", [])
+
+
+def class9_lesson(subject_slug: str, chapter_number: int) -> dict | None:
+    subject = class9_subject(subject_slug)
+    if not subject:
+        return None
+    chapter = next((item for item in subject["chapters"] if item["number"] == chapter_number), None)
+    if not chapter:
+        return None
+    lesson_id = f"{subject_slug}-ch{chapter_number}-overview"
+    return {
+        "lesson_id": lesson_id,
+        "subject_slug": subject_slug,
+        "subject_name": subject["name"],
+        "chapter_label": f"Chapter {chapter_number} · {chapter['title']}",
+        "title": f"{chapter['title']} · Core concepts",
+        "summary": chapter["summary"],
+        "objective": f"Explain the key ideas in {chapter['title']} and apply them to a familiar example.",
+        "est": "20 min",
+        "blocks": [
+            {"stage": "CONCEPT", "type": "heading", "text": chapter["title"]},
+            {"stage": "EXPLAIN", "type": "text", "text": chapter["summary"]},
+            {"stage": "PRACTICE", "type": "example", "text": "Write one example, diagram or calculation from this chapter in your own words."},
+            {"stage": "REFLECT", "type": "summary", "text": "Check the chapter notes and attempt the concept-check question before moving on."}
+        ],
+        "next_label": "Next chapter"
+    }
+
+
+def class10_lesson(subject_slug: str, chapter_number: int) -> dict | None:
+    subject = class10_subject(subject_slug)
+    if not subject:
+        return None
+    chapter = next((item for item in subject["chapters"] if item["number"] == chapter_number), None)
+    if not chapter:
+        return None
+    lesson_id = f"{subject_slug}-ch{chapter_number}-overview"
+    return {
+        "lesson_id": lesson_id,
+        "subject_slug": subject_slug,
+        "subject_name": subject["name"],
+        "chapter_label": f"Chapter {chapter_number} · {chapter['title']}",
+        "title": f"{chapter['title']} · Core concepts",
+        "summary": chapter["summary"],
+        "objective": f"Explain the key ideas in {chapter['title']} and apply them to a familiar example.",
+        "est": "20 min",
+        "blocks": [
+            {"stage": "CONCEPT", "type": "heading", "text": chapter["title"]},
+            {"stage": "EXPLAIN", "type": "text", "text": chapter["summary"]},
+            {"stage": "PRACTICE", "type": "example", "text": "Write one example, diagram or calculation from this chapter in your own words."},
+            {"stage": "REFLECT", "type": "summary", "text": "Check the chapter notes and attempt the concept-check question before moving on."}
+        ],
+        "next_label": "Next chapter"
+    }
 
 
 def load_packages() -> list[dict]:

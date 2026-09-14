@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Offline coding adventure with beginner JavaScript challenges.">
+  <title>Coding Adventure · LearnCraft</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="back-link" href="/sandbox">← LearnCraft Sandbox</a>
+    <div class="brand">💻 Coding Adventure</div>
+    <span class="offline-pill">100% Offline</span>
+  </header>
+
+  <main class="container">
+    <section class="hero card">
+      <p class="eyebrow">Computer Science · Beginner</p>
+      <h1>Code your way through the adventure</h1>
+      <p>Choose a mission, edit the JavaScript, and run it against a deterministic checker. Nothing is sent to a server.</p>
+      <div class="profile-strip">
+        <span>⭐ XP <b id="xp">0</b></span>
+        <span>🏆 Level <b id="level">1</b></span>
+        <span>✅ Solved <b id="solved">0</b></span>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <aside class="card missions" aria-labelledby="missions-title">
+        <h2 id="missions-title">Choose a mission</h2>
+        <div id="missionList" class="mission-list"></div>
+        <button id="resetProgress" class="link-button" type="button">Erase saved progress</button>
+      </aside>
+
+      <section class="card editor-card" aria-labelledby="missionTitle">
+        <div class="editor-heading">
+          <div>
+            <p class="eyebrow" id="missionTag">Mission 1</p>
+            <h2 id="missionTitle">The greeting robot</h2>
+            <p id="missionPrompt" class="muted"></p>
+          </div>
+          <button id="hintBtn" class="secondary-button" type="button">💡 Hint</button>
+        </div>
+        <div class="goal"><strong>Goal:</strong> <span id="missionGoal"></span></div>
+        <label class="code-label" for="codeInput">Your JavaScript</label>
+        <textarea id="codeInput" spellcheck="false" aria-describedby="editorHelp"></textarea>
+        <p id="editorHelp" class="editor-help">Use plain JavaScript. Your code is checked locally and is never uploaded.</p>
+        <div class="editor-actions">
+          <button id="runBtn" class="primary-button" type="button">▶ Run code</button>
+          <button id="resetCode" class="secondary-button" type="button">↺ Reset code</button>
+        </div>
+        <div id="output" class="output neutral" role="status" aria-live="polite">Run your code to test the mission.</div>
+        <div id="hint" class="hint hidden"></div>
+      </section>
+    </div>
+
+    <section class="card concepts">
+      <h2>What you are practising</h2>
+      <div class="concept-grid">
+        <div><span>📦</span><strong>Variables</strong><small>Store useful values and reuse them.</small></div>
+        <div><span>🔀</span><strong>Conditions</strong><small>Make decisions with if and else.</small></div>
+        <div><span>🔁</span><strong>Loops</strong><small>Repeat a task without repeating yourself.</small></div>
+      </div>
+    </section>
+  </main>
+  <script src="js/game.js"></script>
+</body>
+</html>

@@ -17,7 +17,13 @@ const APP_ASSETS = [
   '/static/sandbox-games/physics/js/games.js',
   '/static/sandbox-games/physics/js/physics.js',
   '/static/sandbox-games/physics/js/simulations.js',
-  '/static/sandbox-games/physics/js/storage.js'
+  '/static/sandbox-games/physics/js/storage.js',
+  '/static/sandbox-games/circuits/index.html',
+  '/static/sandbox-games/circuits/css/style.css',
+  '/static/sandbox-games/circuits/js/circuit.js',
+  '/static/sandbox-games/coding/index.html',
+  '/static/sandbox-games/coding/css/style.css',
+  '/static/sandbox-games/coding/js/game.js'
 ];
 
 self.addEventListener('install', function (event) {

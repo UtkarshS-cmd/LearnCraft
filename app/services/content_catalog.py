@@ -311,6 +311,21 @@ def subject_detail(slug: str) -> dict | None:
     return {"subject": dict(subject), "chapters": [dict(row) for row in chapters]}
 
 
+def _lesson_blocks(content_blocks: list[dict]) -> list[dict]:
+    """Adapt compact curriculum blocks to the lesson player's block schema."""
+    stages = {"heading": "CONCEPT", "text": "EXPLAIN", "formula": "EXPLAIN", "example": "PRACTICE", "summary": "REFLECT"}
+    titles = {"heading": "Core concept", "text": "Key idea", "formula": "Formula", "example": "Worked example", "summary": "Summary"}
+    return [
+        {
+            "stage": block.get("stage", stages.get(block.get("type"), "EXPLAIN")),
+            "type": "text" if "body" not in block else block.get("type", "text"),
+            "title": block.get("title", titles.get(block.get("type"), "Lesson note")),
+            "body": block.get("body", block.get("text", "")),
+        }
+        for block in content_blocks
+    ]
+
+
 def get_lesson(lesson_id: str) -> dict | None:
     connection = get_connection()
     row = connection.execute(
@@ -326,7 +341,7 @@ def get_lesson(lesson_id: str) -> dict | None:
     if not row:
         return None
     payload = dict(row)
-    payload["blocks"] = json.loads(payload.pop("content_blocks_json"))
+    payload["blocks"] = _lesson_blocks(json.loads(payload.pop("content_blocks_json")))
     payload["objective"] = json.loads(payload.pop("learning_objectives_json"))[0]
     payload["est"] = f"{payload.pop('estimated_minutes')} min"
     payload["chapter_label"] = f"Chapter · {payload.pop('chapter_title')}"

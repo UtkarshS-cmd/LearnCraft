@@ -9,6 +9,28 @@
   <div class="sandbox-loop"><span class="loop-done">CHOOSE</span><span>→</span><span>EXPLORE</span><span>→</span><span>REFLECT</span></div>
 </div>
 
+<section class="sandbox-provider-shell" style="margin-bottom:24px">
+  <div class="sandbox-provider-toolbar">
+    <div>
+      <div class="h2">Bundled offline simulations</div>
+      <p class="caption">100% offline interactive labs bundled with LearnCraft. Run anytime with zero internet connection.</p>
+    </div>
+    <span class="badge ok">100% Offline Ready</span>
+  </div>
+  <div class="sandbox-provider-grid" role="list" aria-label="Bundled offline simulations">
+    <article class="sandbox-provider-card" role="listitem" data-provider-card>
+      <div class="sandbox-provider-icon">🧮</div>
+      <div class="sandbox-provider-copy"><span class="badge ok">Mathematics · 100% Offline</span><div class="h3">Math Adventure Lab</div><p>Arithmetic missions, number operations, geometry, and timed streak challenges. Auto-saves locally.</p></div>
+      <button class="btn btn-primary btn-sm sandbox-launch" type="button" data-provider="Math Adventure Lab" data-url="/static/sandbox-games/math/index.html" data-bundled="true">Run in LearnCraft</button>
+    </article>
+    <article class="sandbox-provider-card" role="listitem" data-provider-card>
+      <div class="sandbox-provider-icon">⚛️</div>
+      <div class="sandbox-provider-copy"><span class="badge ok">Physics · 100% Offline</span><div class="h3">Physics Adventure Lab</div><p>Newton's Laws, inertia experiments, friction, and F = ma interactive simulations. Auto-saves locally.</p></div>
+      <button class="btn btn-primary btn-sm sandbox-launch" type="button" data-provider="Physics Adventure Lab" data-url="/static/sandbox-games/physics/index.html" data-bundled="true">Run in LearnCraft</button>
+    </article>
+  </div>
+</section>
+
 <section class="sandbox-provider-shell">
   <div class="sandbox-provider-toolbar">
     <div>
@@ -113,11 +135,16 @@
     var online = navigator.onLine;
     var badge = document.getElementById('sandboxConnectivity');
     var note = document.getElementById('sandboxOfflineNote');
-    badge.textContent = online ? 'Online providers ready' : 'Offline mode';
-    badge.className = 'badge ' + (online ? 'ok' : 'warn');
-    note.hidden = online;
+    if (badge) {
+      badge.textContent = online ? 'Online providers ready' : 'Offline mode';
+      badge.className = 'badge ' + (online ? 'ok' : 'warn');
+    }
+    if (note) {
+      note.hidden = online;
+    }
     var runtime = document.getElementById('sandboxRuntime');
-    if (runtime && !online && !runtime.hidden) {
+    var isBundled = runtime && runtime.dataset.bundled === 'true';
+    if (runtime && !online && !runtime.hidden && !isBundled) {
       document.getElementById('sandboxRuntimeFrame').src = 'about:blank';
       document.getElementById('sandboxRuntimeFrame').hidden = true;
       document.getElementById('sandboxRuntimeFallback').hidden = true;
@@ -127,14 +154,21 @@
       button.disabled = !online;
       button.title = online ? 'Run the official provider inside LearnCraft' : 'Connect to the internet to run this provider';
     });
+    document.querySelectorAll('[data-bundled]').forEach(function (button) {
+      button.disabled = false;
+      button.title = 'Run the bundled offline simulation inside LearnCraft';
+    });
   }
+
   document.querySelectorAll('[data-provider]').forEach(function (button) {
     button.addEventListener('click', function () {
-      if (!navigator.onLine) return;
+      var isBundled = button.hasAttribute('data-bundled');
+      if (!isBundled && !navigator.onLine) return;
       var runtime = document.getElementById('sandboxRuntime');
       var frame = document.getElementById('sandboxRuntimeFrame');
       var fallback = document.getElementById('sandboxRuntimeFallback');
       var fallbackText = document.getElementById('sandboxRuntimeFallbackText');
+      runtime.dataset.bundled = isBundled ? 'true' : 'false';
       document.getElementById('sandboxRuntimeTitle').textContent = button.dataset.provider;
       document.getElementById('sandboxRuntimeExternal').href = button.dataset.url;
       document.getElementById('sandboxRuntimeOffline').hidden = true;
@@ -144,16 +178,24 @@
       runtime.hidden = false;
       runtime.scrollIntoView({behavior: 'smooth', block: 'start'});
       frame.onload = function () {
-        fallback.hidden = false;
-        fallbackText.textContent = 'If the provider blocks embedding in this browser, use the official link below. The LearnCraft window remains open.';
+        if (!isBundled) {
+          fallback.hidden = false;
+          fallbackText.textContent = 'If the provider blocks embedding in this browser, use the official link below. The LearnCraft window remains open.';
+        } else {
+          fallback.hidden = true;
+        }
       };
     });
   });
+
   document.getElementById('closeSandboxRuntime').addEventListener('click', function () {
+    var runtime = document.getElementById('sandboxRuntime');
     var frame = document.getElementById('sandboxRuntimeFrame');
     frame.src = 'about:blank';
-    document.getElementById('sandboxRuntime').hidden = true;
+    runtime.hidden = true;
+    runtime.dataset.bundled = 'false';
   });
+
   window.addEventListener('online', updateProviderAvailability);
   window.addEventListener('offline', updateProviderAvailability);
   document.addEventListener('DOMContentLoaded', updateProviderAvailability);

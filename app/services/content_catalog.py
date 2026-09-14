@@ -16,6 +16,82 @@ CLASS_LEVEL = "Class X"
 VALID_DIFFICULTIES = {"FOUNDATION", "EASY", "MEDIUM", "HARD", "BOARD_LEVEL", "CHALLENGE"}
 VALID_QUESTION_TYPES = {"MCQ", "MULTIPLE_CORRECT", "ASSERTION_REASON", "FILL_BLANK", "TRUE_FALSE", "SHORT_ANSWER", "LONG_ANSWER", "NUMERICAL", "CASE_BASED", "DIAGRAM_BASED"}
 
+# The lesson player progresses through an ordered set of stages. Curriculum
+# content blocks do not carry a stage, so we assign one based on the block type.
+STAGE_CYCLE = ["CONCEPT", "EXPLAIN", "INTERACT", "EXPERIMENT", "PRACTICE", "REFLECT", "APPLY"]
+
+STAGE_FOR_TYPE = {
+    "heading": "CONCEPT",
+    "preview": "CONCEPT",
+    "definition": "CONCEPT",
+    "text": "CONCEPT",
+    "example": "EXPLAIN",
+    "formula": "EXPLAIN",
+    "visual": "EXPLAIN",
+    "video": "EXPLAIN",
+    "procedure": "INTERACT",
+    "steps": "INTERACT",
+    "interactive": "INTERACT",
+    "simulation": "EXPERIMENT",
+    "experiment": "EXPERIMENT",
+    "lab": "EXPERIMENT",
+    "check": "PRACTICE",
+    "question": "PRACTICE",
+    "practice": "PRACTICE",
+    "summary": "REFLECT",
+    "key_points": "REFLECT",
+    "reflect": "REFLECT",
+    "apply": "APPLY",
+    "task": "APPLY",
+}
+
+DEFAULT_BLOCK_TITLES = {
+    "text": "Read this",
+    "example": "Worked example",
+    "summary": "Key takeaway",
+    "heading": "Focus point",
+    "formula": "Formula to remember",
+    "definition": "Definition",
+    "procedure": "Step-by-step",
+    "steps": "Steps",
+    "question": "Question",
+}
+
+
+def normalize_lesson_blocks(raw_blocks) -> list[dict]:
+    """Convert curriculum content blocks into the lesson-player schema.
+
+    The curriculum packages store content as ``{"type": ..., "text": ...}``
+    without any player metadata. This maps them onto the schema the lesson
+    page expects (``type``, ``stage``, ``title``, ``body``) so every block
+    renders and the progress rail/buttons keep working.
+    """
+    normalized: list[dict] = []
+    used_stages = set()
+    for raw in raw_blocks or []:
+        block = dict(raw)
+        btype = str(block.get("type") or "text").lower()
+        text = block.get("text") or block.get("body") or block.get("content") or ""
+
+        stage = str(block.get("stage") or STAGE_FOR_TYPE.get(btype) or "").upper()
+        if not stage or stage not in STAGE_CYCLE:
+            stage = next((s for s in STAGE_CYCLE if s not in used_stages), "CONCEPT")
+        used_stages.add(stage)
+        block["stage"] = stage
+
+        # Rewrite curriculum-only block types onto player-supported types.
+        if btype in ("example", "summary", "heading", "formula", "definition", "procedure", "steps", "question"):
+            block["type"] = "text"
+            btype = "text"
+
+        if block.get("body") is None:
+            block["body"] = text
+        if not block.get("title"):
+            block["title"] = raw.get("title") or DEFAULT_BLOCK_TITLES.get(btype) or btype.replace("_", " ").title()
+
+        normalized.append(block)
+    return normalized
+
 
 def _read_json(path: Path) -> dict:
     with path.open(encoding="utf-8") as handle:
@@ -311,21 +387,6 @@ def subject_detail(slug: str) -> dict | None:
     return {"subject": dict(subject), "chapters": [dict(row) for row in chapters]}
 
 
-def _lesson_blocks(content_blocks: list[dict]) -> list[dict]:
-    """Adapt compact curriculum blocks to the lesson player's block schema."""
-    stages = {"heading": "CONCEPT", "text": "EXPLAIN", "formula": "EXPLAIN", "example": "PRACTICE", "summary": "REFLECT"}
-    titles = {"heading": "Core concept", "text": "Key idea", "formula": "Formula", "example": "Worked example", "summary": "Summary"}
-    return [
-        {
-            "stage": block.get("stage", stages.get(block.get("type"), "EXPLAIN")),
-            "type": "text" if "body" not in block else block.get("type", "text"),
-            "title": block.get("title", titles.get(block.get("type"), "Lesson note")),
-            "body": block.get("body", block.get("text", "")),
-        }
-        for block in content_blocks
-    ]
-
-
 def get_lesson(lesson_id: str) -> dict | None:
     connection = get_connection()
     row = connection.execute(
@@ -341,12 +402,46 @@ def get_lesson(lesson_id: str) -> dict | None:
     if not row:
         return None
     payload = dict(row)
-    payload["blocks"] = _lesson_blocks(json.loads(payload.pop("content_blocks_json")))
-    payload["objective"] = json.loads(payload.pop("learning_objectives_json"))[0]
+    payload["blocks"] = normalize_lesson_blocks(json.loads(payload.pop("content_blocks_json")))
+    objectives = json.loads(payload.pop("learning_objectives_json"))
+    payload["objective"] = objectives[0] if objectives else "Continue learning"
     payload["est"] = f"{payload.pop('estimated_minutes')} min"
     payload["chapter_label"] = f"Chapter · {payload.pop('chapter_title')}"
     payload["next_label"] = "Next lesson"
+    payload["id"] = payload.get("lesson_id")
     return payload
+
+
+def list_subject_lessons(subject_slug: str) -> list[dict]:
+    """Return every lesson of a subject, ordered by chapter number."""
+    connection = get_connection()
+    rows = connection.execute(
+        """SELECT l.lesson_id, l.title, l.slug, l.summary, l.estimated_minutes, l.difficulty,
+        c.chapter_id, c.chapter_number, c.title AS chapter_title
+        FROM academic_lessons l JOIN academic_topics t ON t.topic_id = l.topic_id
+        JOIN academic_chapters c ON c.chapter_id = t.chapter_id
+        JOIN academic_books b ON b.book_id = c.book_id
+        JOIN academic_subjects s ON s.subject_id = b.subject_id
+        WHERE s.slug = ? ORDER BY c.chapter_number, t.topic_id, l.lesson_id""",
+        (subject_slug,),
+    ).fetchall()
+    connection.close()
+    return [dict(row) for row in rows]
+
+
+def list_subject_questions(subject_slug: str) -> list[dict]:
+    """Return every question of a subject, ordered by chapter number."""
+    connection = get_connection()
+    rows = connection.execute(
+        """SELECT q.question_id, q.prompt, q.question_type, q.difficulty, q.marks,
+        c.chapter_id, c.chapter_number, c.title AS chapter_title
+        FROM academic_questions q JOIN academic_subjects s ON s.subject_id = q.subject_id
+        JOIN academic_chapters c ON c.chapter_id = q.chapter_id
+        WHERE s.slug = ? ORDER BY c.chapter_number, q.question_id""",
+        (subject_slug,),
+    ).fetchall()
+    connection.close()
+    return [dict(row) for row in rows]
 
 
 def first_lesson_for_chapter(chapter_id: str) -> dict | None:

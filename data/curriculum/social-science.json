@@ -31,6 +31,43 @@
           "questions": [
             {"question_id": "cbse-x-2026-27-sst-q-nation-001", "difficulty": "EASY", "question_type": "MCQ", "marks": 1, "skill": "Recall", "prompt": "Which flag became a symbol of revolutionary France?", "answer": "The tricolour", "explanation": "The blue-white-red tricolour replaced the royal standard.", "options": [{"option_id": "a", "text": "The tricolour", "is_correct": true}, {"option_id": "b", "text": "The Union Jack", "is_correct": false}, {"option_id": "c", "text": "The red flag of Russia", "is_correct": false}]}
           ]
+        },
+        {
+          "topic_id": "cbse-x-2026-27-sst-nationalism-making",
+          "slug": "making-of-nationalism",
+          "title": "The Making of Nationalism in Europe",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-sst-nationalism-making",
+              "slug": "making-of-nationalism",
+              "title": "The Making of Nationalism in Europe",
+              "summary": "Trace how language, culture and romanticism shaped national identity after 1848.",
+              "learning_objectives": ["Explain the role of romanticism", "Compare civic and ethnic nationalism"],
+              "prerequisites": ["The French Revolution and the Idea of the Nation"],
+              "estimated_minutes": 20,
+              "difficulty": "MEDIUM",
+              "content_blocks": [
+                {"type": "text", "text": "After Napoleon, nationalism grew through shared language, folklore and culture. Romantics argued that true national spirit lived in the people's customs rather than in dynasties."},
+                {"type": "example", "text": "Germany: folk songs, fairy tales and the German language became tools of national awakening before unification in 1871."},
+                {"type": "summary", "text": "Culture and language can unite scattered peoples into one imagined nation."}
+              ],
+              "concepts": [{"concept_id": "cbse-x-2026-27-sst-concept-romanticism", "title": "Romanticism", "explanation": "A cultural movement that glorified folk tradition and emotion as the basis of national identity."}],
+              "source_reference": "NCERT India and the Contemporary World-II, Chapter 1, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {
+              "question_id": "cbse-x-2026-27-sst-q-making-001",
+              "difficulty": "MEDIUM",
+              "question_type": "SHORT_ANSWER",
+              "marks": 2,
+              "skill": "Analyze",
+              "prompt": "How did romanticism help in the making of nationalism in Europe?",
+              "answer": "Romantic artists and writers used folk culture, language and emotion to evoke a shared national spirit.",
+              "explanation": "By glorifying vernacular cultures, romanticism gave scattered communities a common identity.",
+              "options": []
+            }
+          ]
         }
       ]
     },
@@ -63,6 +100,43 @@
           ],
           "questions": [
             {"question_id": "cbse-x-2026-27-sst-q-resources-001", "difficulty": "MEDIUM", "question_type": "SHORT_ANSWER", "marks": 2, "skill": "Analyze", "prompt": "Why is resource planning essential in India?", "answer": "Resources are unevenly distributed and need judicious use for sustainable development.", "explanation": "Planning addresses unequal distribution, technology and conservation.", "options": []}
+          ]
+        },
+        {
+          "topic_id": "cbse-x-2026-27-sst-resources-land-use",
+          "slug": "land-use-and-planning",
+          "title": "Land Use and Resource Planning",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-sst-resources-land-use",
+              "slug": "land-use-and-planning",
+              "title": "Land Use and Resource Planning in India",
+              "summary": "Analyse land-use patterns and the steps of national resource planning.",
+              "learning_objectives": ["Explain the four steps of resource planning", "Read a basic land-use distribution"],
+              "prerequisites": ["How Resources Are Classified"],
+              "estimated_minutes": 15,
+              "difficulty": "EASY",
+              "content_blocks": [
+                {"type": "text", "text": "Land use in India is dominated by net sown area, forests and land not available for cultivation. Resource planning works in four steps: identifying, inventorying, matching with development, and evolving a plan."},
+                {"type": "example", "text": "Wasteland can be reclaimed with appropriate technology, while forest land is conserved to check degradation."},
+                {"type": "summary", "text": "Planning matches available resources to development needs without exhausting them."}
+              ],
+              "concepts": [{"concept_id": "cbse-x-2026-27-sst-concept-land-use", "title": "Land use", "explanation": "How the total land area of a country is distributed among its different uses."}],
+              "source_reference": "NCERT Contemporary India-II, Chapter 1, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {
+              "question_id": "cbse-x-2026-27-sst-q-land-001",
+              "difficulty": "MEDIUM",
+              "question_type": "SHORT_ANSWER",
+              "marks": 2,
+              "skill": "Apply",
+              "prompt": "Suggest two ways to reduce the degradation of land under forest cover in India.",
+              "answer": "Regulated grazing, afforestation, and community-based forest management reduce degradation.",
+              "explanation": "Sustainable use keeps forest land productive for future generations.",
+              "options": []
+            }
           ]
         }
       ]

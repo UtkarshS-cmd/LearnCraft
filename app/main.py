@@ -39,6 +39,8 @@ from app.services.content_catalog import (
     get_lesson as get_academic_lesson,
     first_lesson_for_chapter as get_academic_lesson_for_chapter,
     import_packages,
+    list_subject_lessons as get_subject_lessons,
+    list_subject_questions as get_subject_questions,
     list_subjects as list_academic_subjects,
     list_class9_subjects,
     list_class10_subjects,
@@ -147,12 +149,15 @@ def require_auth(view):
     def wrapped(*args, **kwargs):
         user = current_user()
         if not user:
+            if request.path.startswith("/api/"):
+                return json_error("Authentication required.", "UNAUTHORIZED", 401)
             next_url = request.path
             if request.query_string:
                 next_url = f"{next_url}?{request.query_string.decode()}"
             return redirect(f"/login?{urlencode({'next': next_url})}")
         return view(*args, **kwargs)
     return wrapped
+
 
 
 def require_roles(*roles):
@@ -344,6 +349,16 @@ def logout_page():
 @app.route("/offline")
 def offline_page():
     return render_template("offline.html", title="Offline mode")
+
+
+@app.route("/service-worker.js")
+def service_worker():
+    sw_path = ROOT_DIR / "frontend" / "static" / "js" / "service-worker.js"
+    content = sw_path.read_text(encoding="utf-8")
+    response = app.response_class(content, mimetype="application/javascript; charset=utf-8")
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
+
 
 
 @app.post("/auth/register")
@@ -579,30 +594,89 @@ def subject_detail(slug):
     if catalog:
         subject = catalog["subject"]
         chapters = catalog["chapters"]
+        user = current_user()
+        lessons = get_subject_lessons(slug)
+        questions = get_subject_questions(slug)
+
+        lessons_by_chapter = {}
+        for lesson in lessons:
+            lessons_by_chapter.setdefault(lesson["chapter_id"], []).append(lesson)
+
+        question_counts = {}
+        for q in questions:
+            question_counts[q["chapter_id"]] = question_counts.get(q["chapter_id"], 0) + 1
+
+        chapter_entries, first = [], None
+        for index, chapter in enumerate(chapters):
+            chapter_lessons = lessons_by_chapter.get(chapter["chapter_id"], [])
+            first_lesson = (chapter_lessons[0] if chapter_lessons
+                            else get_academic_lesson_for_chapter(chapter["chapter_id"]))
+            first_url = f"/subjects/{slug}/lessons/{first_lesson['lesson_id']}" if first_lesson else None
+            if first is None and first_url:
+                first = first_lesson["lesson_id"]
+            total_minutes = sum((l.get("estimated_minutes") or 0) for l in chapter_lessons)
+            chapter_entries.append({
+                "n": chapter["chapter_number"],
+                "title": chapter["title"],
+                "summary": chapter["summary"],
+                "est": f"{total_minutes} min of lessons" if total_minutes else "Lessons available",
+                "lessons_count": len(chapter_lessons),
+                "status": "In Progress" if (index == 0 and chapter_lessons) else (
+                    "Available" if chapter_lessons else "Locked"),
+                "progress": 0,
+                "is_current": index == 0 and bool(chapter_lessons),
+                "is_next": index == 1 and bool(chapter_lessons),
+                "prereq": "",
+                "sim": "Sandbox", "practical": "Lab notes", "quiz": "Test",
+                "start_url": first_url or "/sandbox",
+                "lessons": [{
+                    "lesson_id": l["lesson_id"],
+                    "title": l["title"],
+                    "summary": l.get("summary", ""),
+                    "url": f"/subjects/{slug}/lessons/{l['lesson_id']}",
+                    "est": f"{l['estimated_minutes']} min",
+                } for l in chapter_lessons],
+            })
+
+        practice = [{
+            "title": f"{c['title']} — Question bank",
+            "meta": f"{question_counts.get(c['chapter_id'], 0)} questions · MCQs + short answer",
+            "status": "Available" if question_counts.get(c["chapter_id"]) else "Locked",
+        } for c in chapters]
+        sims = [f"{c['title']} simulator" for c in chapters]
+        practicals = [{
+            "title": f"{c['title']} lab",
+            "env": "Local lab workspace", "steps": f"{len(lessons_by_chapter.get(c['chapter_id'], []))} activities",
+            "due": "Self-paced", "status": "Available" if lessons_by_chapter.get(c["chapter_id"]) else "Locked",
+        } for c in chapters]
+        assignments = [{
+            "title": f"{c['title']} — NCERT exercises",
+            "meta": f"{question_counts.get(c['chapter_id'], 0)} questions",
+            "due": "Self-paced", "status": "Available" if question_counts.get(c["chapter_id"]) else "Locked",
+        } for c in chapters]
+        notes = [{"title": f"Revision — {c['title']}", "body": c["summary"],
+                  "updated": "Seeded · offline"} for c in chapters]
+
+        continue_lesson = next((entry for entry in chapter_entries if entry["lessons_count"]), chapter_entries[0] if chapter_entries else None)
+        continue_url = continue_lesson["start_url"] if continue_lesson and continue_lesson["start_url"] else f"/subjects/{slug}"
+        continue_title = (continue_lesson["lessons"][0]["title"] if continue_lesson and continue_lesson["lessons"] else "Your next lesson")
+
         page = {
             "slug": slug, "name": subject["name"], "description": subject["description"],
-            "icon": "◈", "color": "#4F46E5", "bg": "#EEF2FF", "tags": ["CBSE Class X", subject["academic_year"]],
-            "progress": 0, "continue": {"href": f"/subjects/{slug}", "cta": "Start learning",
-            "chapter_label": "Choose a chapter", "lesson": "Your next lesson", "time_left": "Offline-ready", "progress": 0},
-            "units": [{"id": "content", "title": "Chapters", "desc": "Learn the concepts in curriculum order.",
-                       "chapters": [{"n": c["chapter_number"], "title": c["title"], "est": "Lessons available",
-                                     "lessons_count": 1, "status": "Available", "progress": 0,
-                                     "is_current": False, "is_next": c["chapter_number"] == chapters[0]["chapter_number"],
-                                     "prereq": "", "sim": "Practice", "practical": "Notes", "quiz": "Test"} for c in chapters]}],
-            "practice": [{"title": "Chapter review", "meta": "Use the lesson notes and check your understanding.", "status": "Available"}],
-            "sims": ["Concept practice"], "practicals": [{"title": "Guided chapter activity", "env": "Offline workspace", "steps": "3 steps", "due": "Self paced", "status": "Available"}],
-            "assignments": [{"title": f"{subject['name']} chapter review", "meta": "Lesson recap and recall", "due": "Self paced", "status": "Not started"}],
-            "notes": [{"title": f"{subject['name']} study notes", "body": "Save key definitions, examples and questions while you learn.", "updated": "Ready"}]
+            "icon": "◈", "color": "#4F46E5", "bg": "#EEF2FF",
+            "tags": ["CBSE Class X", subject["academic_year"]],
+            "progress": 0,
+            "continue": {
+                "href": continue_url, "cta": "Start learning",
+                "chapter_label": (f"Chapter {continue_lesson['n']} · {continue_lesson['title']}"
+                                  if continue_lesson else "Choose a chapter"),
+                "lesson": continue_title, "time_left": "Offline-ready", "progress": 0,
+            },
+            "units": [{"id": "u2", "title": "Chapters", "desc": "Learn the concepts in curriculum order.",
+                       "chapters": chapter_entries}],
+            "practice": practice, "sims": sims, "practicals": practicals,
+            "assignments": assignments, "notes": notes,
         }
-        first = None
-        for chapter in chapters:
-            detail = get_academic_lesson_for_chapter(chapter["chapter_id"])
-            if detail:
-                first = detail["lesson_id"]
-                page["continue"]["href"] = f"/subjects/{slug}/lessons/{first}"
-                page["continue"]["chapter_label"] = f"Chapter {chapter['chapter_number']} · {chapter['title']}"
-                page["continue"]["lesson"] = detail["title"]
-                break
         return render_template("pages/subject_detail.html", title=subject["name"], page=page,
                                first_lesson=first, **shell_ctx("subjects", current_user()))
     page = M.get_subject_page(slug)
@@ -625,13 +699,18 @@ def lesson_player(slug, lesson_id):
         if lesson_id.startswith(prefix) and lesson_id.endswith("-overview"):
             chapter_number = int(lesson_id[len(prefix):-len("-overview")])
             lesson = class10_lesson(slug, chapter_number) if class10_subject(slug) else class9_lesson(slug, chapter_number)
-    if lesson is None or lesson["subject_slug"] != slug:
+    if lesson is None or lesson.get("subject_slug") != slug:
         return redirect(f"/subjects/{slug}")
+    # Collect the ordered stage rail. Blocks are normalized upstream, but stay
+    # defensive so a legacy/hand-edited lesson can never crash the player.
     seen, stages = set(), []
-    for block in lesson["blocks"]:
-        if block["stage"] not in seen:
-            seen.add(block["stage"])
-            stages.append(block["stage"])
+    for block in lesson.get("blocks") or []:
+        stage = str(block.get("stage") or "CONCEPT").upper()
+        if stage not in seen:
+            seen.add(stage)
+            stages.append(stage)
+    if not stages:
+        stages = ["CONCEPT"]
     return render_template("pages/lesson.html", title=lesson["title"],
                            lesson=lesson, stages=stages, **shell_ctx("subjects", current_user()))
 
@@ -797,20 +876,43 @@ def api_system_status():
 @app.post("/api/local/state")
 @require_auth
 def api_local_state():
+    user = current_user()
     payload = request.get_json(silent=True) or {}
     kind = payload.get("kind", "progress")
     record_id = str(payload.get("record_id", "")).strip()
     record = payload.get("payload", {})
-    status = payload.get("status", "local")
+    if not isinstance(record, dict):
+        record = {"raw_payload": record}
+    status = str(payload.get("status", "local"))
+    client_event_id = str(payload.get("event_id") or payload.get("client_event_id") or "").strip() or None
+
     if not record_id or kind not in {"progress", "submission"}:
         return json_error("A valid local record is required.", "VALIDATION_ERROR", 400)
+
+    if "user_id" not in record and user:
+        record["user_id"] = user["id"]
+
+    event_id = None
     if kind == "submission":
         save_local_submission(record_id, record_id, record, status=status)
     else:
         save_local_progress(record_id, record, sync_status="local")
+        if record_id.startswith("lesson:") and user:
+            lesson_id = record_id.split(":", 1)[1]
+            visited = record.get("visited", [])
+            percent = int(payload.get("percent_complete") or record.get("percent") or (len(visited) * 20 if isinstance(visited, list) else 0))
+            prog_status = "completed" if (status in {"completed", "SUBMITTED", "submitted"} or record.get("done")) else ("practiced" if status == "practiced" else "in_progress")
+            save_learning_progress(user["id"], lesson_id=lesson_id, status=prog_status, percent_complete=min(100, max(0, percent)))
+
     if status in {"SUBMITTED", "submitted", "completed"} or kind == "submission":
-        enqueue_sync_event(kind, record_id, "upsert", record)
-    return json_success("Local state saved.", "LOCAL_STATE_SAVED", {"storage": "sqlite", "sync_status": "queued" if kind == "submission" else "local"}, 200)
+        event_id = enqueue_sync_event(kind, record_id, "upsert", record, event_id=client_event_id)
+
+    return json_success("Local state saved.", "LOCAL_STATE_SAVED", {
+        "storage": "sqlite",
+        "sync_status": "queued" if (kind == "submission" or status in {"SUBMITTED", "submitted", "completed"}) else "local",
+        "event_id": event_id or client_event_id,
+    }, 200)
+
 
 
 @app.get("/api/content/catalog")

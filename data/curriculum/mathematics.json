@@ -31,6 +31,43 @@
           "questions": [
             {"question_id": "cbse-x-2026-27-maths-q-hcf-001", "difficulty": "EASY", "question_type": "MCQ", "marks": 1, "skill": "Apply", "prompt": "The HCF of 36 and 84 is:", "answer": "12", "explanation": "36 = 2²×3² and 84 = 2²×3×7, so the common product is 12.", "options": [{"option_id": "a", "text": "6", "is_correct": false}, {"option_id": "b", "text": "12", "is_correct": true}, {"option_id": "c", "text": "18", "is_correct": false}]}
           ]
+        },
+        {
+          "topic_id": "cbse-x-2026-27-maths-real-numbers-irrationals",
+          "slug": "rational-and-irrational-numbers",
+          "title": "Rational and Irrational Numbers",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-maths-real-numbers-irrationality",
+              "slug": "proving-irrationality",
+              "title": "Proving a Number Is Irrational",
+              "summary": "Use proof-by-contradiction to show that √2 is irrational.",
+              "learning_objectives": ["Explain what an irrational number is", "Prove √2 is irrational by contradiction"],
+              "prerequisites": ["Prime factorisation"],
+              "estimated_minutes": 20,
+              "difficulty": "MEDIUM",
+              "content_blocks": [
+                {"type": "text", "text": "A rational number can be written as p/q in lowest terms. Irrational numbers cannot — so to prove √2 is irrational we assume it is rational and show that the assumption forces a contradiction."},
+                {"type": "example", "text": "Assume √2 = p/q with p and q coprime. Squaring gives 2q² = p², so p is even. Writing p = 2k gives q² = 2k², making q even too — both even contradicts them being coprime."},
+                {"type": "summary", "text": "Whenever assuming rationality leads to a contradiction, the number must be irrational."}
+              ],
+              "concepts": [{"concept_id": "cbse-x-2026-27-maths-concept-irrationality", "title": "Irrationality by contradiction", "explanation": "Assume the number is rational, derive a contradiction, conclude it is irrational."}],
+              "source_reference": "NCERT Mathematics Class X, Chapter 1, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {
+              "question_id": "cbse-x-2026-27-maths-q-rational-001",
+              "difficulty": "MEDIUM",
+              "question_type": "SHORT_ANSWER",
+              "marks": 2,
+              "skill": "Reason",
+              "prompt": "Is the product of two irrational numbers always irrational? Give one counterexample.",
+              "answer": "No — for example √2 × √2 = 2, which is rational.",
+              "explanation": "The product of two irrationals can be rational (√2·√2) or irrational (√2·√3).",
+              "options": []
+            }
+          ]
         }
       ]
     },
@@ -63,6 +100,43 @@
           ],
           "questions": [
             {"question_id": "cbse-x-2026-27-maths-q-zeroes-001", "difficulty": "MEDIUM", "question_type": "SHORT_ANSWER", "marks": 2, "skill": "Understand", "prompt": "Find the zeroes of x² − 5x + 6.", "answer": "2 and 3", "explanation": "Factorise as (x−2)(x−3)=0.", "options": []}
+          ]
+        },
+        {
+          "topic_id": "cbse-x-2026-27-maths-polynomials-coefficients",
+          "slug": "zeroes-and-coefficients",
+          "title": "Zeroes and Coefficients",
+          "lessons": [
+            {
+              "lesson_id": "cbse-x-2026-27-maths-polynomials-zeroes-coefficients",
+              "slug": "zeroes-coefficient-relationship",
+              "title": "Zeroes and the Coefficients of a Polynomial",
+              "summary": "Link the sum and product of zeroes to the coefficients of a quadratic.",
+              "learning_objectives": ["State the sum-of-zeroes formula", "Use coefficients to check factorisation"],
+              "prerequisites": ["Reading zeroes from a graph"],
+              "estimated_minutes": 15,
+              "difficulty": "EASY",
+              "content_blocks": [
+                {"type": "text", "text": "For ax² + bx + c with zeroes α and β: α + β = −b/a and αβ = c/a. This holds for every quadratic whose zeroes are real."},
+                {"type": "example", "text": "For x² − 5x + 6, α + β = 5 and αβ = 6, so the zeroes are the factor pair 2 and 3."},
+                {"type": "summary", "text": "Coefficient relationships let you check factorisation quickly and rebuild a polynomial from its zeroes."}
+              ],
+              "concepts": [{"concept_id": "cbse-x-2026-27-maths-concept-coefficient-relationship", "title": "Zero-coefficient relationship", "explanation": "Sum and product of zeroes are fixed by the coefficients."}],
+              "source_reference": "NCERT Mathematics Class X, Chapter 2, https://ncert.nic.in/textbook.php"
+            }
+          ],
+          "questions": [
+            {
+              "question_id": "cbse-x-2026-27-maths-q-coeff-001",
+              "difficulty": "EASY",
+              "question_type": "MCQ",
+              "marks": 1,
+              "skill": "Apply",
+              "prompt": "For the polynomial x² − 7x + 10, the sum of the zeroes is:",
+              "answer": "7",
+              "explanation": "α + β = −(−7)/1 = 7.",
+              "options": [{"option_id": "a", "text": "7", "is_correct": true}, {"option_id": "b", "text": "10", "is_correct": false}, {"option_id": "c", "text": "-7", "is_correct": false}]
+            }
           ]
         }
       ]

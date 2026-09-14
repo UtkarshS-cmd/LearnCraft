@@ -693,17 +693,25 @@ def save_local_submission(submission_id, activity_id, payload, status="draft", s
     connection.close()
 
 
-def enqueue_sync_event(entity_type, entity_id, operation, payload):
-    event_id = str(uuid.uuid4())
+def enqueue_sync_event(entity_type, entity_id, operation, payload, event_id=None):
+    if not event_id:
+        event_id = str(uuid.uuid4())
     connection = get_connection()
     connection.execute(
         """INSERT INTO sync_queue (event_id, entity_type, entity_id, operation, payload_json)
-        VALUES (?, ?, ?, ?, ?)""",
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(event_id) DO UPDATE SET
+            entity_type=excluded.entity_type,
+            entity_id=excluded.entity_id,
+            operation=excluded.operation,
+            payload_json=excluded.payload_json,
+            status=excluded.status""",
         (event_id, entity_type, entity_id, operation, json.dumps(payload)),
     )
     connection.commit()
     connection.close()
     return event_id
+
 
 
 def get_offline_status():

@@ -1,5 +1,5 @@
 # LearnCraft
-
+LearnCraft
 LearnCraft is an offline-first learning platform with a Flask backend, SQLite persistence, and server-rendered templates.
 
 ## Quick start

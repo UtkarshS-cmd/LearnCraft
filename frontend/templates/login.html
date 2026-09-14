@@ -125,27 +125,51 @@
       font-weight: 700;
     }
     .tab-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
       background: var(--surface-2);
       border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 5px;
-      margin-bottom: 20px;
+      border-radius: 18px;
+      padding: 6px;
+      margin-bottom: 8px;
+    }
+    .tab-row-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 2px 6px;
     }
     .tab {
-      width: 50%;
-      border: none;
+      border: 1px solid transparent;
       background: transparent;
-      border-radius: 999px;
-      padding: 10px 12px;
+      border-radius: 12px;
+      padding: 10px 8px;
       font-weight: 700;
+      font-size: 0.83rem;
+      white-space: nowrap;
       color: var(--muted);
       cursor: pointer;
     }
     .tab.active {
       background: var(--ink);
       color: #fff;
+    }
+    .tab.teacher-tab.active {
+      background: linear-gradient(135deg, #1e1b4b, #4f46e5 60%, #06b6d4);
+      color: #fff;
+    }
+    .teacher-hint {
+      border: 1px dashed rgba(79, 70, 229, 0.45);
+      background: rgba(79, 70, 229, 0.07);
+      color: #3730a3;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 16px;
     }
     form {
       display: grid;
@@ -236,12 +260,25 @@
           </div>
         </div>
 
-        <div class="tab-row" aria-label="Authentication mode">
+        <p class="tab-row-label">Choose your portal</p>
+        <div class="tab-row" role="tablist" aria-label="Portal">
+          <button type="button" class="tab active" id="portalStudentTab">Student</button>
+          <button type="button" class="tab teacher-tab" id="portalTeacherTab">Teacher</button>
+        </div>
+
+        <p class="tab-row-label">Authentication mode</p>
+        <div class="tab-row" role="tablist" aria-label="Authentication mode">
           <button type="button" class="tab active" id="loginTab">Login</button>
           <button type="button" class="tab" id="registerTab">Create account</button>
+          <button type="button" class="tab teacher-tab" id="teacherLoginTab" hidden>Teacher login</button>
+          <button type="button" class="tab teacher-tab" id="teacherRegisterTab" hidden>Create teacher account</button>
+        </div>
+        <div class="teacher-hint" id="teacherHint" hidden>
+          Teacher portal: login or create a teacher account to open a fresh Teacher Control Center dashboard.
         </div>
 
         <form id="loginForm" class="form-toggle active" method="post" action="/auth/login">
+          <input type="hidden" id="loginPortal" name="portal" value="student" />
           <div class="field">
             <label for="loginEmail">Email</label>
             <input id="loginEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
@@ -251,7 +288,7 @@
             <input id="loginPassword" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required />
           </div>
           <button type="button" class="link-button" id="forgotPasswordLink" hidden>Forgot password?</button>
-          <button type="submit" class="btn btn-primary btn-lg">Sign in</button>
+          <button type="submit" class="btn btn-primary btn-lg" id="loginSubmit">Sign in</button>
         </form>
 
         <form id="forgotPasswordForm" class="form-toggle" hidden>
@@ -276,27 +313,34 @@
         </form>
 
         <form id="registerForm" class="form-toggle" method="post" action="/auth/register">
+          <input type="hidden" id="accountType" name="account_type" value="student" />
           <div class="field">
             <label for="registerName">Full name</label>
             <input id="registerName" name="name" type="text" placeholder="Aisha Khan" autocomplete="name" required />
           </div>
           <div class="field">
             <label for="registerEmail">Email</label>
-            <input id="registerEmail" name="email" type="email" value="{{ 'sharmautkarsh924@gmail.com' if title == 'Create account' else '' }}" placeholder="you@example.com" autocomplete="email" required />
+            <input id="registerEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
           </div>
           <div class="field">
             <label for="registerPassword">Password</label>
-            <input id="registerPassword" name="password" type="password" placeholder="Minimum 8 chars" autocomplete="new-password" required />
+            <input id="registerPassword" name="password" type="password" placeholder="e.g. Teach@2026" autocomplete="new-password" required />
+            <small class="muted" style="text-align:left;margin:0">Min 8 chars with uppercase, lowercase, number &amp; symbol. Use a new email — old student email par teacher account nahi banega.</small>
           </div>
-          <button type="submit" class="btn btn-primary btn-lg">Create account</button>
+          <p class="muted" id="registerStatus" style="margin:0;min-height:1.2em"></p>
+          <button type="submit" class="btn btn-primary btn-lg" id="registerSubmit">Create account</button>
         </form>
 
-        <p class="muted">
+        <p class="muted" id="authSwapHint">
           {% if title == 'Create account' %}
             Already have an account? <a href="/login">Sign in</a>
           {% else %}
             New here? <a href="/register">Create an account</a>
           {% endif %}
+        </p>
+        <p class="muted" style="margin-top:6px">
+          New teacher? <a href="/login?portal=teacher&amp;mode=teacher-register" id="teacherOnboardLink">Create teacher account</a>
+          · <a href="/login?portal=teacher&amp;mode=teacher">Teacher login</a>
         </p>
       </div>
     </section>
@@ -304,27 +348,75 @@
 
   <script>
     const loginTab = document.getElementById('loginTab');
+    const teacherLoginTab = document.getElementById('teacherLoginTab');
     const registerTab = document.getElementById('registerTab');
+    const teacherRegisterTab = document.getElementById('teacherRegisterTab');
+    const portalStudentTab = document.getElementById('portalStudentTab');
+    const portalTeacherTab = document.getElementById('portalTeacherTab');
+    const teacherHint = document.getElementById('teacherHint');
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     const forgotPasswordForm = document.getElementById('forgotPasswordForm');
     const resetConfirmFields = document.getElementById('resetConfirmFields');
     const resetStatus = document.getElementById('resetStatus');
-    const next = new URLSearchParams(window.location.search).get('next') || '/home';
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next') || '/home';
+    let portal = 'student';
+    let authMode = 'login';
+    let loginPortal = 'student';
 
-    function setMode(mode) {
-      const isLogin = mode === 'login';
+    function renderAuth() {
+      const isLogin = authMode === 'login';
+      const isTeacher = portal === 'teacher';
+      portalStudentTab.classList.toggle('active', !isTeacher);
+      portalTeacherTab.classList.toggle('active', isTeacher);
       loginTab.classList.toggle('active', isLogin);
       registerTab.classList.toggle('active', !isLogin);
+      // Keep legacy hidden tabs in sync for compatibility.
+      teacherLoginTab.classList.toggle('active', isTeacher && isLogin);
+      teacherRegisterTab.classList.toggle('active', isTeacher && !isLogin);
       loginForm.classList.toggle('active', isLogin);
       registerForm.classList.toggle('active', !isLogin);
+      loginPortal = portal;
+      document.getElementById('loginPortal').value = portal;
+      document.getElementById('accountType').value = isTeacher ? 'teacher' : 'student';
+      document.getElementById('loginSubmit').textContent = isTeacher ? 'Open teacher dashboard' : 'Sign in';
+      document.getElementById('registerSubmit').textContent = isTeacher ? 'Create teacher account' : 'Create account';
+      document.querySelector('.brand-sub').textContent = isTeacher ? 'Teacher control center' : 'Student OS';
+      teacherHint.hidden = !isTeacher;
       forgotPasswordForm.hidden = true;
-      forgotPasswordLink.hidden = true;
+      forgotPasswordForm.classList.remove('active');
+      if (isLogin) loginForm.classList.add('active');
+      else registerForm.classList.add('active');
     }
 
-    loginTab.addEventListener('click', () => setMode('login'));
-    registerTab.addEventListener('click', () => setMode('register'));
+    // Legacy entry point: 'login' | 'teacher' | 'register' | 'teacher-register'
+    function setMode(mode) {
+      if (mode === 'teacher') { portal = 'teacher'; authMode = 'login'; }
+      else if (mode === 'teacher-register') { portal = 'teacher'; authMode = 'register'; }
+      else if (mode === 'register') { authMode = 'register'; }
+      else { authMode = 'login'; if (mode === 'login') portal = 'student'; }
+      renderAuth();
+    }
+
+    function setLoginPortal(nextPortal) {
+      portal = nextPortal === 'teacher' ? 'teacher' : 'student';
+      if (authMode !== 'login') authMode = 'login';
+      renderAuth();
+    }
+
+    function setPortal(nextPortal) {
+      portal = nextPortal === 'teacher' ? 'teacher' : 'student';
+      renderAuth();
+    }
+
+    portalStudentTab.addEventListener('click', () => setPortal('student'));
+    portalTeacherTab.addEventListener('click', () => setPortal('teacher'));
+    loginTab.addEventListener('click', () => { authMode = 'login'; renderAuth(); });
+    registerTab.addEventListener('click', () => { authMode = 'register'; renderAuth(); });
+    teacherLoginTab.addEventListener('click', () => setLoginPortal('teacher'));
+    teacherRegisterTab.addEventListener('click', () => setMode('teacher-register'));
 
     async function submitJson(form, endpoint) {
       const formData = new FormData(form);
@@ -340,13 +432,19 @@
         error.code = result.code;
         throw error;
       }
-      window.location.href = next;
+      return result;
     }
 
     loginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
-        await submitJson(loginForm, '/auth/login');
+        const result = await submitJson(loginForm, '/auth/login');
+        const role = result.user && result.user.role;
+        if (loginPortal === 'teacher' || ['TEACHER', 'ADMIN'].includes(role)) {
+          window.location.href = '/teacher';
+        } else {
+          window.location.href = next;
+        }
       } catch (error) {
         alert(error.message);
         forgotPasswordLink.hidden = error.code !== 'INVALID_CREDENTIALS';
@@ -389,17 +487,33 @@
 
     registerForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+      const status = document.getElementById('registerStatus');
+      status.textContent = 'Creating account...';
       try {
-        await submitJson(registerForm, '/auth/register');
+        const result = await submitJson(registerForm, '/auth/register');
+        status.textContent = 'Account created. Opening dashboard...';
+        // New teacher onboarding -> fresh teacher dashboard; new student -> student home.
+        window.location.href = result.user && ['TEACHER', 'ADMIN'].includes(result.user.role) ? '/teacher?fresh=1' : next;
       } catch (error) {
+        status.textContent = error.message;
         alert(error.message);
       }
     });
 
     const titleName = '{{ title or "Login" }}';
-    if (titleName && titleName.toLowerCase().includes('create')) {
-      setMode('register');
+    const initialMode = (params.get('mode') || '').toLowerCase();
+    const initialPortal = (params.get('portal') || '').toLowerCase();
+    if (initialPortal === 'teacher') portal = 'teacher';
+    if (initialMode === 'teacher-register' || initialMode === 'teacher_register') {
+      portal = 'teacher'; authMode = 'register';
+    } else if (initialMode === 'teacher' || initialMode === 'teacher-login') {
+      portal = 'teacher'; authMode = 'login';
+    } else if (initialMode === 'register') {
+      authMode = 'register';
+    } else if (titleName && titleName.toLowerCase().includes('create')) {
+      authMode = 'register';
     }
+    renderAuth();
   </script>
 </body>
 </html>

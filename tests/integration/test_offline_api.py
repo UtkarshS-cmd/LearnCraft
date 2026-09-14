@@ -153,7 +153,7 @@ class LearnCraftOfflineApiTests(unittest.TestCase):
         self.assertEqual(sw_res.status_code, 200)
         self.assertEqual(sw_res.headers.get("Content-Type"), "application/javascript; charset=utf-8")
         self.assertEqual(sw_res.headers.get("Service-Worker-Allowed"), "/")
-        self.assertIn(b"learncraft-shell-v2", sw_res.data)
+        self.assertIn(b"learncraft-shell-v3", sw_res.data)
 
         # Offline fallback page
         offline_res = self.client.get("/offline")

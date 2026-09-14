@@ -35,11 +35,19 @@ class TeacherControlTests(unittest.TestCase):
             "subject_slug": "science", "status": "in_progress", "percent_complete": 30,
         })
         self.assertEqual(progress.status_code, 200)
+        game_event = self.student_client.post("/api/v1/events", json={
+            "event_type": "GAME_COMPLETED", "activity_type": "game", "activity_id": "newton-lab-force",
+            "subject_slug": "science", "detail": "Newton Lab completed", "score": 80,
+        })
+        self.assertEqual(game_event.status_code, 201)
         dashboard = self.teacher_client.get("/api/v1/teacher/dashboard")
         self.assertEqual(dashboard.status_code, 200)
         payload = dashboard.get_json()
         self.assertEqual(payload["kpis"]["total_students"], 1)
         self.assertTrue(any(event["user_id"] == self.student["id"] for event in payload["events"]))
+        profile = self.teacher_client.get(f"/api/v1/teacher/students/{self.student['id']}")
+        self.assertEqual(profile.status_code, 200)
+        self.assertEqual(profile.get_json()["summary"]["games_completed"], 1)
 
         locked = self.teacher_client.post("/api/v1/teacher/access", json={
             "scope_type": "CLASS", "scope_id": class_id,
@@ -67,6 +75,13 @@ class TeacherControlTests(unittest.TestCase):
         analytics = self.teacher_client.get("/api/v1/teacher/analytics")
         self.assertEqual(analytics.status_code, 200)
         self.assertIn("leaderboard", analytics.get_json())
+        report = self.teacher_client.get("/api/v1/teacher/reports/activity.csv")
+        self.assertEqual(report.status_code, 200)
+        self.assertIn("GAME_COMPLETED", report.get_data(as_text=True))
+        notifications = self.teacher_client.get("/api/v1/teacher/notifications")
+        self.assertTrue(notifications.get_json()["items"])
+        marked = self.teacher_client.post("/api/v1/teacher/notifications/read", json={})
+        self.assertEqual(marked.status_code, 200)
 
         assigned_only = self.teacher_client.post("/api/v1/teacher/access", json={
             "scope_type": "CLASS", "scope_id": class_id,
@@ -78,6 +93,74 @@ class TeacherControlTests(unittest.TestCase):
     def test_student_cannot_access_teacher_api_or_page(self):
         self.assertEqual(self.student_client.get("/teacher").status_code, 403)
         self.assertEqual(self.student_client.get("/api/v1/teacher/dashboard").status_code, 403)
+        self.assertEqual(self.student_client.delete("/api/v1/teacher/classes/1").status_code, 403)
+
+    def test_remove_member_and_delete_class(self):
+        created = self.teacher_client.post("/api/v1/teacher/classes", json={"name": "Temp Class"})
+        class_id = created.get_json()["item"]["id"]
+        self.assertEqual(
+            self.teacher_client.post(f"/api/v1/teacher/classes/{class_id}/students", json={"student_id": self.student["id"]}).status_code,
+            201,
+        )
+        self.assertEqual(self.teacher_client.get("/api/v1/teacher/dashboard").get_json()["kpis"]["total_students"], 1)
+
+        removed = self.teacher_client.delete(f"/api/v1/teacher/classes/{class_id}/students/{self.student['id']}")
+        self.assertEqual(removed.status_code, 200)
+        self.assertEqual(self.teacher_client.get("/api/v1/teacher/dashboard").get_json()["kpis"]["total_students"], 0)
+        self.assertEqual(
+            self.teacher_client.delete(f"/api/v1/teacher/classes/{class_id}/students/{self.student['id']}").status_code, 404
+        )
+
+        deleted = self.teacher_client.delete(f"/api/v1/teacher/classes/{class_id}")
+        self.assertEqual(deleted.status_code, 200)
+        self.assertEqual(self.teacher_client.get("/api/v1/teacher/classes").get_json()["items"], [])
+        self.assertEqual(self.teacher_client.delete(f"/api/v1/teacher/classes/{class_id}").status_code, 404)
+        self.assertEqual(self.student_client.delete(f"/api/v1/teacher/classes/{class_id}").status_code, 403)
+
+    def test_cross_device_assignment_reaches_student_home_and_lists(self):
+        created = self.teacher_client.post("/api/v1/teacher/classes", json={"name": "Class X B"})
+        self.assertEqual(created.status_code, 201)
+        class_id = created.get_json()["item"]["id"]
+        added = self.teacher_client.post(f"/api/v1/teacher/classes/{class_id}/students", json={"student_id": self.student["id"]})
+        self.assertEqual(added.status_code, 201)
+
+        assignment = self.teacher_client.post("/api/v1/teacher/assignments", json={
+            "class_id": class_id, "resource_type": "lesson", "resource_id": "photo-lab",
+            "title": "XDevice Homework", "due_at": "2099-06-01 10:00:00",
+        })
+        self.assertEqual(assignment.status_code, 201)
+        announcement = self.teacher_client.post("/api/v1/teacher/announcements", json={
+            "class_id": class_id, "message": "XDevice notice for class."
+        })
+        self.assertEqual(announcement.status_code, 201)
+
+        sent = self.teacher_client.get("/api/v1/teacher/assignments")
+        self.assertEqual(sent.status_code, 200)
+        self.assertTrue(any(item["title"] == "XDevice Homework" for item in sent.get_json()["items"]))
+        sent_notes = self.teacher_client.get("/api/v1/teacher/announcements")
+        self.assertEqual(sent_notes.status_code, 200)
+        self.assertTrue(any(item["message"] == "XDevice notice for class." for item in sent_notes.get_json()["items"]))
+        self.assertEqual(self.student_client.get("/api/v1/teacher/assignments").status_code, 403)
+
+        home = self.student_client.get("/home")
+        self.assertEqual(home.status_code, 200)
+        self.assertIn("XDevice Homework", home.get_data(as_text=True))
+        self.assertIn("XDevice notice for class.", home.get_data(as_text=True))
+        self.assertIn('id="notifBell"', home.get_data(as_text=True))
+        self.assertIn('id="todayWorkGrid"', home.get_data(as_text=True))
+        self.assertIn('refreshTodayWork', home.get_data(as_text=True))
+
+        page = self.student_client.get("/assignments")
+        self.assertEqual(page.status_code, 200)
+        body = page.get_data(as_text=True)
+        self.assertIn("from-teacher", body)
+        self.assertIn("XDevice Homework", body)
+        self.assertIn('id="liveAssignList"', body)
+        self.assertIn('refreshFromTeacher', body)
+
+        preview = self.teacher_client.get("/subjects")
+        self.assertIn("Back to Teacher Control Center", preview.get_data(as_text=True))
+        self.assertNotIn('id="notifBell"', preview.get_data(as_text=True))
 
 
 if __name__ == "__main__":

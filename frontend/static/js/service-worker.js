@@ -1,4 +1,4 @@
-const CACHE_NAME = 'learncraft-shell-v2';
+const CACHE_NAME = 'learncraft-shell-v3';
 const APP_ASSETS = [
   '/offline',
   '/static/manifest.webmanifest',

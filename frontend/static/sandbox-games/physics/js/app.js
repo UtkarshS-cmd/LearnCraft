@@ -118,6 +118,9 @@ var APP = (function () {
     clearTimeout(t._h);
     t._h = setTimeout(function () { t.className = "toast"; }, 2200);
   }
+  function emitEvent(eventType, activityId, detail, score) {
+    try { fetch('/api/v1/events', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({event_type:eventType, activity_type:'game', activity_id:activityId, subject_slug:'science', detail:detail, score:score})}).catch(function(){}); } catch (e) {}
+  }
   function xpFloat(n) {
     if (RM) return;
     var l = $("floatLayer");
@@ -252,6 +255,6 @@ var APP = (function () {
     show: show, back: back, hud: hud, toast: toast,
     xpFloat: xpFloat, confetti: confetti, badgePop: badgePop,
     levelUp: levelUp, reward: reward, verdict: verdict,
-    renderBadges: renderBadges, renderBest: renderBest, init: init
+    renderBadges: renderBadges, renderBest: renderBest, emitEvent: emitEvent, init: init
   };
 })();

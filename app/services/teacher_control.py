@@ -43,6 +43,41 @@ def class_owned(teacher_id: int, class_id: int) -> bool:
     return bool(row)
 
 
+def remove_class_member(teacher_id: int, class_id: int, student_id: int) -> bool:
+    if not class_owned(teacher_id, class_id):
+        return False
+    connection = get_connection()
+    cursor = connection.execute(
+        "DELETE FROM class_members WHERE class_id = ? AND student_id = ?",
+        (int(class_id), int(student_id)),
+    )
+    connection.commit()
+    removed = cursor.rowcount > 0
+    connection.close()
+    return removed
+
+
+def delete_class(teacher_id: int, class_id: int) -> bool:
+    if not class_owned(teacher_id, class_id):
+        return False
+    connection = get_connection()
+    # FK cascades are not enforced (no PRAGMA foreign_keys=ON), so clean up explicitly.
+    # Already-sent assignments/announcements are kept for students, only ungrouped.
+    connection.execute("DELETE FROM class_members WHERE class_id = ?", (int(class_id),))
+    connection.execute(
+        "DELETE FROM access_rules WHERE scope_type = 'CLASS' AND scope_id = ?", (str(class_id),)
+    )
+    connection.execute("UPDATE teacher_assignments SET class_id = NULL WHERE class_id = ?", (int(class_id),))
+    connection.execute("UPDATE teacher_announcements SET class_id = NULL WHERE class_id = ?", (int(class_id),))
+    cursor = connection.execute(
+        "DELETE FROM teacher_classes WHERE id = ? AND teacher_id = ?", (int(class_id), int(teacher_id))
+    )
+    connection.commit()
+    deleted = cursor.rowcount > 0
+    connection.close()
+    return deleted
+
+
 def add_class_member(teacher_id: int, class_id: int, student_id: int) -> bool:
     if not class_owned(teacher_id, class_id):
         return False
@@ -273,6 +308,29 @@ def student_assignments(student_id: int) -> list[dict]:
     return _dicts(rows)
 
 
+def teacher_sent_assignments(teacher_id: int) -> list[dict]:
+    connection = get_connection()
+    rows = connection.execute(
+        "SELECT a.*, c.name AS class_name, "
+        "(SELECT COUNT(*) FROM assignment_targets t WHERE t.assignment_id = a.id) AS student_count "
+        "FROM teacher_assignments a LEFT JOIN teacher_classes c ON c.id = a.class_id "
+        "WHERE a.teacher_id = ? ORDER BY a.created_at DESC LIMIT 50", (int(teacher_id),)
+    ).fetchall()
+    connection.close()
+    return _dicts(rows)
+
+
+def teacher_sent_announcements(teacher_id: int) -> list[dict]:
+    connection = get_connection()
+    rows = connection.execute(
+        "SELECT a.*, c.name AS class_name FROM teacher_announcements a "
+        "LEFT JOIN teacher_classes c ON c.id = a.class_id "
+        "WHERE a.teacher_id = ? ORDER BY a.created_at DESC LIMIT 50", (int(teacher_id),)
+    ).fetchall()
+    connection.close()
+    return _dicts(rows)
+
+
 def create_announcement(teacher_id: int, class_id: int | None, message: str) -> dict:
     if class_id and not class_owned(teacher_id, class_id):
         raise PermissionError("Class is not owned by this teacher.")
@@ -292,3 +350,56 @@ def student_announcements(student_id: int) -> list[dict]:
     ).fetchall()
     connection.close()
     return _dicts(rows)
+
+
+def student_owned_by_teacher(teacher_id: int, student_id: int) -> bool:
+    connection = get_connection()
+    row = connection.execute(
+        "SELECT 1 FROM class_members cm JOIN teacher_classes c ON c.id=cm.class_id WHERE c.teacher_id=? AND cm.student_id=?",
+        (int(teacher_id), int(student_id)),
+    ).fetchone()
+    connection.close()
+    return bool(row)
+
+
+def student_profile(teacher_id: int, student_id: int) -> dict | None:
+    if not student_owned_by_teacher(teacher_id, student_id):
+        return None
+    connection = get_connection()
+    user = connection.execute("SELECT id, name, email, avatar, created_at FROM users WHERE id=? AND role='STUDENT'", (int(student_id),)).fetchone()
+    if not user:
+        connection.close()
+        return None
+    progress = _dicts(connection.execute("SELECT * FROM learning_progress WHERE user_id=? ORDER BY updated_at DESC", (int(student_id),)).fetchall())
+    events = _dicts(connection.execute("SELECT * FROM activity_events WHERE user_id=? ORDER BY created_at DESC LIMIT 100", (int(student_id),)).fetchall())
+    assignments = _dicts(connection.execute("SELECT a.* FROM teacher_assignments a JOIN assignment_targets t ON t.assignment_id=a.id WHERE t.student_id=?", (int(student_id),)).fetchall())
+    connection.close()
+    scores = [event["score"] for event in events if event.get("score") is not None]
+    return {"student": dict(user), "progress": progress, "events": events, "assignments": assignments,
+            "summary": {"lessons_completed": sum(row["status"] == "completed" for row in progress),
+                        "games_completed": sum(event["event_type"] == "GAME_COMPLETED" for event in events),
+                        "quiz_submissions": sum(event["event_type"] == "QUIZ_SUBMITTED" for event in events),
+                        "average_score": round(sum(scores) / len(scores), 1) if scores else None}}
+
+
+def mark_notifications_read(teacher_id: int, notification_id: int | None = None) -> None:
+    connection = get_connection()
+    if notification_id is None:
+        connection.execute("UPDATE teacher_notifications SET read_at=CURRENT_TIMESTAMP WHERE teacher_id=? AND read_at IS NULL", (int(teacher_id),))
+    else:
+        connection.execute("UPDATE teacher_notifications SET read_at=CURRENT_TIMESTAMP WHERE id=? AND teacher_id=?", (int(notification_id), int(teacher_id)))
+    connection.commit()
+    connection.close()
+
+
+def activity_report(teacher_id: int, student_id: int | None = None) -> list[dict]:
+    connection = get_connection()
+    params = [int(teacher_id)]
+    query = "SELECT e.created_at, u.name AS student_name, e.event_type, e.subject_slug, e.activity_type, e.activity_id, e.detail, e.score FROM activity_events e JOIN users u ON u.id=e.user_id JOIN class_members cm ON cm.student_id=e.user_id JOIN teacher_classes c ON c.id=cm.class_id WHERE c.teacher_id=?"
+    if student_id is not None:
+        query += " AND e.user_id=?"
+        params.append(int(student_id))
+    query += " GROUP BY e.id ORDER BY e.created_at DESC"
+    rows = _dicts(connection.execute(query, params).fetchall())
+    connection.close()
+    return rows

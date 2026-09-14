@@ -84,6 +84,7 @@ var GAMES = (function () {
     if (G1.round >= 3) {
       var xp = Math.min(75, Math.round(G1.total / 4));
       STORE.best("g1", G1.total);
+      APP.emitEvent("GAME_COMPLETED", "newton-lab-force", "Newton Lab Force Challenge completed", G1.total);
       APP.reward(xp, null);
       $("g1Info").className = "feedback good";
       $("g1Info").textContent = "🏁 Tournament over! Total: " + G1.total + "/300 (best saved!). Play again to beat it!";
@@ -124,6 +125,7 @@ var GAMES = (function () {
     ctx.fillText("m=2kg  μ=0.2  push=" + G1.T + "s", 8, 16);
   }
   function g1start() {
+    APP.emitEvent("GAME_STARTED", "newton-lab-force", "Newton Lab Force Challenge started");
     G1.round = 0; G1.total = 0; G1.scores = [];
     g1newRound(); g1score();
   }
@@ -235,6 +237,7 @@ var GAMES = (function () {
   }
   function g2end() {
     STORE.best("g2", G2.score * 20);
+    APP.emitEvent("GAME_COMPLETED", "newton-lab-inertia", "Newton Lab Inertia Detective completed", G2.score * 20);
     var xp = 15 + G2.score * 10;
     APP.reward(xp, G2.score >= 4 ? "detective" : null);
     $("g2Fb").className = "feedback good";
@@ -245,6 +248,7 @@ var GAMES = (function () {
     $("screen-g2").querySelector(".card").appendChild(b);
   }
   function g2start() {
+    APP.emitEvent("GAME_STARTED", "newton-lab-inertia", "Newton Lab Inertia Detective started");
     G2.order = CASES.map(function (c, i) { return { kind: c.kind, name: c.name, idx: i }; })
       .sort(function () { return Math.random() - 0.5; }).slice(0, 5);
     G2.round = 0; G2.score = 0;

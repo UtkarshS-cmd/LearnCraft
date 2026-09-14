@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request, session
+import csv
+import io
+from flask import Blueprint, Response, jsonify, request
 
 from app.services.teacher_control import (
     add_class_member,
@@ -9,11 +11,18 @@ from app.services.teacher_control import (
     create_class,
     dashboard_snapshot,
     analytics_snapshot,
+    activity_report,
     create_announcement,
     create_assignment,
+    delete_class,
     recent_notifications,
+    mark_notifications_read,
+    remove_class_member,
+    student_profile,
     set_access_rule,
     teacher_classes,
+    teacher_sent_assignments,
+    teacher_sent_announcements,
 )
 
 bp = Blueprint("teacher_v1", __name__, url_prefix="/api/v1/teacher")
@@ -68,6 +77,26 @@ def students(class_id):
     return jsonify({"success": True, "items": class_students(user_id, class_id)})
 
 
+@bp.delete("/classes/<int:class_id>")
+def delete_teacher_class(class_id):
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    if not delete_class(user_id, class_id):
+        return jsonify({"success": False, "message": "Class was not found.", "code": "NOT_FOUND"}), 404
+    return jsonify({"success": True, "message": "Class deleted. Sent work stays with students."})
+
+
+@bp.delete("/classes/<int:class_id>/students/<int:student_id>")
+def remove_student(class_id, student_id):
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    if not remove_class_member(user_id, class_id, student_id):
+        return jsonify({"success": False, "message": "Class or student was not found.", "code": "NOT_FOUND"}), 404
+    return jsonify({"success": True, "message": "Student removed from class."})
+
+
 @bp.post("/classes/<int:class_id>/students")
 def add_student(class_id):
     user_id = teacher_id()
@@ -108,6 +137,39 @@ def notifications():
     return jsonify({"success": True, "items": recent_notifications(user_id)})
 
 
+@bp.post("/notifications/read")
+def notification_read():
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    payload = request.get_json(silent=True) or {}
+    mark_notifications_read(user_id, payload.get("notification_id"))
+    return jsonify({"success": True})
+
+
+@bp.get("/students/<int:student_id>")
+def student_detail(student_id):
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    profile = student_profile(user_id, student_id)
+    return jsonify({"success": True, **profile}) if profile else forbidden()
+
+
+@bp.get("/reports/activity.csv")
+def activity_csv():
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    rows = activity_report(user_id, request.args.get("student_id", type=int))
+    output = io.StringIO()
+    fields = ["created_at", "student_name", "event_type", "subject_slug", "activity_type", "activity_id", "detail", "score"]
+    writer = csv.DictWriter(output, fieldnames=fields)
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(output.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=learncraft-activity.csv"})
+
+
 @bp.get("/analytics")
 def analytics():
     user_id = teacher_id()
@@ -125,6 +187,22 @@ def assignment():
         return jsonify({"success": True, "item": create_assignment(user_id, request.get_json(silent=True) or {})}), 201
     except PermissionError as exc:
         return jsonify({"success": False, "message": str(exc), "code": "FORBIDDEN"}), 403
+
+
+@bp.get("/assignments")
+def assignments_list():
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    return jsonify({"success": True, "items": teacher_sent_assignments(user_id)})
+
+
+@bp.get("/announcements")
+def announcements_list():
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    return jsonify({"success": True, "items": teacher_sent_announcements(user_id)})
 
 
 @bp.post("/announcements")

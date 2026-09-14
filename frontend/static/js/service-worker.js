@@ -10,6 +10,7 @@ const APP_ASSETS = [
   '/static/sandbox-games/math/index.html',
   '/static/sandbox-games/math/css/style.css',
   '/static/sandbox-games/math/js/game.js',
+  '/static/sandbox-games/curriculum/index.html',
   '/static/sandbox-games/physics/index.html',
   '/static/sandbox-games/physics/css/style.css',
   '/static/sandbox-games/physics/js/app.js',

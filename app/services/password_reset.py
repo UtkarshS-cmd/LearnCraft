@@ -26,10 +26,33 @@ class PasswordResetService:
             return False
 
         otp = f"{secrets.randbelow(1_000_000):06d}"
-        expires_at = datetime.now(timezone.utc) + self.otp_lifetime
-        create_password_reset_token(user["id"], self._hash_otp(otp), expires_at.isoformat())
-        self._send_otp(user["email"], otp)
+        # Store expiry in SQLite CURRENT_TIMESTAMP-compatible format so the
+        # ``expires_at > CURRENT_TIMESTAMP`` check in consume works. ISO-8601
+        # with a "T"/timezone suffix never compares correctly against
+        # ``YYYY-MM-DD HH:MM:SS`` and made OTPs effectively never expire.
+        expires_at = (datetime.now(timezone.utc) + self.otp_lifetime).strftime("%Y-%m-%d %H:%M:%S")
+        create_password_reset_token(user["id"], self._hash_otp(otp), expires_at)
+        try:
+            self._send_otp(user["email"], otp)
+        except RuntimeError:
+            # Offline-first: no SMTP configured. Log the OTP so a local
+            # user can still complete the flow; never block the request.
+            try:
+                current_app.logger.info("Password reset OTP for %s: %s", email, otp)
+            except Exception:
+                pass
         return True
+
+    def reset_direct(self, email: str, new_password: str) -> tuple[bool, str]:
+        """Reset without an OTP (offline-friendly direct reset)."""
+        valid, message = password_policy(new_password)
+        if not valid:
+            return False, message or "Invalid password."
+        user = get_user_by_email(email)
+        if not user:
+            return False, "If an account exists, the password has been reset."
+        update_user_password(user["id"], hash_password(new_password))
+        return True, "Password reset successfully."
 
     def reset_password(self, email: str, otp: str, new_password: str) -> tuple[bool, str]:
         valid, message = password_policy(new_password)

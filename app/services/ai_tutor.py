@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -20,6 +21,20 @@ from app.services.content_catalog import (
     list_class9_subjects,
     list_questions,
 )
+
+
+def strip_thinking(text: str) -> str:
+    """Remove reasoning-model think blocks (e.g. qwen3 ``<think>…</think>``).
+
+    Some local models emit their chain of thought before the final answer.
+    The browser should only ever see the answer itself.
+    """
+    if not text:
+        return text
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    # Unterminated block: drop everything from <think> to the end.
+    cleaned = re.sub(r"<think>.*$", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+    return cleaned.strip()
 
 
 @lru_cache(maxsize=1)
@@ -104,12 +119,50 @@ class AIProvider:
 
 
 class CloudProvider(AIProvider):
+    """Cloud chat-completion provider driven by whichever API key is present.
+
+    Supported keys (checked in order) — all use OpenAI-compatible endpoints:
+
+    - ``LEARNCRAFT_AI_CLOUD_URL`` + ``LEARNCRAFT_AI_CLOUD_KEY`` (custom)
+    - ``OPENAI_API_KEY``        -> api.openai.com
+    - ``GROQ_API_KEY``          -> api.groq.com
+    - ``GEMINI_API_KEY``        -> generativelanguage.googleapis.com (OpenAI-compat)
+    - ``OPENROUTER_API_KEY``    -> openrouter.ai
+    """
+
+    # key env var -> (default endpoint, default model)
+    PRESETS = {
+        "OPENAI_API_KEY": ("https://api.openai.com/v1/chat/completions", "gpt-4o-mini"),
+        "GROQ_API_KEY": ("https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile"),
+        "GEMINI_API_KEY": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.0-flash"),
+        "GOOGLE_API_KEY": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.0-flash"),
+        "OPENROUTER_API_KEY": ("https://openrouter.ai/api/v1/chat/completions", "openrouter/auto"),
+    }
+
     name = "online"
 
     def __init__(self):
-        self.url = os.environ.get("LEARNCRAFT_AI_CLOUD_URL", "").strip()
-        self.api_key = os.environ.get("LEARNCRAFT_AI_CLOUD_KEY", "").strip()
-        self.model = os.environ.get("LEARNCRAFT_AI_CLOUD_MODEL", "configured-model")
+        self.url = ""
+        self.api_key = ""
+        self.model = ""
+        self.label = ""
+        # Custom endpoint override wins, otherwise pick the first preset key.
+        custom_url = os.environ.get("LEARNCRAFT_AI_CLOUD_URL", "").strip()
+        custom_key = os.environ.get("LEARNCRAFT_AI_CLOUD_KEY", "").strip()
+        if custom_url and custom_key:
+            self.url = custom_url
+            self.api_key = custom_key
+            self.model = os.environ.get("LEARNCRAFT_AI_CLOUD_MODEL", "").strip() or "configured-model"
+            self.label = "custom"
+            return
+        for env_key, (endpoint, model) in self.PRESETS.items():
+            value = os.environ.get(env_key, "").strip()
+            if value:
+                self.url = endpoint
+                self.api_key = value
+                self.model = os.environ.get("LEARNCRAFT_AI_CLOUD_MODEL", "").strip() or model
+                self.label = env_key.removesuffix("_API_KEY").lower()
+                return
 
     def available(self) -> bool:
         return bool(self.url and self.api_key)
@@ -139,6 +192,49 @@ class CloudProvider(AIProvider):
         if not choices or not choices[0].get("message", {}).get("content"):
             raise RuntimeError("Online AI returned no answer.")
         return str(choices[0]["message"]["content"]).strip()
+
+
+_last_connectivity_check = 0.0
+_internet_available: bool | None = None
+
+
+def internet_available(max_age_seconds: int = 60) -> bool:
+    """Cheap cached connectivity probe used by AUTO mode.
+
+    A TCP connect to the cloud provider (or a public DNS fallback) answers
+    'is there internet' far more reliably than ``navigator.onLine`` style
+    guesses, and caching keeps it from stalling every request.
+    """
+    global _last_connectivity_check, _internet_available
+    import time
+
+    now = time.monotonic()
+    if _internet_available is not None and (now - _last_connectivity_check) < max_age_seconds:
+        return _internet_available
+
+    import socket
+
+    hosts: list[tuple[str, int]] = []
+    cloud = CloudProvider()
+    if cloud.available():
+        from urllib.parse import urlparse
+
+        parsed = urlparse(cloud.url)
+        if parsed.hostname:
+            hosts.append((parsed.hostname, parsed.port or 443))
+    hosts.append(("8.8.8.8", 53))
+
+    reachable = False
+    for host, port in hosts:
+        try:
+            with socket.create_connection((host, port), timeout=2):
+                reachable = True
+                break
+        except OSError:
+            continue
+    _internet_available = reachable
+    _last_connectivity_check = now
+    return reachable
 
 
 class LocalModelManager:
@@ -182,29 +278,204 @@ class LocalProvider(AIProvider):
         return self.manager.infer(messages, context)
 
 
+class OllamaProvider(AIProvider):
+    """Local LLM server (Ollama by default, LM Studio/llama.cpp compatible).
+
+    Auto-detected at request time: when a local model server is running the
+    tutor can answer ANY question fully offline, with no API key. Set
+    ``LEARNCRAFT_AI_LOCAL_URL`` to point at an OpenAI-compatible server
+    (e.g. http://localhost:1234/v1 for LM Studio); otherwise the Ollama
+    native API on localhost:11434 is probed.
+    """
+
+    name = "local-llm"
+
+    def __init__(self):
+        self.base_url = os.environ.get("LEARNCRAFT_AI_LOCAL_URL", "").strip().rstrip("/")
+        self.preferred_model = os.environ.get("LEARNCRAFT_AI_LOCAL_MODEL", "").strip()
+        self.timeout = int(os.environ.get("LEARNCRAFT_AI_LOCAL_TIMEOUT", "120"))
+        self._detected_model: str | None = None
+        self._last_good: str = ""
+        # model -> monotonic time it last failed; retried after a cooldown.
+        self._failed_models: dict[str, float] = {}
+        self._model_retry_ttl = int(os.environ.get("LEARNCRAFT_AI_LOCAL_MODEL_RETRY_TTL", "600"))
+        self._detect_failed_at: float = 0.0
+        self._detect_ttl = int(os.environ.get("LEARNCRAFT_AI_LOCAL_DETECT_TTL", "15"))
+
+    @staticmethod
+    def _usable(name: str) -> bool:
+        lowered = (name or "").lower()
+        return not any(tag in lowered for tag in ("embed", "bge", "nomic", "minilm", "guard", "rerank"))
+
+    def _candidates(self) -> list[str]:
+        """Ordered list of locally installed chat models worth trying.
+
+        The preferred/last-working model comes first; the remaining installed
+        models follow so a request can survive one model failing to load
+        (for example a 30B model that does not fit in memory).
+        """
+        try:
+            if self.base_url:
+                return [self.preferred_model or "local"]
+            with urlopen("http://localhost:11434/api/tags", timeout=2) as response:
+                models = json.loads(response.read().decode("utf-8")).get("models") or []
+            names = [m.get("name", "") for m in models if self._usable(m.get("name", ""))]
+        except (OSError, URLError, TimeoutError, ValueError):
+            return []
+        if not names:
+            return []
+        # Skip models that recently failed to load (e.g. OOM) until their
+        # retry cooldown expires.
+        now = time.monotonic()
+        self._failed_models = {m: t for m, t in self._failed_models.items()
+                               if now - t < self._model_retry_ttl}
+        healthy = [n for n in names if n not in self._failed_models]
+        if not healthy:
+            healthy = names  # everything failed recently; retry anyway
+        names = healthy
+        if self._last_good and self._last_good in names:
+            head = [self._last_good]
+        elif self.preferred_model:
+            stem = self.preferred_model.split(":")[0]
+            head = [n for n in names if n.split(":")[0] == stem]
+        else:
+            head = [names[0]]
+        ordered = head + [n for n in names if n not in head]
+        # Push very large models (typically >9 GB) to the back: they are the
+        # ones most likely to OOM and stall the request while Ollama loads them.
+        sizes = {m.get("name", ""): float(m.get("size") or 0) for m in models}
+        big = [n for n in ordered if sizes.get(n, 0) > 9_000_000_000]
+        return [n for n in ordered if n not in big] + big if big else ordered
+
+    def _detect(self) -> str:
+        if self._last_good:
+            return self._last_good
+        # Re-probe failed detections after a short cooldown so a model server
+        # started after the Flask process boots is still picked up.
+        if time.monotonic() - self._detect_failed_at < self._detect_ttl:
+            return ""
+        candidates = self._candidates()
+        model = candidates[0] if candidates else ""
+        if not model:
+            self._detect_failed_at = time.monotonic()
+        self._detected_model = model
+        return model
+
+    def available(self) -> bool:
+        return bool(self._detect())
+
+    def generate(self, messages: list[dict], context: AIContext) -> str:
+        candidates = self._candidates()
+        if not candidates:
+            self._detect_failed_at = time.monotonic()
+            raise RuntimeError("No local LLM server is reachable.")
+        last_error = ""
+        for model in candidates:
+            answer = self._generate_with_model(model, messages)
+            if answer is not None:
+                self._last_good = model
+                self._detected_model = model
+                return answer
+            last_error = f"model '{model}' failed to load or returned nothing"
+            # OOM / load failure: remember so later requests skip it quickly.
+            self._failed_models[model] = time.monotonic()
+            self._last_good = ""
+        self._detect_failed_at = time.monotonic()
+        raise RuntimeError(f"Local LLM request failed: {last_error}")
+
+    def _generate_with_model(self, model: str, messages: list[dict]) -> str | None:
+        """Run one inference; returns None (not raises) so callers can fall back."""
+        if self.base_url:
+            payload = {"model": model, "messages": messages,
+                       "temperature": float(os.environ.get("LEARNCRAFT_AI_TEMPERATURE", "0.2"))}
+            url = self.base_url if self.base_url.endswith("/chat/completions") else f"{self.base_url}/chat/completions"
+        else:
+            payload = {"model": model, "messages": messages, "stream": False,
+                       "options": {"num_ctx": int(os.environ.get("LEARNCRAFT_AI_LOCAL_NUM_CTX", "4096"))}}
+            url = "http://localhost:11434/api/chat"
+        request = Request(
+            url, data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        try:
+            with urlopen(request, timeout=self.timeout) as response:
+                result = json.loads(response.read().decode("utf-8"))
+        except (OSError, URLError, TimeoutError, ValueError) as exc:
+            print(f"[ai_tutor] local model '{model}' error: {exc}", flush=True)
+            return None
+        if self.base_url:
+            answer = ((result.get("choices") or [{}])[0].get("message") or {}).get("content", "")
+        else:
+            answer = (result.get("message") or {}).get("content", "")
+        answer = strip_thinking((answer or "").strip())
+        return answer or None
+
+
 class AIService:
     def __init__(self):
         self.cloud = CloudProvider()
+        self.local_llm = OllamaProvider()
         self.local = LocalProvider()
 
+    def _mode(self) -> str:
+        return os.environ.get("LEARNCRAFT_AI_MODE", "AUTO").upper()
+
+    def _local_state(self) -> dict | None:
+        for provider in (self.local_llm, self.local):
+            if provider.available():
+                info = {"provider": provider.name}
+                model = getattr(provider, "_detected_model", "") or ""
+                if model and provider is self.local_llm:
+                    info["model"] = model
+                return info
+        return None
+
     def status(self) -> dict:
-        mode = os.environ.get("LEARNCRAFT_AI_MODE", "OFFLINE").upper()
+        mode = self._mode()
+        if mode == "ONLINE":
+            if self.cloud.available():
+                return {"state": "online", "provider": self.cloud.name, "model": self.cloud.model}
+            local_state = self._local_state()
+            if local_state:
+                return {"state": "offline", **local_state,
+                        "reason": "No cloud API key configured for ONLINE mode — using local model."}
+            return {"state": "offline", "provider": "built-in",
+                    "reason": "No cloud API key configured for ONLINE mode."}
         if mode not in {"ONLINE", "AUTO"}:
-            if self.local.available():
-                return {"state": "offline", "provider": self.local.name}
-            return {"state": "offline", "provider": "built-in", "reason": "Using LearnCraft's built-in offline assistant."}
+            # OFFLINE mode: honour the explicit offline preference.
+            local_state = self._local_state()
+            if local_state:
+                return {"state": "offline", **local_state}
+            return {"state": "offline", "provider": "built-in",
+                    "reason": "Using LearnCraft's built-in offline assistant."}
+
+        # AUTO: cloud when internet + key exist, local LLM next, built-in last.
+        if self.cloud.available() and internet_available():
+            return {"state": "online", "provider": self.cloud.name, "model": self.cloud.model}
+        local_state = self._local_state()
+        if local_state:
+            return {"state": "offline", **local_state}
         if self.cloud.available():
-            return {"state": "online", "provider": self.cloud.name}
-        if self.local.available():
-            return {"state": "offline", "provider": self.local.name}
-        return {"state": "offline", "provider": "built-in", "reason": "Using LearnCraft's built-in offline assistant."}
+            return {"state": "offline", "provider": "built-in",
+                    "reason": "Cloud AI key found but no internet connection — using built-in tutor."}
+        return {"state": "offline", "provider": "built-in",
+                "reason": "Using LearnCraft's built-in offline assistant."}
 
     def answer(self, question: str, context: AIContext, history: list[dict]) -> tuple[str, str]:
         retrieved = retrieve_context(context, question)
         system = build_system_prompt(context, retrieved)
         messages = [{"role": "system", "content": system}] + history[-8:] + [{"role": "user", "content": question}]
-        mode = os.environ.get("LEARNCRAFT_AI_MODE", "OFFLINE").upper()
-        providers = [self.local, self.cloud] if mode == "AUTO" else ([self.cloud] if mode == "ONLINE" else [self.local])
+        mode = self._mode()
+        if mode == "ONLINE":
+            providers = [self.cloud, self.local_llm, self.local]
+        elif mode == "AUTO":
+            # Cloud first when the internet is reachable, then the local LLM
+            # (Ollama / LM Studio), then a custom local command; the loop still
+            # falls back automatically if any provider call fails.
+            providers = ([self.cloud] if self.cloud.available() and internet_available() else []) \
+                + [self.local_llm, self.local]
+        else:
+            providers = [self.local_llm, self.local]
         errors = []
         for provider in providers:
             if not provider.available():
@@ -250,25 +521,26 @@ def offline_answer(question: str, context: AIContext, chunks: list[dict]) -> str
         )
 
     app_terms = (
-        "app", "login", "log in", "sign in", "password", "otp", "forgot password",
+        "app", "login", "log in", "sign in", "password", "forgot password",
         "sign out", "logout", "settings", "profile", "progress", "dashboard",
         "not saving", "app error", "app issue", "app problem", "not working",
     )
 
     if any(term in text for term in app_terms) or "app" in (context.mode or "").lower():
-        if "password" in text or "otp" in text or "forgot" in text:
+        if "password" in text or "forgot" in text:
             return (
                 "To reset your LearnCraft password: open the login page, choose "
-                "Forgot password, enter your registered email, and submit the six-digit "
-                "OTP sent to your inbox. Enter the OTP with your new password within "
-                "10 minutes. If no email arrives, check spam and verify the email address."
+                "Forgot password, enter your registered email and your new password, "
+                "then submit. The reset works fully offline on this device — "
+                "no email code is needed. If the page still does not load, refresh "
+                "the browser and try again with cookies enabled."
             )
         if "login" in text or "log in" in text or "sign in" in text:
             return (
                 "For a LearnCraft login issue, first verify your email and password. "
-                "If the password is incorrect, use Forgot password to request a six-digit "
-                "OTP. If the page still does not load, refresh the browser and try again "
-                "with cookies enabled."
+                "If the password is incorrect, use Forgot password to set a new one "
+                "directly. If the page still does not load, refresh the browser and "
+                "try again with cookies enabled."
             )
         if "sign out" in text or "logout" in text:
             return (
@@ -290,7 +562,7 @@ def offline_answer(question: str, context: AIContext, chunks: list[dict]) -> str
             )
         return (
             "I can help with LearnCraft app issues. Tell me the exact screen, the action "
-            "you took, and the message you saw. For example: login, OTP/password reset, "
+            "you took, and the message you saw. For example: login, password reset, "
             "profile menu, progress tracking, settings, or a lab not saving."
         )
 
@@ -405,22 +677,30 @@ def build_system_prompt(context: AIContext, chunks: list[dict]) -> str:
         )
 
     return (
-        "You are LearnCraft's CBSE Class X tutor. Explain simply, guide reasoning, and do not invent "
-        "curriculum facts. If evidence is insufficient, say it cannot be verified from available curriculum content. "
+        "You are LearnCraft's AI tutor — a friendly, knowledgeable assistant for students. "
+        "Your specialty is CBSE Class IX/X school work, but you answer ANY question the user asks: "
+        "general knowledge, science, coding, language, hobbies, current topics, or homework help. "
+        "Never refuse a question just because it is outside the curriculum; answer it directly and completely. "
+        "Use the retrieved curriculum evidence when it is relevant to the question; otherwise rely on your "
+        "own knowledge and ignore it. Explain step by step, adapt the answer to the question type "
+        "(definition, why/how, numerical, comparison, opinion), and keep it clear for a student. "
+        "If you are genuinely unsure about a specific fact, say so briefly and still give your best answer. "
         f"Mode: {context.mode}. Subject: {context.subject}. Chapter: {context.chapter}. Topic: {context.topic}.\n"
-        f"Retrieved curriculum evidence:\n{evidence or 'No matching curriculum evidence was retrieved.'}"
+        f"Retrieved curriculum evidence (may be empty — use only if relevant):\n{evidence or 'None.'}"
     )
 
 
 def create_conversation(user_id: int, context: dict | None = None) -> str:
+    from app.database.connection import _transaction
+
     conversation_id = str(uuid.uuid4())
-    connection = get_connection()
-    connection.execute(
-        "INSERT INTO ai_conversations (conversation_id, user_id, context_json) VALUES (?, ?, ?)",
-        (conversation_id, int(user_id), json.dumps(context or {})),
-    )
-    connection.commit()
-    connection.close()
+
+    def work(connection):
+        connection.execute(
+            "INSERT INTO ai_conversations (conversation_id, user_id, context_json) VALUES (?, ?, ?)",
+            (conversation_id, int(user_id), json.dumps(context or {})),
+        )
+    _transaction(work)
     return conversation_id
 
 
@@ -447,17 +727,26 @@ def conversation_messages(user_id: int, conversation_id: str) -> list[dict]:
 def save_message(user_id: int, conversation_id: str, role: str, content: str, context_reference: dict | None = None, provider: str | None = None):
     if role not in {"user", "assistant", "system"}:
         raise ValueError("Invalid conversation role.")
-    connection = get_connection()
+    from app.database.connection import _transaction
+
     if not get_conversation(user_id, conversation_id):
-        connection.close()
         raise PermissionError("Conversation not found.")
-    connection.execute(
-        "INSERT INTO ai_messages (message_id, conversation_id, user_id, role, content, context_reference, provider) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (str(uuid.uuid4()), conversation_id, int(user_id), role, content, json.dumps(context_reference or {}), provider),
-    )
-    connection.execute("UPDATE ai_conversations SET updated_at = CURRENT_TIMESTAMP WHERE conversation_id = ?", (conversation_id,))
-    connection.commit()
-    connection.close()
+
+    def work(connection):
+        # Re-check ownership inside the write transaction so a conversation
+        # deleted/raced between the read above and this write cannot be written to.
+        owner = connection.execute(
+            "SELECT 1 FROM ai_conversations WHERE conversation_id = ? AND user_id = ?",
+            (conversation_id, int(user_id)),
+        ).fetchone()
+        if not owner:
+            raise PermissionError("Conversation not found.")
+        connection.execute(
+            "INSERT INTO ai_messages (message_id, conversation_id, user_id, role, content, context_reference, provider) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (str(uuid.uuid4()), conversation_id, int(user_id), role, content, json.dumps(context_reference or {}), provider),
+        )
+        connection.execute("UPDATE ai_conversations SET updated_at = CURRENT_TIMESTAMP WHERE conversation_id = ?", (conversation_id,))
+    _transaction(work)
 
 
 def ai_context_from_payload(payload: dict) -> AIContext:

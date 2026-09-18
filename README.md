@@ -1,5 +1,5 @@
 # LearnCraft
-LearnCraft is a best application
+
 LearnCraft is an offline-first learning platform with a Flask backend, SQLite persistence, and server-rendered templates.
 
 ## Quick start
@@ -24,9 +24,9 @@ without the debug reloader, and opens Microsoft Edge or Chrome in app mode.
 If neither browser is installed, it opens the default browser instead. Stop
 the desktop application with `Ctrl+C`.
 
-## Password reset email
+## Password reset (offline, no OTP needed)
 
-On an incorrect login, users can request a six-digit OTP from the "Forgot password?" link. Configure SMTP before deploying:
+On an incorrect login, users can set a new password directly from the "Forgot password?" link — email + new password, no OTP code required. The app works fully offline without SMTP. Optionally configure SMTP to also email a one-time code (best-effort); a direct reset always works as fallback:
 
 ```powershell
 $env:LEARNCRAFT_MAIL_HOST = "smtp.example.com"
@@ -36,7 +36,7 @@ $env:LEARNCRAFT_MAIL_PASSWORD = "smtp-password"
 $env:LEARNCRAFT_MAIL_FROM = "no-reply@example.com"
 ```
 
-The OTP expires after 10 minutes and is stored only as a hash. In tests, email delivery is suppressed and the generated OTP is logged.
+When an OTP is emailed, it expires after 10 minutes and is stored only as a hash. Direct (OTP-free) resets are always available offline.
 
 ## Project structure
 
@@ -52,6 +52,25 @@ The OTP expires after 10 minutes and is stored only as a hash. In tests, email d
 - `scripts/validate_content.py` — fail-fast content validation
 - `scripts/import_content.py` — transactional catalog import
 - `scripts/ingest_sources.py` — official-source download/checksum helper
+- `scripts/smoke_test.py` — boots the app and checks every page and read API
+- `scripts/route_sweep.py` — hits every registered route as anonymous, student and teacher
+- `scripts/functional_test.py` — exercises every write endpoint (student + teacher flows)
+- `scripts/live_http_test.py` — starts a real server process and tests it over HTTP
+- `scripts/check_assets.py` — flags `/static/...` references that do not exist on disk
+
+## Verification
+
+Run these before shipping a change. Each script exits non-zero on failure.
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests -q
+.venv\Scripts\python.exe scripts\validate_content.py
+.venv\Scripts\python.exe scripts\smoke_test.py
+.venv\Scripts\python.exe scripts\route_sweep.py
+.venv\Scripts\python.exe scripts\functional_test.py
+.venv\Scripts\python.exe scripts\live_http_test.py
+.venv\Scripts\python.exe scripts\check_assets.py
+```
 
 ## Notes
 

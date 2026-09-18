@@ -1,0 +1,21 @@
+# Bytecode / caches
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Local SQLite sidecar files
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Editor / OS noise
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

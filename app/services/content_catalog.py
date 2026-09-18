@@ -79,8 +79,12 @@ def normalize_lesson_blocks(raw_blocks) -> list[dict]:
         used_stages.add(stage)
         block["stage"] = stage
 
-        # Rewrite curriculum-only block types onto player-supported types.
-        if btype in ("example", "summary", "heading", "formula", "definition", "procedure", "steps", "question"):
+        # The lesson player implements these widgets; everything else is prose
+        # that should render as readable text rather than a blank card.
+        if btype in ("text", "visual", "interactive", "simulation",
+                     "check", "video", "reflect", "apply", "code"):
+            block["type"] = btype
+        else:
             block["type"] = "text"
             btype = "text"
 
@@ -105,9 +109,64 @@ def _read_feature(filename: str) -> dict:
     return _read_json(path)
 
 
+def _bundled_simulations() -> list[dict]:
+    """Offline simulations shipped inside this repository.
+
+    The ``Features`` sibling project optionally provides a richer catalog,
+    but LearnCraft must work standalone. These entries match the bundled
+    games under ``frontend/static/sandbox-games/`` and the IDs referenced
+    by templates and tests (``newton-lab``, ``maths-explorer``,
+    ``curriculum-concept-lab``).
+    """
+    return [
+        {
+            "id": "newton-lab",
+            "name": "Newton Lab",
+            "description": "Explore motion, force, friction, momentum, energy and measurement.",
+            "subjects": ["science", "physics"],
+            "chapters": "all",
+            "chapter_maps": {},
+            "software_type": "bundled",
+            "runtime_path": "/static/sandbox-games/physics/index.html",
+            "notes": ["Record force, mass and acceleration for each run."],
+            "references": [],
+            "practice_set": ["Describe how F = ma explains what you observed."],
+        },
+        {
+            "id": "maths-explorer",
+            "name": "Maths Explorer",
+            "description": "Interactive challenges for number sense, algebra, geometry, data and probability.",
+            "subjects": ["mathematics", "maths"],
+            "chapters": "all",
+            "chapter_maps": {},
+            "software_type": "bundled",
+            "runtime_path": "/static/sandbox-games/math/index.html",
+            "notes": ["Write one strategy you used for each challenge."],
+            "references": [],
+            "practice_set": ["Explain your solution in your own words."],
+        },
+        {
+            "id": "curriculum-concept-lab",
+            "name": "Curriculum Concept Lab",
+            "description": "Run small models for matter, ecosystems, population and renewable resources.",
+            "subjects": ["science", "social-science"],
+            "chapters": "all",
+            "chapter_maps": {},
+            "software_type": "bundled",
+            "runtime_path": "/static/sandbox-games/circuits/index.html",
+            "notes": ["Note the variables you changed and what happened."],
+            "references": [],
+            "practice_set": ["Summarize the concept in two sentences."],
+        },
+    ]
+
+
 def load_feature_simulations() -> list[dict]:
     """Load the portable offline simulation catalog owned by Features."""
-    return _read_feature("simulations_catalog.json").get("simulations", [])
+    items = _read_feature("simulations_catalog.json").get("simulations", [])
+    if items:
+        return items
+    return _bundled_simulations()
 
 
 def simulations_for_subject(subject_slug: str) -> list[dict]:
@@ -196,17 +255,34 @@ def class10_lesson(subject_slug: str, chapter_number: int) -> dict | None:
     }
 
 
+def _load_subject_chapters(subject: dict) -> list[dict]:
+    """Load a subject's chapters from its per-subject file.
+
+    Files are keyed by ``subject_id`` (e.g. ``cbse-ix-2026-27-mathematics.json``)
+    so the same slug can exist for multiple class levels. Falls back to the
+    legacy ``{slug}.json`` layout for older packages.
+    """
+    primary = CURRICULUM_DIR / f"{subject['subject_id']}.json"
+    if primary.exists():
+        return _read_json(primary)["chapters"]
+    return _read_json(CURRICULUM_DIR / f"{subject['slug']}.json")["chapters"]
+
+
 def load_packages() -> list[dict]:
-    curriculum = _read_json(CURRICULUM_DIR / "cbse_class_x_2026_27.json")
+    # Every manifest file (cbse_class_*.json) contributes its subjects, so
+    # Class IX and Class X curricula load together.
+    manifests = sorted(CURRICULUM_DIR.glob("cbse_class_*.json"))
     packages = []
-    for subject in curriculum["subjects"]:
-        package = dict(subject)
-        package["board"] = curriculum["board"]
-        package["class_level"] = curriculum["class_level"]
-        package["academic_year"] = curriculum["academic_year"]
-        package["source_version"] = curriculum["source_version"]
-        package["chapters"] = _read_json(CURRICULUM_DIR / f"{subject['slug']}.json")["chapters"]
-        packages.append(package)
+    for manifest_path in manifests:
+        curriculum = _read_json(manifest_path)
+        for subject in curriculum["subjects"]:
+            package = dict(subject)
+            package["board"] = curriculum["board"]
+            package["class_level"] = curriculum["class_level"]
+            package["academic_year"] = curriculum["academic_year"]
+            package["source_version"] = curriculum["source_version"]
+            package["chapters"] = _load_subject_chapters(subject)
+            packages.append(package)
     return packages
 
 
@@ -259,9 +335,11 @@ def import_packages(packages: list[dict]) -> dict:
     errors = validate_packages(packages)
     if errors:
         raise ValueError("Content validation failed:\n" + "\n".join(errors))
-    connection = get_connection()
+    from app.database.connection import _transaction
+
     counts = {"subjects": 0, "chapters": 0, "topics": 0, "lessons": 0, "questions": 0}
-    try:
+
+    def work(connection):
         for package in packages:
             subject_bytes = json.dumps(package, sort_keys=True).encode("utf-8")
             connection.execute(
@@ -270,7 +348,7 @@ def import_packages(packages: list[dict]) -> dict:
                 VALUES (?, ?, ?, ?, 0) ON CONFLICT(content_id) DO UPDATE SET
                 version=excluded.version, size_bytes=excluded.size_bytes, checksum=excluded.checksum,
                 updated_at=CURRENT_TIMESTAMP""",
-                (package["subject_id"], ACADEMIC_YEAR, len(subject_bytes), hashlib.sha256(subject_bytes).hexdigest()),
+                (package["subject_id"], package["academic_year"], len(subject_bytes), hashlib.sha256(subject_bytes).hexdigest()),
             )
             connection.execute(
                 """INSERT INTO academic_subjects
@@ -278,8 +356,8 @@ def import_packages(packages: list[dict]) -> dict:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(subject_id) DO UPDATE SET name=excluded.name, description=excluded.description,
                 source_version=excluded.source_version""",
-                (package["subject_id"], BOARD, CLASS_LEVEL, ACADEMIC_YEAR, package["slug"], package["name"],
-                 package["description"], package["source_version"]),
+                (package["subject_id"], package["board"], package["class_level"], package["academic_year"],
+                 package["slug"], package["name"], package["description"], package["source_version"]),
             )
             connection.execute(
                 """INSERT INTO academic_books (book_id, subject_id, title, publisher, source_reference)
@@ -296,7 +374,7 @@ def import_packages(packages: list[dict]) -> dict:
                     VALUES (?, ?, ?, ?, 0) ON CONFLICT(content_id) DO UPDATE SET
                     version=excluded.version, size_bytes=excluded.size_bytes, checksum=excluded.checksum,
                     updated_at=CURRENT_TIMESTAMP""",
-                    (chapter["chapter_id"], ACADEMIC_YEAR, len(chapter_bytes), hashlib.sha256(chapter_bytes).hexdigest()),
+                    (chapter["chapter_id"], package["academic_year"], len(chapter_bytes), hashlib.sha256(chapter_bytes).hexdigest()),
                 )
                 connection.execute(
                     """INSERT INTO academic_chapters
@@ -356,12 +434,8 @@ def import_packages(packages: list[dict]) -> dict:
                                 (question["question_id"], option["option_id"], option["text"], int(option["is_correct"])),
                             )
                         counts["questions"] += 1
-        connection.commit()
-    except Exception:
-        connection.rollback()
-        raise
-    finally:
-        connection.close()
+
+    _transaction(work)
     return counts
 
 
@@ -425,6 +499,35 @@ def list_subject_lessons(subject_slug: str) -> list[dict]:
         WHERE s.slug = ? ORDER BY c.chapter_number, t.topic_id, l.lesson_id""",
         (subject_slug,),
     ).fetchall()
+    connection.close()
+    return [dict(row) for row in rows]
+
+
+def list_lessons(subject_slug: str | None = None, chapter_id: str | None = None) -> list[dict]:
+    """Return lessons across subjects, optionally filtered by subject/chapter.
+
+    Used by the ``/api/v1/lessons`` collection endpoint so a client can build a
+    lesson index without knowing every subject slug first.
+    """
+    connection = get_connection()
+    query = (
+        "SELECT l.lesson_id, l.title, l.slug, l.summary, l.estimated_minutes, l.difficulty, "
+        "c.chapter_id, c.chapter_number, c.title AS chapter_title, "
+        "s.slug AS subject_slug, s.name AS subject_name "
+        "FROM academic_lessons l JOIN academic_topics t ON t.topic_id = l.topic_id "
+        "JOIN academic_chapters c ON c.chapter_id = t.chapter_id "
+        "JOIN academic_books b ON b.book_id = c.book_id "
+        "JOIN academic_subjects s ON s.subject_id = b.subject_id WHERE 1 = 1"
+    )
+    params: list[str] = []
+    if subject_slug:
+        query += " AND s.slug = ?"
+        params.append(subject_slug)
+    if chapter_id:
+        query += " AND c.chapter_id = ?"
+        params.append(chapter_id)
+    query += " ORDER BY s.name, c.chapter_number, t.topic_id, l.lesson_id"
+    rows = connection.execute(query, params).fetchall()
     connection.close()
     return [dict(row) for row in rows]
 

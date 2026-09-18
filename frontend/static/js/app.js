@@ -49,7 +49,8 @@ function updatePracticalTest(id,passed){
 	row.classList.toggle('passed',passed);row.classList.toggle('failed',!passed);row.querySelector('.test-icon').textContent=passed?'✓':'×';row.querySelector('.test-status').textContent=passed?'Passed':'Needs work';
 }
 function runPractical(){
-	const editor=document.getElementById('practicalCode');if(!editor||document.getElementById('practicalState').textContent==='SUBMITTED')return;
+	const editor=document.getElementById('practicalCode');if(!editor)return;
+	if(document.getElementById('practicalState').textContent==='SUBMITTED'){toast('Already submitted - review only',false);return;}
 	const code=editor.value;const result=practicalTests(code);const passed=Object.values(result).every(Boolean);practicalRun={hasRun:true,passed};
 	updatePracticalTest('loop',result.loop);updatePracticalTest('squares',result.squares);updatePracticalTest('range',result.range);
 	document.getElementById('practicalOutput').textContent=passed?'▶ Running offline…\n✓ 3 tests passed\n\n1\n4\n9\n16\n25\n\nProcess finished with exit code 0.':'▶ Running offline…\n⚠ Some tests need attention.\n\nHint: iterate from 1 to 5 and print number * number.';
@@ -57,7 +58,8 @@ function runPractical(){
 	setPracticalStatus('DRAFT',passed?'Tests pass. Save your draft when you are ready to review it.':'Tests ran. Adjust the code and try again.');
 }
 function savePractical(){
-	const editor=document.getElementById('practicalCode');if(!editor||document.getElementById('practicalState').textContent==='SUBMITTED')return;
+	const editor=document.getElementById('practicalCode');if(!editor)return;
+	if(document.getElementById('practicalState').textContent==='SUBMITTED'){toast('Already submitted - review only',false);return;}
 	practicalSaveState({code:editor.value,status:'SAVED',savedAt:new Date().toISOString()});setPracticalStatus('SAVED','Saved locally just now. You can continue editing or review it.');document.getElementById('saveInfo').textContent='Saved locally just now';toast('Draft saved on this machine');
 }
 function openPracticalReview(){

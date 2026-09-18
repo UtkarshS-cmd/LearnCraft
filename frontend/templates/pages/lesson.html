@@ -26,7 +26,7 @@ input[type=range]{width:100%}
 
 <div class="caption"><a href="/subjects">Subjects</a> › <a href="/subjects/{{ lesson.subject_slug }}">{{ lesson.subject_name }}</a> › {{ lesson.chapter_label }}</div>
 <div class="page-head" style="margin-top:6px"><div><div class="h1">{{ lesson.title }}</div><p>🎯 {{ lesson.objective }} · ⏱ {{ lesson.est }}</p></div>
-<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-secondary btn-sm" href="/ask-ai?lesson_id={{ lesson.id|default(lesson.lesson_id)|urlencode }}">Ask AI</a><a class="btn btn-secondary btn-sm" href="/subjects/{{ lesson.subject_slug }}">✕ Exit</a></div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-secondary btn-sm" href="/ask-ai?lesson_id={{ (lesson.lesson_id or lesson.id)|urlencode }}">Ask AI</a><a class="btn btn-secondary btn-sm" href="/subjects/{{ lesson.subject_slug }}">✕ Exit</a></div></div>
 
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -98,7 +98,7 @@ input[type=range]{width:100%}
 
   {% elif b.type == 'apply' %}
     <div class="banner ok">✓ <span>{{ b.task }}</span></div>
-    <div style="display:flex;gap:8px;margin-top:10px"><a class="btn btn-secondary btn-sm" href="/notes?context_subject={{ lesson.subject_name|urlencode }}&context_chapter={{ lesson.chapter_label|urlencode }}&source_type=lesson&source_id={{ lesson.id|urlencode }}&source_title={{ lesson.title|urlencode }}">Save in Notes →</a><a class="btn btn-secondary btn-sm" href="/sandbox">Open Sandbox →</a></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><a class="btn btn-secondary btn-sm" href="/notes?context_subject={{ lesson.subject_name|urlencode }}&context_chapter={{ lesson.chapter_label|urlencode }}&source_type=lesson&source_id={{ (lesson.lesson_id or lesson.id)|urlencode }}&source_title={{ lesson.title|urlencode }}">Save in Notes →</a><a class="btn btn-secondary btn-sm" href="/sandbox">Open Sandbox →</a></div>
 
   {% else %}
     <p class="body">{{ b.body or b.text or '' }}</p>
@@ -120,7 +120,10 @@ input[type=range]{width:100%}
 {% endblock %}
 {% block scripts %}<script>
 (function(){
-const KEY='lc_lesson_{{ lesson.id }}';
+const LESSON_ID={{ (lesson.lesson_id or lesson.id)|tojson }};
+const LESSON_SLUG={{ lesson.subject_slug|tojson }};
+const LESSON_CHAPTER={{ lesson.chapter_label|tojson }};
+const KEY='lc_lesson_'+LESSON_ID;
 const total={{ lesson.blocks|length }};
 let state={idx:0,visited:[0],checked:{},done:false};
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.idx>=0&&s.idx<total){state=s;document.getElementById('resumeNote').style.display='block';}}catch(e){}
@@ -132,8 +135,8 @@ function save(){
   localStorage.setItem(KEY,JSON.stringify(state));
   const status=state.done?'completed':(state.checked[ state.idx ]?'practiced':'in_progress');
   const percent=Math.round(state.visited.length/total*100);
-  window.LearnCraftOffline?.persist('progress','lesson:{{ lesson.id }}',state,status);
-  fetch('/api/v1/progress',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lesson_id:'{{ lesson.id }}',subject_slug:'{{ lesson.subject_slug }}',chapter_id:'{{ lesson.chapter_label|e }}',status,percent_complete:percent})}).catch(()=>null);
+  window.LearnCraftOffline?.persist('progress','lesson:'+LESSON_ID,state,status);
+  fetch('/api/v1/progress',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lesson_id:LESSON_ID,subject_slug:LESSON_SLUG,chapter_id:LESSON_CHAPTER,status,percent_complete:percent})}).catch(()=>null);
 }
 function render(){
   blocks.forEach((b,i)=>b.classList.toggle('show',i===state.idx));

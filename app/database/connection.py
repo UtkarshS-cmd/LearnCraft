@@ -8,24 +8,48 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
 
 
+def _candidate_db_paths():
+    """All locations that may already hold a LearnCraft database."""
+    configured = os.environ.get("LEARNCRAFT_DB_PATH")
+    if configured:
+        candidate = Path(configured)
+        if not candidate.is_absolute():
+            # Resolve repository-relative paths (e.g. "data/learncraft.db")
+            # against the project root so the app works no matter which
+            # directory the server was started from.
+            candidate = (BASE_DIR / candidate).resolve()
+        yield candidate
+    yield (DATA_DIR / "learncraft.db").resolve()
+
+
 def resolve_db_path():
     configured = os.environ.get("LEARNCRAFT_DB_PATH")
     if configured:
-        return Path(configured)
+        candidate = Path(configured)
+        if not candidate.is_absolute():
+            return (BASE_DIR / candidate).resolve()
+        return candidate
     return DATA_DIR / "learncraft.db"
 
 
 def get_connection():
     db_path = resolve_db_path()
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(db_path)
+    connection = sqlite3.connect(db_path, timeout=30.0, check_same_thread=False)
     connection.row_factory = sqlite3.Row
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("PRAGMA busy_timeout=30000")
+        connection.execute("PRAGMA foreign_keys=ON")
+    except sqlite3.Error:
+        pass
     return connection
 
 
 def initialize_database():
     connection = get_connection()
-
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("PRAGMA foreign_keys=ON")
     connection.execute("""
         CREATE TABLE IF NOT EXISTS students (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -485,6 +509,23 @@ def initialize_database():
     connection.close()
 
 
+def _transaction(work):
+    """Run DB work with commit/rollback and always close the connection."""
+    connection = get_connection()
+    try:
+        result = work(connection)
+        connection.commit()
+        return result
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        connection.close()
+
+
 def add_student(name, roll_no):
     connection = get_connection()
     connection.execute(
@@ -531,26 +572,24 @@ def _initials_from_name(name):
 
 
 def create_user(name, email, password_hash, role="STUDENT", avatar=None):
-    connection = get_connection()
-    cleaned_name = str(name or "").strip()
-    cleaned_email = str(email or "").strip().lower()
-    avatar_value = (avatar or _initials_from_name(cleaned_name)).upper()
-    cursor = connection.execute(
-        """
-        INSERT INTO users (name, email, password_hash, role, avatar, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        """,
-        (cleaned_name, cleaned_email, password_hash, str(role).upper(), avatar_value),
-    )
-    user_id = cursor.lastrowid
-    connection.execute(
-        "INSERT INTO user_profiles (user_id, preferences_json, created_at, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-        (user_id, json.dumps({"theme": "system", "offline_mode": True})),
-    )
-    connection.commit()
-    user = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    connection.close()
-    return _row_to_dict(user)
+    def work(connection):
+        cleaned_name = str(name or "").strip()
+        cleaned_email = str(email or "").strip().lower()
+        avatar_value = (avatar or _initials_from_name(cleaned_name)).upper()
+        cursor = connection.execute(
+            """
+            INSERT INTO users (name, email, password_hash, role, avatar, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """,
+            (cleaned_name, cleaned_email, password_hash, str(role).upper(), avatar_value),
+        )
+        user_id = cursor.lastrowid
+        connection.execute(
+            "INSERT INTO user_profiles (user_id, preferences_json, created_at, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            (user_id, json.dumps({"theme": "system", "offline_mode": True})),
+        )
+        return connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    return _row_to_dict(_transaction(work))
 
 
 def get_user_by_email(email):
@@ -561,49 +600,45 @@ def get_user_by_email(email):
 
 
 def create_password_reset_token(user_id, token_hash, expires_at):
-    connection = get_connection()
-    connection.execute(
-        "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL",
-        (int(user_id),),
-    )
-    cursor = connection.execute(
-        "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
-        (int(user_id), token_hash, expires_at),
-    )
-    connection.commit()
-    token_id = cursor.lastrowid
-    connection.close()
-    return token_id
+    def work(connection):
+        connection.execute(
+            "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL",
+            (int(user_id),),
+        )
+        cursor = connection.execute(
+            "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
+            (int(user_id), token_hash, expires_at),
+        )
+        return cursor.lastrowid
+    return _transaction(work)
 
 
 def consume_password_reset_token(user_id, token_hash):
-    connection = get_connection()
-    token = connection.execute(
-        """
-        SELECT id FROM password_reset_tokens
-        WHERE user_id = ? AND token_hash = ? AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP
-        ORDER BY id DESC LIMIT 1
-        """,
-        (int(user_id), token_hash),
-    ).fetchone()
-    if token:
-        connection.execute(
-            "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?",
-            (token["id"],),
-        )
-        connection.commit()
-    connection.close()
-    return bool(token)
+    def work(connection):
+        token = connection.execute(
+            """
+            SELECT id FROM password_reset_tokens
+            WHERE user_id = ? AND token_hash = ? AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP
+            ORDER BY id DESC LIMIT 1
+            """,
+            (int(user_id), token_hash),
+        ).fetchone()
+        if token:
+            connection.execute(
+                "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (token["id"],),
+            )
+        return bool(token)
+    return _transaction(work)
 
 
 def update_user_password(user_id, password_hash):
-    connection = get_connection()
-    connection.execute(
-        "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (password_hash, int(user_id)),
-    )
-    connection.commit()
-    connection.close()
+    def work(connection):
+        connection.execute(
+            "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (password_hash, int(user_id)),
+        )
+    _transaction(work)
 
 
 def get_user_by_id(user_id):
@@ -622,34 +657,37 @@ def user_payload(user):
 
 
 def update_user_profile(user_id, *, name=None, email=None, avatar=None, bio=None):
-    connection = get_connection()
-    payload = {} 
-    if name is not None:
-        payload["name"] = str(name).strip()
-    if email is not None:
-        payload["email"] = str(email).strip().lower()
-    if avatar is not None:
-        payload["avatar"] = str(avatar).strip()[:2].upper()
-    if bio is not None:
-        payload["bio"] = str(bio).strip()[:200]
-    if not payload:
-        connection.close()
-        return get_user_by_id(user_id)
+    def work(connection):
+        payload = {} 
+        if name is not None:
+            payload["name"] = str(name).strip()
+        if email is not None:
+            cleaned = str(email).strip().lower()
+            existing = connection.execute(
+                "SELECT id FROM users WHERE email = ? AND id != ?", (cleaned, int(user_id))
+            ).fetchone()
+            if existing:
+                raise ValueError("An account with this email already exists.")
+            payload["email"] = cleaned
+        if avatar is not None:
+            payload["avatar"] = str(avatar).strip()[:2].upper()
+        if bio is not None:
+            payload["bio"] = str(bio).strip()[:200]
+        if not payload:
+            return connection.execute("SELECT * FROM users WHERE id = ?", (int(user_id),)).fetchone()
 
-    assignments = []
-    values = []
-    for key, value in payload.items():
-        assignments.append(f"{key} = ?")
-        values.append(value)
-    values.append(int(user_id))
-    connection.execute(
-        f"UPDATE users SET {', '.join(assignments)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        values,
-    )
-    connection.commit()
-    user = connection.execute("SELECT * FROM users WHERE id = ?", (int(user_id),)).fetchone()
-    connection.close()
-    return _row_to_dict(user)
+        assignments = []
+        values = []
+        for key, value in payload.items():
+            assignments.append(f"{key} = ?")
+            values.append(value)
+        values.append(int(user_id))
+        connection.execute(
+            f"UPDATE users SET {', '.join(assignments)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            values,
+        )
+        return connection.execute("SELECT * FROM users WHERE id = ?", (int(user_id),)).fetchone()
+    return _row_to_dict(_transaction(work))
 
 
 def get_user_progress(user_id):
@@ -663,41 +701,41 @@ def get_user_progress(user_id):
 
 
 def save_learning_progress(user_id, *, subject_slug=None, chapter_id=None, lesson_id=None, status="not_started", percent_complete=0, score=0, last_activity=None):
-    connection = get_connection()
-    connection.execute(
-        """
-        INSERT INTO learning_progress (user_id, subject_slug, chapter_id, lesson_id, status, percent_complete, score, last_activity, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT(user_id, lesson_id) DO UPDATE SET
-            subject_slug = excluded.subject_slug,
-            chapter_id = excluded.chapter_id,
-            status = excluded.status,
-            percent_complete = excluded.percent_complete,
-            score = excluded.score,
-            last_activity = excluded.last_activity,
-            updated_at = CURRENT_TIMESTAMP
-        """,
-        (int(user_id), subject_slug, chapter_id, lesson_id, status, int(percent_complete), float(score), last_activity),
-    )
-    connection.commit()
-    connection.close()
+    def work(connection):
+        if not lesson_id:
+            raise ValueError("lesson_id is required.")
+        connection.execute(
+            """
+            INSERT INTO learning_progress (user_id, subject_slug, chapter_id, lesson_id, status, percent_complete, score, last_activity, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id, lesson_id) DO UPDATE SET
+                subject_slug = excluded.subject_slug,
+                chapter_id = excluded.chapter_id,
+                status = excluded.status,
+                percent_complete = excluded.percent_complete,
+                score = excluded.score,
+                last_activity = excluded.last_activity,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (int(user_id), subject_slug, chapter_id, lesson_id, status, int(percent_complete), float(score or 0), last_activity),
+        )
+    _transaction(work)
 
 
 def ensure_note_seed(user_id, notes):
-    connection = get_connection()
-    count = connection.execute(
-        "SELECT COUNT(*) FROM notes WHERE user_id = ? AND deleted_at IS NULL", (int(user_id),)
-    ).fetchone()[0]
-    if count == 0:
-        for note in notes:
-            connection.execute(
-                """INSERT INTO notes
-                (user_id, client_id, title, body, subject, chapter, pinned, sync_status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'local')""",
-                (int(user_id), str(uuid.uuid4()), note["title"], note["body"], note["subject"], note.get("chapter"), 0),
-            )
-        connection.commit()
-    connection.close()
+    def work(connection):
+        count = connection.execute(
+            "SELECT COUNT(*) FROM notes WHERE user_id = ? AND deleted_at IS NULL", (int(user_id),)
+        ).fetchone()[0]
+        if count == 0:
+            for note in notes:
+                connection.execute(
+                    """INSERT INTO notes
+                    (user_id, client_id, title, body, subject, chapter, pinned, sync_status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'local')""",
+                    (int(user_id), str(uuid.uuid4()), note["title"], note["body"], note["subject"], note.get("chapter"), 0),
+                )
+    _transaction(work)
 
 
 def get_notes(user_id, search="", subject="", pinned_only=False):
@@ -722,115 +760,110 @@ def get_notes(user_id, search="", subject="", pinned_only=False):
 
 
 def create_note(user_id, title, body, subject, chapter=None, source_type=None, source_id=None, source_title=None):
-    connection = get_connection()
-    client_id = str(uuid.uuid4())
-    connection.execute(
-        """INSERT INTO notes
-        (user_id, client_id, title, body, subject, chapter, source_type, source_id, source_title, sync_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'local')""",
-        (int(user_id), client_id, title, body, subject, chapter, source_type, source_id, source_title),
-    )
-    connection.commit()
-    note = connection.execute("SELECT * FROM notes WHERE client_id = ?", (client_id,)).fetchone()
-    connection.close()
-    return _row_to_dict(note)
+    def work(connection):
+        client_id = str(uuid.uuid4())
+        connection.execute(
+            """INSERT INTO notes
+            (user_id, client_id, title, body, subject, chapter, source_type, source_id, source_title, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'local')""",
+            (int(user_id), client_id, title, body, subject, chapter, source_type, source_id, source_title),
+        )
+        return connection.execute("SELECT * FROM notes WHERE client_id = ?", (client_id,)).fetchone()
+    return _row_to_dict(_transaction(work))
 
 
 def update_note(user_id, client_id, title, body, subject, chapter=None):
-    connection = get_connection()
-    connection.execute(
-        """UPDATE notes SET title = ?, body = ?, subject = ?, chapter = ?,
-        updated_at = CURRENT_TIMESTAMP, sync_status = 'local'
-        WHERE client_id = ? AND user_id = ? AND deleted_at IS NULL""",
-        (title, body, subject, chapter, client_id, int(user_id)),
-    )
-    connection.commit()
-    note = connection.execute("SELECT * FROM notes WHERE client_id = ?", (client_id,)).fetchone()
-    connection.close()
-    return _row_to_dict(note)
+    def work(connection):
+        connection.execute(
+            """UPDATE notes SET title = ?, body = ?, subject = ?, chapter = ?,
+            updated_at = CURRENT_TIMESTAMP, sync_status = 'local'
+            WHERE client_id = ? AND user_id = ? AND deleted_at IS NULL""",
+            (title, body, subject, chapter, client_id, int(user_id)),
+        )
+        return connection.execute("SELECT * FROM notes WHERE client_id = ?", (client_id,)).fetchone()
+    return _row_to_dict(_transaction(work))
 
 
 def set_note_pinned(user_id, client_id, pinned):
-    connection = get_connection()
-    connection.execute(
-        """UPDATE notes SET pinned = ?, updated_at = CURRENT_TIMESTAMP, sync_status = 'local'
-        WHERE client_id = ? AND user_id = ? AND deleted_at IS NULL""",
-        (1 if pinned else 0, client_id, int(user_id)),
-    )
-    connection.commit()
-    note = connection.execute("SELECT * FROM notes WHERE client_id = ?", (client_id,)).fetchone()
-    connection.close()
-    return _row_to_dict(note)
+    def work(connection):
+        connection.execute(
+            """UPDATE notes SET pinned = ?, updated_at = CURRENT_TIMESTAMP, sync_status = 'local'
+            WHERE client_id = ? AND user_id = ? AND deleted_at IS NULL""",
+            (1 if pinned else 0, client_id, int(user_id)),
+        )
+        return connection.execute("SELECT * FROM notes WHERE client_id = ?", (client_id,)).fetchone()
+    return _row_to_dict(_transaction(work))
 
 
 def delete_note(user_id, client_id):
-    connection = get_connection()
-    connection.execute(
-        """UPDATE notes SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP,
-        sync_status = 'local' WHERE client_id = ? AND user_id = ?""",
-        (client_id, int(user_id)),
-    )
-    connection.commit()
-    connection.close()
+    def work(connection):
+        connection.execute(
+            """UPDATE notes SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP,
+            sync_status = 'local' WHERE client_id = ? AND user_id = ?""",
+            (client_id, int(user_id)),
+        )
+    _transaction(work)
 
 
 def upsert_content_item(content_id, kind, title, payload, subject_slug=None, asset_path=None, version="1"):
-    connection = get_connection()
-    connection.execute(
-        """INSERT INTO content_items
-        (content_id, kind, subject_slug, title, payload_json, asset_path, content_version, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'local')
-        ON CONFLICT(content_id) DO UPDATE SET kind=excluded.kind,
-        subject_slug=excluded.subject_slug, title=excluded.title, payload_json=excluded.payload_json,
-        asset_path=excluded.asset_path, content_version=excluded.content_version,
-        updated_at=CURRENT_TIMESTAMP""",
-        (content_id, kind, subject_slug, title, json.dumps(payload), asset_path, version),
-    )
-    connection.commit()
-    connection.close()
+    def work(connection):
+        connection.execute(
+            """INSERT INTO content_items
+            (content_id, kind, subject_slug, title, payload_json, asset_path, content_version, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'local')
+            ON CONFLICT(content_id) DO UPDATE SET kind=excluded.kind,
+            subject_slug=excluded.subject_slug, title=excluded.title, payload_json=excluded.payload_json,
+            asset_path=excluded.asset_path, content_version=excluded.content_version,
+            updated_at=CURRENT_TIMESTAMP""",
+            (content_id, kind, subject_slug, title, json.dumps(payload), asset_path, version),
+        )
+    _transaction(work)
 
 
 def save_local_progress(record_id, payload, sync_status="local"):
-    connection = get_connection()
-    connection.execute(
-        """INSERT INTO local_progress (record_id, payload_json, sync_status)
-        VALUES (?, ?, ?) ON CONFLICT(record_id) DO UPDATE SET payload_json=excluded.payload_json,
-        sync_status=excluded.sync_status, updated_at=CURRENT_TIMESTAMP""",
-        (record_id, json.dumps(payload), sync_status),
-    )
-    connection.commit()
-    connection.close()
+    def work(connection):
+        if not record_id:
+            raise ValueError("record_id is required.")
+        connection.execute(
+            """INSERT INTO local_progress (record_id, payload_json, sync_status)
+            VALUES (?, ?, ?) ON CONFLICT(record_id) DO UPDATE SET payload_json=excluded.payload_json,
+            sync_status=excluded.sync_status, updated_at=CURRENT_TIMESTAMP""",
+            (record_id, json.dumps(payload), sync_status),
+        )
+    _transaction(work)
 
 
 def save_local_submission(submission_id, activity_id, payload, status="draft", sync_status="local"):
-    connection = get_connection()
-    connection.execute(
-        """INSERT INTO local_submissions (submission_id, activity_id, payload_json, status, sync_status)
-        VALUES (?, ?, ?, ?, ?) ON CONFLICT(submission_id) DO UPDATE SET payload_json=excluded.payload_json,
-        status=excluded.status, sync_status=excluded.sync_status, updated_at=CURRENT_TIMESTAMP""",
-        (submission_id, activity_id, json.dumps(payload), status, sync_status),
-    )
-    connection.commit()
-    connection.close()
+    def work(connection):
+        if not submission_id:
+            raise ValueError("submission_id is required.")
+        connection.execute(
+            """INSERT INTO local_submissions (submission_id, activity_id, payload_json, status, sync_status)
+            VALUES (?, ?, ?, ?, ?) ON CONFLICT(submission_id) DO UPDATE SET payload_json=excluded.payload_json,
+            status=excluded.status, sync_status=excluded.sync_status, updated_at=CURRENT_TIMESTAMP""",
+            (submission_id, activity_id, json.dumps(payload), status, sync_status),
+        )
+    _transaction(work)
 
 
 def enqueue_sync_event(entity_type, entity_id, operation, payload, event_id=None):
     if not event_id:
         event_id = str(uuid.uuid4())
-    connection = get_connection()
-    connection.execute(
-        """INSERT INTO sync_queue (event_id, entity_type, entity_id, operation, payload_json)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(event_id) DO UPDATE SET
-            entity_type=excluded.entity_type,
-            entity_id=excluded.entity_id,
-            operation=excluded.operation,
-            payload_json=excluded.payload_json,
-            status=excluded.status""",
-        (event_id, entity_type, entity_id, operation, json.dumps(payload)),
-    )
-    connection.commit()
-    connection.close()
+
+    def work(connection):
+        # status is intentionally NOT overwritten: a queued event stays queued
+        # even when the browser retries with the same idempotent event_id.
+        connection.execute(
+            """INSERT INTO sync_queue (event_id, entity_type, entity_id, operation, payload_json)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(event_id) DO UPDATE SET
+                entity_type=excluded.entity_type,
+                entity_id=excluded.entity_id,
+                operation=excluded.operation,
+                payload_json=excluded.payload_json""",
+            (event_id, entity_type, entity_id, operation, json.dumps(payload)),
+        )
+    _transaction(work)
     return event_id
 
 

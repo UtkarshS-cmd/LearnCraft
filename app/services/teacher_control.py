@@ -9,31 +9,58 @@ from app.database.connection import get_connection
 VALID_ACCESS_STATES = {"ENABLED", "DISABLED", "LOCKED", "ASSIGNED_ONLY"}
 
 
+def _clean_due_at(value):
+    """Normalize optional assignment due dates to SQLite timestamps.
+
+    Accepts ``YYYY-MM-DD HH:MM:SS`` (also ``T``-separated / date-only) and
+    stores ``None`` for blank values; rejects anything else so bad input
+    fails fast instead of persisting garbage comparisons.
+    """
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    text = text.replace("T", " ")
+    if len(text) == 10:
+        text = f"{text} 00:00:00"
+    try:
+        datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        raise ValueError("due_at must look like YYYY-MM-DD HH:MM:SS.")
+    return text
+
+
 def _dicts(rows):
     return [dict(row) for row in rows]
 
 
 def teacher_classes(teacher_id: int) -> list[dict]:
-    connection = get_connection()
-    rows = connection.execute(
-        "SELECT c.*, COUNT(cm.student_id) AS student_count FROM teacher_classes c "
-        "LEFT JOIN class_members cm ON cm.class_id = c.id WHERE c.teacher_id = ? "
-        "GROUP BY c.id ORDER BY c.name", (int(teacher_id),)
-    ).fetchall()
-    connection.close()
-    return _dicts(rows)
+    from app.database.connection import _transaction
+
+    def work(connection):
+        return connection.execute(
+            "SELECT c.*, COUNT(cm.student_id) AS student_count FROM teacher_classes c "
+            "LEFT JOIN class_members cm ON cm.class_id = c.id WHERE c.teacher_id = ? "
+            "GROUP BY c.id ORDER BY c.name", (int(teacher_id),)
+        ).fetchall()
+    return _dicts(_transaction(work))
 
 
 def create_class(teacher_id: int, name: str, grade: str = "", section: str = "") -> dict:
-    connection = get_connection()
-    cursor = connection.execute(
-        "INSERT INTO teacher_classes (teacher_id, name, grade, section) VALUES (?, ?, ?, ?)",
-        (int(teacher_id), name.strip(), grade.strip(), section.strip()),
-    )
-    connection.commit()
-    row = connection.execute("SELECT * FROM teacher_classes WHERE id = ?", (cursor.lastrowid,)).fetchone()
-    connection.close()
-    return dict(row)
+    from app.database.connection import _transaction
+
+    cleaned = str(name or "").strip()
+    if not cleaned:
+        raise ValueError("Class name is required.")
+
+    def work(connection):
+        cursor = connection.execute(
+            "INSERT INTO teacher_classes (teacher_id, name, grade, section) VALUES (?, ?, ?, ?)",
+            (int(teacher_id), cleaned, str(grade or "").strip(), str(section or "").strip()),
+        )
+        return connection.execute("SELECT * FROM teacher_classes WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    return dict(_transaction(work))
 
 
 def class_owned(teacher_id: int, class_id: int) -> bool:
@@ -46,50 +73,50 @@ def class_owned(teacher_id: int, class_id: int) -> bool:
 def remove_class_member(teacher_id: int, class_id: int, student_id: int) -> bool:
     if not class_owned(teacher_id, class_id):
         return False
-    connection = get_connection()
-    cursor = connection.execute(
-        "DELETE FROM class_members WHERE class_id = ? AND student_id = ?",
-        (int(class_id), int(student_id)),
-    )
-    connection.commit()
-    removed = cursor.rowcount > 0
-    connection.close()
-    return removed
+    from app.database.connection import _transaction
+
+    def work(connection):
+        cursor = connection.execute(
+            "DELETE FROM class_members WHERE class_id = ? AND student_id = ?",
+            (int(class_id), int(student_id)),
+        )
+        return cursor.rowcount > 0
+    return bool(_transaction(work))
 
 
 def delete_class(teacher_id: int, class_id: int) -> bool:
     if not class_owned(teacher_id, class_id):
         return False
-    connection = get_connection()
-    # FK cascades are not enforced (no PRAGMA foreign_keys=ON), so clean up explicitly.
-    # Already-sent assignments/announcements are kept for students, only ungrouped.
-    connection.execute("DELETE FROM class_members WHERE class_id = ?", (int(class_id),))
-    connection.execute(
-        "DELETE FROM access_rules WHERE scope_type = 'CLASS' AND scope_id = ?", (str(class_id),)
-    )
-    connection.execute("UPDATE teacher_assignments SET class_id = NULL WHERE class_id = ?", (int(class_id),))
-    connection.execute("UPDATE teacher_announcements SET class_id = NULL WHERE class_id = ?", (int(class_id),))
-    cursor = connection.execute(
-        "DELETE FROM teacher_classes WHERE id = ? AND teacher_id = ?", (int(class_id), int(teacher_id))
-    )
-    connection.commit()
-    deleted = cursor.rowcount > 0
-    connection.close()
-    return deleted
+    from app.database.connection import _transaction
+
+    def work(connection):
+        # FK cascades are enforced (PRAGMA foreign_keys=ON) but deleting the
+        # class would orphan sent work; keep student-visible rows, only ungroup.
+        connection.execute("DELETE FROM class_members WHERE class_id = ?", (int(class_id),))
+        connection.execute(
+            "DELETE FROM access_rules WHERE scope_type = 'CLASS' AND scope_id = ?", (str(class_id),)
+        )
+        connection.execute("UPDATE teacher_assignments SET class_id = NULL WHERE class_id = ?", (int(class_id),))
+        connection.execute("UPDATE teacher_announcements SET class_id = NULL WHERE class_id = ?", (int(class_id),))
+        cursor = connection.execute(
+            "DELETE FROM teacher_classes WHERE id = ? AND teacher_id = ?", (int(class_id), int(teacher_id))
+        )
+        return cursor.rowcount > 0
+    return bool(_transaction(work))
 
 
 def add_class_member(teacher_id: int, class_id: int, student_id: int) -> bool:
     if not class_owned(teacher_id, class_id):
         return False
-    connection = get_connection()
-    student = connection.execute("SELECT id FROM users WHERE id = ? AND role = 'STUDENT'", (int(student_id),)).fetchone()
-    if not student:
-        connection.close()
-        return False
-    connection.execute("INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (?, ?)", (int(class_id), int(student_id)))
-    connection.commit()
-    connection.close()
-    return True
+    from app.database.connection import _transaction
+
+    def work(connection):
+        student = connection.execute("SELECT id FROM users WHERE id = ? AND role = 'STUDENT'", (int(student_id),)).fetchone()
+        if not student:
+            return False
+        connection.execute("INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (?, ?)", (int(class_id), int(student_id)))
+        return True
+    return bool(_transaction(work))
 
 
 def class_students(teacher_id: int, class_id: int) -> list[dict]:
@@ -106,29 +133,30 @@ def class_students(teacher_id: int, class_id: int) -> list[dict]:
 
 def record_event(user_id: int, event_type: str, *, subject_slug=None, activity_type=None, activity_id=None,
                  detail="", score=None, duration_seconds=None, metadata=None) -> dict:
+    from app.database.connection import _transaction
+
     event_id = str(uuid.uuid4())
-    connection = get_connection()
-    cursor = connection.execute(
-        "INSERT INTO activity_events (event_id, user_id, event_type, subject_slug, activity_type, activity_id, detail, score, duration_seconds, metadata_json) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (event_id, int(user_id), event_type, subject_slug, activity_type, activity_id, detail, score, duration_seconds, json.dumps(metadata or {})),
-    )
-    teacher_rows = connection.execute(
-        "SELECT DISTINCT c.teacher_id FROM teacher_classes c JOIN class_members cm ON cm.class_id = c.id WHERE cm.student_id = ?",
-        (int(user_id),),
-    ).fetchall()
-    for teacher in teacher_rows:
-        connection.execute(
-            "INSERT INTO teacher_notifications (teacher_id, event_id, kind, message) VALUES (?, ?, ?, ?)",
-            (teacher["teacher_id"], cursor.lastrowid, event_type, detail or event_type.replace("_", " ").title()),
+
+    def work(connection):
+        cursor = connection.execute(
+            "INSERT INTO activity_events (event_id, user_id, event_type, subject_slug, activity_type, activity_id, detail, score, duration_seconds, metadata_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (event_id, int(user_id), event_type, subject_slug, activity_type, activity_id, detail, score, duration_seconds, json.dumps(metadata or {})),
         )
-    connection.commit()
-    row = connection.execute(
-        "SELECT e.*, u.name AS student_name FROM activity_events e JOIN users u ON u.id = e.user_id WHERE e.id = ?",
-        (cursor.lastrowid,),
-    ).fetchone()
-    connection.close()
-    return dict(row)
+        teacher_rows = connection.execute(
+            "SELECT DISTINCT c.teacher_id FROM teacher_classes c JOIN class_members cm ON cm.class_id = c.id WHERE cm.student_id = ?",
+            (int(user_id),),
+        ).fetchall()
+        for teacher in teacher_rows:
+            connection.execute(
+                "INSERT INTO teacher_notifications (teacher_id, event_id, kind, message) VALUES (?, ?, ?, ?)",
+                (teacher["teacher_id"], cursor.lastrowid, event_type, detail or event_type.replace("_", " ").title()),
+            )
+        return connection.execute(
+            "SELECT e.*, u.name AS student_name FROM activity_events e JOIN users u ON u.id = e.user_id WHERE e.id = ?",
+            (cursor.lastrowid,),
+        ).fetchone()
+    return dict(_transaction(work))
 
 
 def dashboard_snapshot(teacher_id: int) -> dict:
@@ -223,22 +251,23 @@ def set_access_rule(teacher_id: int, scope_type: str, scope_id: str, resource_ty
         raise ValueError("Invalid access rule.")
     if scope_type == "CLASS" and not class_owned(teacher_id, int(scope_id)):
         raise PermissionError("Class is not owned by this teacher.")
-    connection = get_connection()
-    previous = connection.execute(
-        "SELECT state FROM access_rules WHERE scope_type=? AND scope_id=? AND resource_type=? AND resource_id=?",
-        (scope_type, str(scope_id), resource_type, resource_id),
-    ).fetchone()
-    connection.execute(
-        "INSERT INTO access_rules (scope_type, scope_id, resource_type, resource_id, state, updated_by) VALUES (?, ?, ?, ?, ?, ?) "
-        "ON CONFLICT(scope_type, scope_id, resource_type, resource_id) DO UPDATE SET state=excluded.state, updated_by=excluded.updated_by, updated_at=CURRENT_TIMESTAMP",
-        (scope_type, str(scope_id), resource_type, resource_id, state, int(teacher_id)),
-    )
-    connection.execute(
-        "INSERT INTO teacher_audit_logs (teacher_id, action, scope, previous_state, new_state) VALUES (?, ?, ?, ?, ?)",
-        (int(teacher_id), "ACCESS_PERMISSION_CHANGED", f"{scope_type}:{scope_id}:{resource_type}:{resource_id}", previous["state"] if previous else None, state),
-    )
-    connection.commit()
-    connection.close()
+    from app.database.connection import _transaction
+
+    def work(connection):
+        previous = connection.execute(
+            "SELECT state FROM access_rules WHERE scope_type=? AND scope_id=? AND resource_type=? AND resource_id=?",
+            (scope_type, str(scope_id), resource_type, resource_id),
+        ).fetchone()
+        connection.execute(
+            "INSERT INTO access_rules (scope_type, scope_id, resource_type, resource_id, state, updated_by) VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(scope_type, scope_id, resource_type, resource_id) DO UPDATE SET state=excluded.state, updated_by=excluded.updated_by, updated_at=CURRENT_TIMESTAMP",
+            (scope_type, str(scope_id), resource_type, resource_id, state, int(teacher_id)),
+        )
+        connection.execute(
+            "INSERT INTO teacher_audit_logs (teacher_id, action, scope, previous_state, new_state) VALUES (?, ?, ?, ?, ?)",
+            (int(teacher_id), "ACCESS_PERMISSION_CHANGED", f"{scope_type}:{scope_id}:{resource_type}:{resource_id}", previous["state"] if previous else None, state),
+        )
+    _transaction(work)
     return {"scope_type": scope_type, "scope_id": str(scope_id), "resource_type": resource_type, "resource_id": resource_id, "state": state}
 
 
@@ -279,23 +308,37 @@ def analytics_snapshot(teacher_id: int) -> dict:
 
 
 def create_assignment(teacher_id: int, payload: dict) -> dict:
+    from app.database.connection import _transaction
+
+    due_at = _clean_due_at(payload.get("due_at"))
     class_id = payload.get("class_id")
-    if class_id and not class_owned(teacher_id, int(class_id)):
-        raise PermissionError("Class is not owned by this teacher.")
-    connection = get_connection()
-    cursor = connection.execute(
-        "INSERT INTO teacher_assignments (teacher_id, class_id, resource_type, resource_id, title, start_at, due_at, attempts, difficulty, time_limit_minutes) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (int(teacher_id), class_id, payload.get("resource_type", "lesson"), payload.get("resource_id", ""), payload.get("title", "Assigned activity"),
-         payload.get("start_at"), payload.get("due_at"), payload.get("attempts"), payload.get("difficulty"), payload.get("time_limit_minutes")),
-    )
-    if class_id:
-        students = connection.execute("SELECT student_id FROM class_members WHERE class_id=?", (int(class_id),)).fetchall()
-        connection.executemany("INSERT INTO assignment_targets (assignment_id, student_id) VALUES (?, ?)", [(cursor.lastrowid, row[0]) for row in students])
-    connection.commit()
-    row = connection.execute("SELECT * FROM teacher_assignments WHERE id=?", (cursor.lastrowid,)).fetchone()
-    connection.close()
-    return dict(row)
+    if class_id in ("", None):
+        class_id = None
+    else:
+        class_id = int(class_id)
+        if not class_owned(teacher_id, class_id):
+            raise PermissionError("Class is not owned by this teacher.")
+
+    def work(connection):
+        cursor = connection.execute(
+            "INSERT INTO teacher_assignments (teacher_id, class_id, title, resource_type, resource_id, due_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (int(teacher_id), class_id, str(payload.get("title") or "Untitled assignment").strip() or "Untitled assignment",
+             str(payload.get("resource_type") or "lesson"), str(payload.get("resource_id") or ""), due_at),
+        )
+        assignment_id = cursor.lastrowid
+        students = (
+            [row["student_id"] for row in connection.execute("SELECT student_id FROM class_members WHERE class_id = ?", (class_id,)).fetchall()]
+            if class_id is not None else
+            [row["student_id"] for row in connection.execute(
+                "SELECT cm.student_id FROM class_members cm JOIN teacher_classes c ON c.id = cm.class_id JOIN users u ON u.id = cm.student_id WHERE c.teacher_id = ? AND u.role = 'STUDENT'",
+                (int(teacher_id),)).fetchall()]
+        )
+        connection.executemany(
+            "INSERT OR IGNORE INTO assignment_targets (assignment_id, student_id) VALUES (?, ?)",
+            [(assignment_id, int(student_id)) for student_id in students],
+        )
+        return connection.execute("SELECT * FROM teacher_assignments WHERE id = ?", (assignment_id,)).fetchone()
+    return dict(_transaction(work))
 
 
 def student_assignments(student_id: int) -> list[dict]:
@@ -332,21 +375,34 @@ def teacher_sent_announcements(teacher_id: int) -> list[dict]:
 
 
 def create_announcement(teacher_id: int, class_id: int | None, message: str) -> dict:
-    if class_id and not class_owned(teacher_id, class_id):
-        raise PermissionError("Class is not owned by this teacher.")
-    connection = get_connection()
-    cursor = connection.execute("INSERT INTO teacher_announcements (teacher_id, class_id, message) VALUES (?, ?, ?)", (int(teacher_id), class_id, message.strip()))
-    connection.commit()
-    row = connection.execute("SELECT * FROM teacher_announcements WHERE id=?", (cursor.lastrowid,)).fetchone()
-    connection.close()
-    return dict(row)
+    from app.database.connection import _transaction
+
+    cleaned = str(message or "").strip()
+    if not cleaned:
+        raise ValueError("Announcement message is required.")
+    if class_id in ("", None):
+        class_id = None
+    else:
+        class_id = int(class_id)
+        if not class_owned(teacher_id, class_id):
+            raise PermissionError("Class is not owned by this teacher.")
+
+    def work(connection):
+        cursor = connection.execute("INSERT INTO teacher_announcements (teacher_id, class_id, message) VALUES (?, ?, ?)", (int(teacher_id), class_id, cleaned))
+        return connection.execute("SELECT * FROM teacher_announcements WHERE id=?", (cursor.lastrowid,)).fetchone()
+    return dict(_transaction(work))
 
 
 def student_announcements(student_id: int) -> list[dict]:
+    """Announcements visible to one student (class-scoped + global).
+
+    The LEFT JOIN must constrain the membership to this student, otherwise a
+    class announcement leaks to every student in any class.
+    """
     connection = get_connection()
     rows = connection.execute(
-        "SELECT a.* FROM teacher_announcements a LEFT JOIN class_members cm ON cm.class_id=a.class_id "
-        "WHERE a.class_id IS NULL OR cm.student_id=? ORDER BY a.created_at DESC LIMIT 50", (int(student_id),)
+        "SELECT a.* FROM teacher_announcements a LEFT JOIN class_members cm ON cm.class_id = a.class_id AND cm.student_id = ? "
+        "WHERE a.class_id IS NULL OR cm.student_id IS NOT NULL ORDER BY a.created_at DESC LIMIT 50", (int(student_id),)
     ).fetchall()
     connection.close()
     return _dicts(rows)
@@ -383,13 +439,14 @@ def student_profile(teacher_id: int, student_id: int) -> dict | None:
 
 
 def mark_notifications_read(teacher_id: int, notification_id: int | None = None) -> None:
-    connection = get_connection()
-    if notification_id is None:
-        connection.execute("UPDATE teacher_notifications SET read_at=CURRENT_TIMESTAMP WHERE teacher_id=? AND read_at IS NULL", (int(teacher_id),))
-    else:
-        connection.execute("UPDATE teacher_notifications SET read_at=CURRENT_TIMESTAMP WHERE id=? AND teacher_id=?", (int(notification_id), int(teacher_id)))
-    connection.commit()
-    connection.close()
+    from app.database.connection import _transaction
+
+    def work(connection):
+        if notification_id is None:
+            connection.execute("UPDATE teacher_notifications SET read_at=CURRENT_TIMESTAMP WHERE teacher_id=? AND read_at IS NULL", (int(teacher_id),))
+        else:
+            connection.execute("UPDATE teacher_notifications SET read_at=CURRENT_TIMESTAMP WHERE id=? AND teacher_id=?", (int(notification_id), int(teacher_id)))
+    _transaction(work)
 
 
 def activity_report(teacher_id: int, student_id: int | None = None) -> list[dict]:

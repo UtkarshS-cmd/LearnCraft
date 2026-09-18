@@ -187,6 +187,8 @@ def assignment():
         return jsonify({"success": True, "item": create_assignment(user_id, request.get_json(silent=True) or {})}), 201
     except PermissionError as exc:
         return jsonify({"success": False, "message": str(exc), "code": "FORBIDDEN"}), 403
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc), "code": "VALIDATION_ERROR"}), 400
 
 
 @bp.get("/assignments")

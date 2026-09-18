@@ -1,5 +1,87 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-head"><div><div class="eyebrow">Practice and assessment</div><div class="h1">Tests</div><p>Take a focused check after learning a concept.</p></div></div>
+<div class="page-head"><div><div class="eyebrow">Practice and assessment</div><div class="h1">Tests</div><p>Take a focused check after learning a concept. Answers are checked instantly — offline.</p></div></div>
+
+<div class="card" style="margin-bottom:14px">
+  <form method="get" action="/tests" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <label class="caption" for="quizSubject">Subject</label>
+    <select id="quizSubject" name="subject" class="btn" onchange="this.form.submit()">
+      <option value="">All subjects</option>
+      {% for s in quiz_subjects %}
+      <option value="{{ s.slug }}" {% if s.slug == selected_subject %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+    <span class="caption" id="quizScore">Score: 0 / {{ quiz_questions|length }}</span>
+  </form>
+</div>
+
+{% if quiz_questions %}
+<div id="quizList" style="display:grid;gap:12px">
+  {% for q in quiz_questions %}
+  <div class="card quiz-card" data-question-id="{{ q.question_id }}">
+    <div class="caption">{{ q.question_type }} · Q{{ loop.index }}</div>
+    <div class="h3" style="margin:6px 0">{{ q.prompt }}</div>
+    {% if q.options %}
+    <div style="display:grid;gap:8px;margin-top:8px">
+      {% for o in q.options %}
+      <label style="display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 11px;cursor:pointer">
+        <input type="radio" name="q-{{ q.question_id }}" value="{{ o.option_id }}" />
+        <span>{{ o.option_text }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <input class="input" data-free-answer placeholder="Type your answer…" style="margin-top:8px" />
+    {% endif %}
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="checkQuizQuestion(this)">Check answer</button>
+      <span class="caption quiz-feedback" aria-live="polite"></span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
 <div class="empty"><div class="h3" style="color:var(--ink)">No tests assigned yet</div><div class="body-sm" style="margin:6px 0 14px">Open a subject to see chapter practice and available quizzes. Test scheduling will appear here when content is assigned.</div><a class="btn btn-secondary btn-sm" href="/subjects">Browse subjects</a></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+let quizScore = 0;
+const quizAnswered = new Set();
+async function checkQuizQuestion(button) {
+  const card = button.closest('.quiz-card');
+  const questionId = card.dataset.questionId;
+  const feedback = card.querySelector('.quiz-feedback');
+  let answer = null;
+  const picked = card.querySelector('input[type=radio]:checked');
+  const free = card.querySelector('[data-free-answer]');
+  if (picked) answer = picked.value;
+  else if (free) answer = free.value.trim();
+  if (!answer) { feedback.textContent = 'Pick or type an answer first.'; return; }
+  feedback.textContent = 'Checking…';
+  try {
+    const r = await fetch('/api/v1/quizzes/check', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question_id: questionId, answer})
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message || 'Check failed');
+    feedback.textContent = data.correct
+      ? '✓ Correct! ' + (data.explanation || '')
+      : '✗ Not quite. ' + (data.explanation || (data.answer ? ('Answer: ' + data.answer) : 'Try again.'));
+    feedback.style.color = data.correct ? '#15803D' : '#B45309';
+    if (data.correct && !quizAnswered.has(questionId)) {
+      quizAnswered.add(questionId);
+      quizScore += 1;
+      const el = document.getElementById('quizScore');
+      if (el) el.textContent = 'Score: ' + quizScore + ' / {{ quiz_questions|length }}';
+    }
+    fetch('/api/v1/events', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({event_type: data.correct ? 'QUIZ_SUBMITTED' : 'QUIZ_STARTED',
+        activity_type: 'quiz', activity_id: questionId,
+        detail: 'Practice quiz ' + (data.correct ? 'passed' : 'attempted'),
+        score: data.correct ? 100 : 0})}).catch(() => null);
+  } catch (e) { feedback.textContent = e.message; }
+}
+</script>
 {% endblock %}

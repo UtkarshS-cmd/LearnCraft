@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
-from app.services.content_catalog import get_lesson
+from app.services.content_catalog import get_lesson, list_lessons as list_catalog_lessons
 
 bp = Blueprint("lessons_v1", __name__, url_prefix="/api/v1")
 
@@ -15,4 +15,4 @@ def list_lessons():
         if not lesson:
             return jsonify({"success": False, "message": "Lesson not found."}), 404
         return jsonify(lesson)
-    return jsonify({"items": []})
+    return jsonify({"items": list_catalog_lessons(request.args.get("subject"), request.args.get("chapter_id"))})

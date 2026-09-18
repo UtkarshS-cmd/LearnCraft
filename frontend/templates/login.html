@@ -296,19 +296,12 @@
             <label for="resetEmail">Email</label>
             <input id="resetEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
           </div>
-          <button type="submit" class="btn btn-primary btn-lg">Send OTP</button>
-          <p class="muted" id="resetStatus"></p>
-          <div id="resetConfirmFields" hidden>
-            <div class="field">
-              <label for="resetOtp">Six-digit OTP</label>
-              <input id="resetOtp" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" />
-            </div>
-            <div class="field">
-              <label for="newPassword">New password</label>
-              <input id="newPassword" name="new_password" type="password" autocomplete="new-password" />
-            </div>
-            <button type="button" class="btn btn-primary btn-lg" id="resetPasswordButton">Reset password</button>
+          <div class="field">
+            <label for="newPassword">New password</label>
+            <input id="newPassword" name="new_password" type="password" autocomplete="new-password" required />
           </div>
+          <button type="submit" class="btn btn-primary btn-lg">Reset password</button>
+          <p class="muted" id="resetStatus"></p>
           <button type="button" class="link-button" id="backToLogin">Back to login</button>
         </form>
 
@@ -358,7 +351,6 @@
     const registerForm = document.getElementById('registerForm');
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     const forgotPasswordForm = document.getElementById('forgotPasswordForm');
-    const resetConfirmFields = document.getElementById('resetConfirmFields');
     const resetStatus = document.getElementById('resetStatus');
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next') || '/home';
@@ -461,19 +453,9 @@
     forgotPasswordForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
-        await submitJson(forgotPasswordForm, '/auth/password-reset/request');
-        resetStatus.textContent = 'OTP sent. Check your email.';
-        resetConfirmFields.hidden = false;
-        document.getElementById('resetOtp').required = true;
-        document.getElementById('newPassword').required = true;
-      } catch (error) {
-        resetStatus.textContent = error.message;
-      }
-    });
-
-    document.getElementById('resetPasswordButton').addEventListener('click', async () => {
-      try {
         await submitJson(forgotPasswordForm, '/auth/password-reset/confirm');
+        resetStatus.textContent = 'Password reset successfully. Please sign in with your new password.';
+        forgotPasswordForm.reset();
       } catch (error) {
         resetStatus.textContent = error.message;
       }

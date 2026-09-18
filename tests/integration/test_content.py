@@ -56,6 +56,23 @@ class AcademicContentTests(unittest.TestCase):
         self.assertEqual(questions.status_code, 200)
         self.assertIn("ncert.nic.in", questions.get_json()["items"][0]["source_reference"])
 
+    def test_lessons_endpoint_lists_lessons(self):
+        """Regression: `GET /api/v1/lessons` must never silently return an empty list."""
+        response = self.client.get("/api/v1/lessons")
+        self.assertEqual(response.status_code, 200)
+        items = response.get_json()["items"]
+        self.assertTrue(items, "lesson index is empty")
+        self.assertIn("lesson_id", items[0])
+        self.assertIn("subject_slug", items[0])
+
+        filtered = self.client.get("/api/v1/lessons?subject=science").get_json()["items"]
+        self.assertTrue(filtered)
+        self.assertEqual({lesson["subject_slug"] for lesson in filtered}, {"science"})
+
+        single = self.client.get(f"/api/v1/lessons?id={items[0]['lesson_id']}")
+        self.assertEqual(single.status_code, 200)
+        self.assertTrue(single.get_json()["blocks"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% from "components.html" import progressbar, badge %}
 {% block content %}
-<div class="page-head"><div><div class="h1">Subjects</div><p>Same structure everywhere: Chapters → Lessons → Sim → Practical → Quiz.</p></div></div>
+<div class="page-head"><div><div class="h1">Subjects</div><p>Same structure everywhere: Chapters → Lessons → Sim → Practical → Quiz.</p></div><div><input id="subjectSearch" class="input" placeholder="⌕ Search subjects…" oninput="filterCards(this.value)" aria-label="Search subjects" /></div></div>
 <div class="grid grid-3">
 {% for s in subjects %}
 <a class="card hover subj" href="/subjects/{{ s.slug }}" data-search="{{ s.name }}">

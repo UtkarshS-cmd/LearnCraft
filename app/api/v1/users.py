@@ -14,18 +14,21 @@ def _user_id():
 
 
 def _require_teacher():
-    user = _user_id()
+    user_id = _user_id()
+    if not user_id:
+        return None, (jsonify({"success": False, "code": "UNAUTHORIZED", "message": "Authentication required."}), 401)
+    user = service.get_user(user_id)
     if not user:
         return None, (jsonify({"success": False, "code": "UNAUTHORIZED", "message": "Authentication required."}), 401)
-    payload = user_payload(user) if isinstance(user, dict) else None
-    if payload and payload.get("role") not in {"TEACHER", "ADMIN"}:
+    payload = user_payload(user)
+    if payload.get("role") not in {"TEACHER", "ADMIN"}:
         return None, (jsonify({"success": False, "code": "FORBIDDEN", "message": "Insufficient permissions."}), 403)
-    return user, None
+    return payload, None
 
 
 @bp.get("/users")
 def list_users():
-    user_id, err = _require_teacher()
+    payload, err = _require_teacher()
     if err:
         return err
     users = service.get_users()

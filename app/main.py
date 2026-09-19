@@ -10,6 +10,7 @@ from flask import Flask, jsonify, redirect, render_template, request, session
 from data.seed import lessons_data as L
 from data.seed import mock_data as M
 from app.core.security import hash_password, password_policy, verify_password
+from app.services.auth_service import AuthService, EmailExistsError
 from app.services.password_reset import PasswordResetService
 from app.database.connection import (
     add_student,
@@ -112,6 +113,7 @@ app.config.update(
 )
 
 password_reset_service = PasswordResetService()
+auth_service = AuthService()
 
 _RUNTIME_READY = False
 
@@ -475,25 +477,24 @@ def auth_register():
     name = str(payload.get("name", "")).strip()
     email = str(payload.get("email", "")).strip().lower()
     password = str(payload.get("password", ""))
+    account_type = str(payload.get("account_type", "student")).strip().lower()
 
     if not name or not email or not password:
         return json_error("Name, email, and password are required.", "VALIDATION_ERROR", 400)
     if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
         return json_error("Please provide a valid email address.", "VALIDATION_ERROR", 400)
-
-    valid, message = password_policy(password)
-    if not valid:
-        return json_error(message, "VALIDATION_ERROR", 400)
-
-    if get_user_by_email(email):
-        return json_error("An account with this email already exists.", "EMAIL_EXISTS", 409)
-
-    password_hash = hash_password(password)
-    account_type = str(payload.get("account_type", "student")).strip().lower()
     if account_type not in {"student", "teacher"}:
         return json_error("Invalid account type.", "VALIDATION_ERROR", 400)
-    role = "TEACHER" if account_type == "teacher" else "STUDENT"
-    user = create_user(name=name, email=email, password_hash=password_hash, role=role)
+
+    try:
+        # Canonical registration: /auth/* and /api/v1/auth/* share this service,
+        # so the same requested account type always yields the same role.
+        user = auth_service.create_user(name=name, email=email, password=password, account_type=account_type)
+    except EmailExistsError:
+        return json_error("An account with this email already exists.", "EMAIL_EXISTS", 409)
+    except ValueError as exc:
+        return json_error(str(exc), "VALIDATION_ERROR", 400)
+
     session.clear()
     session["user_id"] = user["id"]
     session.permanent = True
@@ -510,15 +511,15 @@ def auth_login():
     if not email or not password:
         return json_error("Email and password are required.", "VALIDATION_ERROR", 400)
 
-    user = get_user_by_email(email)
-    if not user or not verify_password(password, user["password_hash"]):
+    user = auth_service.authenticate(email, password)
+    if not user:
         return json_error(
             "Invalid email or password. You can reset it from the Forgot password link.",
             "INVALID_CREDENTIALS",
             401,
         )
     portal = str(payload.get("portal", "student")).strip().lower()
-    if portal == "teacher" and user.get("role") not in {"TEACHER", "ADMIN"}:
+    if not auth_service.validate_portal(user, portal):
         return json_error("This account is not a teacher account.", "TEACHER_ACCOUNT_REQUIRED", 403)
 
     session.clear()

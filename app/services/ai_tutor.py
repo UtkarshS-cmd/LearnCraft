@@ -530,17 +530,20 @@ def offline_answer(question: str, context: AIContext, chunks: list[dict]) -> str
         if "password" in text or "forgot" in text:
             return (
                 "To reset your LearnCraft password: open the login page, choose "
-                "Forgot password, enter your registered email and your new password, "
-                "then submit. The reset works fully offline on this device — "
-                "no email code is needed. If the page still does not load, refresh "
-                "the browser and try again with cookies enabled."
+                "Forgot password, enter your registered email, and select Send "
+                "reset code. A 6-digit one-time code valid for 10 minutes is "
+                "generated for your account — in offline deployments it is "
+                "written to the server log or provided by your teacher/admin. "
+                "Enter the code with your new password and submit. Knowing only "
+                "the email address is never enough to reset an account."
             )
         if "login" in text or "log in" in text or "sign in" in text:
             return (
                 "For a LearnCraft login issue, first verify your email and password. "
-                "If the password is incorrect, use Forgot password to set a new one "
-                "directly. If the page still does not load, refresh the browser and "
-                "try again with cookies enabled."
+                "If the password is incorrect, use Forgot password: request the "
+                "6-digit code, then set a new password with that code. If the page "
+                "still does not load, refresh the browser and try again with "
+                "cookies enabled."
             )
         if "sign out" in text or "logout" in text:
             return (

@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 import uuid
+from unittest.mock import patch
 
 DB_PATH = os.path.join(tempfile.gettempdir(), f"learncraft_ai_{os.getpid()}.db")
 os.environ["LEARNCRAFT_DB_PATH"] = DB_PATH
@@ -10,9 +11,14 @@ os.environ.pop("LEARNCRAFT_AI_CLOUD_URL", None)
 os.environ.pop("LEARNCRAFT_AI_CLOUD_KEY", None)
 os.environ.pop("LEARNCRAFT_AI_LOCAL_COMMAND", None)
 
-from app.database.connection import initialize_database
-from app.services.ai_tutor import AIContext, AIService, ncert_questions
-from app.main import app
+# The test environment has a reachable Ollama server (qwen3:8b), so the
+# module-level ai_service created by app.main would use a real local LLM.
+# Patch OllamaProvider.available to False *before* importing app code so
+# every route falls back to the deterministic built-in offline tutor.
+with patch("app.services.ai_tutor.OllamaProvider.available", return_value=False):
+    from app.database.connection import initialize_database
+    from app.services.ai_tutor import AIContext, AIService, ncert_questions
+    from app.main import app
 
 
 class AITutorTests(unittest.TestCase):
@@ -79,6 +85,9 @@ class AITutorTests(unittest.TestCase):
 
         service = AIService()
         service.cloud = type("Cloud", (), {"available": lambda self: False, "name": "online"})()
+        # Replace both local providers so the test is deterministic and does not
+        # attempt a real Ollama call (which would impose its own network timeout).
+        service.local_llm = FakeProvider()
         service.local = FakeProvider()
         answer, provider = service.answer("Explain photosynthesis simply.", AIContext(subject="Science"), [])
         self.assertEqual(provider, "offline")
@@ -86,6 +95,19 @@ class AITutorTests(unittest.TestCase):
 
     def test_local_answer_has_multiple_guidance_sections(self):
         service = AIService()
+        # Both local providers must be unavailable so the loop falls through to
+        # the built-in offline_answer() path. This avoids a real Ollama call and
+        # exercises the deterministic offline tutor.
+        service.local_llm = type("Fake", (), {
+            "name": "local-llm",
+            "available": lambda self: False,
+            "generate": lambda self, messages, context: "built-in",
+        })()
+        service.local = type("Fake", (), {
+            "name": "local",
+            "available": lambda self: False,
+            "generate": lambda self, messages, context: "built-in",
+        })()
         answer, provider = service.answer(
             "Explain resources and development.",
             AIContext(subject="Social Science", chapter="Resources and Development"),

@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.env
+*.egg-info/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and temp files
+*.log
+server.err.log
+server.log
+server_err.log
+server_out.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# SQLite databases (if any in repo)
+*.db
+*.sqlite
+*.sqlite3
+
+# Build artifacts
+*.zip
+*.tar.gz
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db

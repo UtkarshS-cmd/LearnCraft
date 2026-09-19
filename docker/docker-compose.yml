@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  learncraft:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: learncraft
+    ports:
+      - "5000:5000"
+    environment:
+      - LEARNCRAFT_SECRET_KEY=${LEARNCRAFT_SECRET_KEY:-changeme-in-production}
+      - LEARNCRAFT_DB_PATH=${LEARNCRAFT_DB_PATH:-/app/data/learncraft.db}
+      - LEARNCRAFT_NETWORK_MODE=${LEARNCRAFT_NETWORK_MODE:-OFFLINE}
+      - LEARNCRAFT_MASTER_URL=${LEARNCRAFT_MASTER_URL:-}
+      # AI Configuration (optional)
+      - LEARNCRAFT_AI_MODE=${LEARNCRAFT_AI_MODE:-AUTO}
+      # Email Configuration (optional)
+      - LEARNCRAFT_MAIL_HOST=${LEARNCRAFT_MAIL_HOST:-}
+      - LEARNCRAFT_MAIL_PORT=${LEARNCRAFT_MAIL_PORT:-}
+      - LEARNCRAFT_MAIL_USERNAME=${LEARNCRAFT_MAIL_USERNAME:-}
+      - LEARNCRAFT_MAIL_PASSWORD=${LEARNCRAFT_MAIL_PASSWORD:-}
+      - LEARNCRAFT_MAIL_FROM=${LEARNCRAFT_MAIL_FROM:-}
+    volumes:
+      # Persist SQLite database
+      - ../backend/data:/app/data
+      # Frontend static files (if you want to modify them)
+      - ../frontend:/app/frontend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - learncraft-network
+
+networks:
+  learncraft-network:
+    driver: bridge

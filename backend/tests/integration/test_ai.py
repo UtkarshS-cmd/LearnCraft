@@ -13,12 +13,17 @@ os.environ.pop("LEARNCRAFT_AI_LOCAL_COMMAND", None)
 
 # The test environment has a reachable Ollama server (qwen3:8b), so the
 # module-level ai_service created by app.main would use a real local LLM.
-# Patch OllamaProvider.available to False *before* importing app code so
-# every route falls back to the deterministic built-in offline tutor.
-with patch("app.services.ai_tutor.OllamaProvider.available", return_value=False):
-    from app.database.connection import initialize_database
-    from app.services.ai_tutor import AIContext, AIService, ncert_questions
-    from app.main import app
+# Force OFFLINE mode and permanently disable Ollama *before* importing app
+# code so every route falls back to the deterministic built-in offline tutor.
+os.environ["LEARNCRAFT_AI_MODE"] = "OFFLINE"
+
+import app.services.ai_tutor as _ai_tutor_module  # noqa: E402
+_ai_tutor_module.OllamaProvider._detect = lambda self: ""  # type: ignore[method-assign]
+_ai_tutor_module.OllamaProvider.available = lambda self: False  # type: ignore[method-assign]
+
+from app.database.connection import initialize_database
+from app.services.ai_tutor import AIContext, AIService, ncert_questions
+from app.main import app
 
 
 class AITutorTests(unittest.TestCase):

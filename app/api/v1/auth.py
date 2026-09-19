@@ -24,7 +24,7 @@ def login():
 def register():
     payload = request.get_json(silent=True) or {}
     try:
-        user = service.create_user(payload.get("name", ""), payload.get("email", ""), payload.get("password", ""))
+        user = service.create_user(payload.get("name", ""), payload.get("email", ""), payload.get("password", ""), payload.get("account_type", "student"))
     except ValueError as exc:
         return jsonify({"success": False, "code": "VALIDATION_ERROR", "message": str(exc)}), 400
     session.clear()

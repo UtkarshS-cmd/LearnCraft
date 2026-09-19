@@ -87,8 +87,18 @@ for blueprint in (
     teacher_api_bp,
 ):
     app.register_blueprint(blueprint)
+_secret = os.environ.get("LEARNCRAFT_SECRET_KEY")
+if not _secret:
+    import sys
+    _mode = os.environ.get("LEARNCRAFT_NETWORK_MODE", "OFFLINE").upper()
+    _testing = os.environ.get("FLASK_TESTING") or os.environ.get("PYTEST_CURRENT_TEST")
+    if _mode == "OFFLINE" and _testing:
+        _secret = "test-secret-do-not-use-in-production"
+    else:
+        sys.stderr.write("FATAL: LEARNCRAFT_SECRET_KEY must be set for this deployment.\n")
+        sys.exit(1)
 app.config.update(
-    SECRET_KEY=os.environ.get("LEARNCRAFT_SECRET_KEY", "dev-secret-key-change-me"),
+    SECRET_KEY=_secret,
     SESSION_COOKIE_NAME="learncraft_session",
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
@@ -540,24 +550,13 @@ def confirm_password_reset():
     email = str(payload.get("email", "")).strip().lower()
     otp = str(payload.get("otp", "")).strip()
     new_password = str(payload.get("new_password", ""))
-    if not email or not new_password:
-        return json_error("Email and new password are required.", "VALIDATION_ERROR", 400)
+    if not email or not otp or not new_password:
+        return json_error("Email, OTP, and new password are required.", "VALIDATION_ERROR", 400)
 
-    # OTP is now optional: an OTP (if emailed) is accepted, but a direct
-    # offline reset without OTP also works so the app functions completely
-    # without SMTP configuration.
-    if otp:
-        success, message = password_reset_service.reset_password(email, otp, new_password)
-        if success:
-            return json_success(message, "PASSWORD_RESET")
-        # Fall through to direct reset for empty/legacy flows only when the
-        # OTP itself was not usable AND no token exists? No — keep OTP errors
-        # strict when a well-formed OTP was supplied, so brute force fails.
-        if len(otp) == 6 and otp.isdigit():
-            code = "VALIDATION_ERROR" if message.startswith("Password must") else "INVALID_OTP"
-            return json_error(message, code, 400)
+    if not otp.isdigit() or len(otp) != 6:
+        return json_error("A valid 6-digit OTP is required.", "INVALID_OTP", 400)
 
-    success, message = password_reset_service.reset_direct(email, new_password)
+    success, message = password_reset_service.reset_password(email, otp, new_password)
     if not success:
         code = "VALIDATION_ERROR" if message.startswith("Password must") else "INVALID_OTP"
         return json_error(message, code, 400)

@@ -11,13 +11,14 @@ class AuthService:
     def validate_password(self, password: str):
         return password_policy(password)
 
-    def create_user(self, name: str, email: str, password: str):
+    def create_user(self, name: str, email: str, password: str, account_type: str = "student"):
         valid, message = password_policy(password)
         if not valid:
             raise ValueError(message)
         if self.repository.get_by_email(email):
             raise ValueError("An account with this email already exists.")
-        return self.repository.create(name=name, email=email, password_hash=hash_password(password), role="STUDENT")
+        role = "TEACHER" if str(account_type).lower() in {"teacher", "admin"} else "STUDENT"
+        return self.repository.create(name=name, email=email, password_hash=hash_password(password), role=role)
 
     def authenticate(self, email: str, password: str):
         user = self.repository.get_by_email(email)

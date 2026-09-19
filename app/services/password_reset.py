@@ -43,17 +43,6 @@ class PasswordResetService:
                 pass
         return True
 
-    def reset_direct(self, email: str, new_password: str) -> tuple[bool, str]:
-        """Reset without an OTP (offline-friendly direct reset)."""
-        valid, message = password_policy(new_password)
-        if not valid:
-            return False, message or "Invalid password."
-        user = get_user_by_email(email)
-        if not user:
-            return False, "If an account exists, the password has been reset."
-        update_user_password(user["id"], hash_password(new_password))
-        return True, "Password reset successfully."
-
     def reset_password(self, email: str, otp: str, new_password: str) -> tuple[bool, str]:
         valid, message = password_policy(new_password)
         if not valid:

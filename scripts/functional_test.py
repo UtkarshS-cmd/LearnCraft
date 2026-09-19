@@ -25,6 +25,8 @@ if str(ROOT) not in sys.path:
 _TEST_DB = Path(tempfile.gettempdir()) / "learncraft_functional_test.db"
 if _TEST_DB.exists():
     _TEST_DB.unlink()
+os.environ["LEARNCRAFT_SECRET_KEY"] = "functional-test-secret-key"
+
 os.environ["LEARNCRAFT_DB_PATH"] = str(_TEST_DB)
 
 from app.main import create_app  # noqa: E402

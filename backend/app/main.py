@@ -57,7 +57,7 @@ from app.services.content_catalog import (
 )
 from app.services.teacher_control import access_allowed, record_event, student_announcements, student_assignments, teacher_classes
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
+ROOT_DIR = Path(__file__).resolve().parents[2]
 app = Flask(
     __name__,
     template_folder=str(ROOT_DIR / "frontend" / "templates"),

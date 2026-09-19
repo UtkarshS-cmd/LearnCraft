@@ -16,10 +16,19 @@ REM Get the directory where this script is located
 set "SCRIPT_DIR=%~dp0"
 set "BACKEND_DIR=%SCRIPT_DIR%backend"
 
+REM Use py launcher as fallback if python is not in PATH
+where python >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [INFO] 'python' not found in PATH, using 'py' launcher...
+    set PY_CMD=py
+) else (
+    set PY_CMD=python
+)
+
 REM Check if venv exists, if not create it
 if not exist "%BACKEND_DIR%\.venv" (
     echo [INFO] Creating virtual environment...
-    python -m venv "%BACKEND_DIR%\.venv"
+    %PY_CMD% -m venv "%BACKEND_DIR%\.venv"
     if errorlevel 1 (
         echo [ERROR] Failed to create virtual environment. Make sure Python is installed.
         pause
@@ -41,7 +50,7 @@ REM Set default secret key if not configured
 set "SECRET_KEY_FILE=%BACKEND_DIR%\.secret_key"
 if not exist "%SECRET_KEY_FILE%" (
     echo [INFO] Generating secret key...
-    python -c "import secrets; print(secrets.token_hex(32))" > "%SECRET_KEY_FILE%"
+    %PY_CMD% -c "import secrets; print(secrets.token_hex(32))" > "%SECRET_KEY_FILE%"
 )
 
 set /p LEARNCRAFT_SECRET_KEY=<"%SECRET_KEY_FILE%"
@@ -64,6 +73,6 @@ echo.
 
 REM Start the server
 cd /d "%BACKEND_DIR%"
-python server.py
+py server.py
 
 endlocal

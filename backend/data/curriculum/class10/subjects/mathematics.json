@@ -1,0 +1,381 @@
+{
+  "subject_id": "cbse-x-2026-27-mathematics",
+  "class_level": "Class X",
+  "board": "CBSE",
+  "slug": "mathematics",
+  "name": "Mathematics",
+  "description": "Number systems, algebra and geometry for CBSE Class X.",
+  "book_id": "ncert-x-mathematics-2026-27",
+  "book_title": "Mathematics Textbook for Class X",
+  "publisher": "NCERT",
+  "verified": true,
+  "chapters": [
+    {
+      "chapter_id": "cbse-x-2026-27-maths-real-numbers",
+      "class_level": "Class X",
+      "subject_slug": "mathematics",
+      "chapter_number": 1,
+      "title": "Real Numbers",
+      "summary": "Use Euclid's division algorithm and the fundamental theorem of arithmetic to reason about numbers.",
+      "description": "Use Euclid's division algorithm and the fundamental theorem of arithmetic to reason about numbers.",
+      "difficulty": "MEDIUM",
+      "prerequisites": [],
+      "competencies": [
+        "Apply",
+        "Understand"
+      ],
+      "concepts": [
+        {
+          "concept_id": "cbse-x-2026-27-maths-concept-prime-factorisation",
+          "title": "Prime factorisation",
+          "description": "Writing a number as a product of prime numbers.",
+          "explanation": "Writing a number as a product of prime numbers.",
+          "difficulty": "FOUNDATION",
+          "learning_objectives": [
+            "cbse-x-2026-27-maths-real-numbers-lo-01",
+            "cbse-x-2026-27-maths-real-numbers-lo-02"
+          ],
+          "prerequisites": [],
+          "next_concepts": [
+            "cbse-x-2026-27-maths-concept-irrationality"
+          ],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-maths-q-hcf-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-mathematics-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Mathematics Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "9096892265bedb71a27e1eeeab3bc46d477ac0f04ee3a82f8c56c256f51320fa",
+            "notes": "Derived from mathematics.json (in-repo seed package). | concept 'Prime factorisation' (lesson cbse-x-2026-27-maths-real-numbers-prime-factorisation)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        },
+        {
+          "concept_id": "cbse-x-2026-27-maths-concept-irrationality",
+          "title": "Irrationality by contradiction",
+          "description": "Assume the number is rational, derive a contradiction, conclude it is irrational.",
+          "explanation": "Assume the number is rational, derive a contradiction, conclude it is irrational.",
+          "difficulty": "MEDIUM",
+          "learning_objectives": [
+            "cbse-x-2026-27-maths-real-numbers-lo-03",
+            "cbse-x-2026-27-maths-real-numbers-lo-04"
+          ],
+          "prerequisites": [
+            "cbse-x-2026-27-maths-concept-prime-factorisation"
+          ],
+          "next_concepts": [
+            "cbse-x-2026-27-maths-concept-zeroes"
+          ],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-maths-q-rational-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-mathematics-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Mathematics Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "9096892265bedb71a27e1eeeab3bc46d477ac0f04ee3a82f8c56c256f51320fa",
+            "notes": "Derived from mathematics.json (in-repo seed package). | concept 'Irrationality by contradiction' (lesson cbse-x-2026-27-maths-real-numbers-irrationality)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        }
+      ],
+      "sub_concepts": [
+        {
+          "sub_concept_id": "cbse-x-2026-27-maths-real-numbers-prime-factorisation-sc",
+          "concept_id": "cbse-x-2026-27-maths-concept-prime-factorisation",
+          "title": "Prime Factorisation and HCF",
+          "description": "Connect prime factorisation with HCF and LCM.",
+          "order": 1,
+          "verified": true
+        },
+        {
+          "sub_concept_id": "cbse-x-2026-27-maths-real-numbers-irrationality-sc",
+          "concept_id": "cbse-x-2026-27-maths-concept-irrationality",
+          "title": "Proving a Number Is Irrational",
+          "description": "Use proof-by-contradiction to show that √2 is irrational.",
+          "order": 2,
+          "verified": true
+        }
+      ],
+      "learning_objectives": [
+        {
+          "objective_id": "cbse-x-2026-27-maths-real-numbers-lo-01",
+          "statement": "Find prime factorisations",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-maths-concept-prime-factorisation",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-maths-real-numbers-lo-02",
+          "statement": "Use prime factors to calculate HCF and LCM",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-maths-concept-prime-factorisation",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-maths-real-numbers-lo-03",
+          "statement": "Explain what an irrational number is",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-maths-concept-irrationality",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-maths-real-numbers-lo-04",
+          "statement": "Prove √2 is irrational by contradiction",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-maths-concept-irrationality",
+          "bloom_level": "Understand"
+        }
+      ],
+      "activities": [],
+      "simulation_mappings": [
+        {
+          "mapping_id": "cbse-x-2026-27-maths-concept-prime-factorisation-sim",
+          "concept_id": "cbse-x-2026-27-maths-concept-prime-factorisation",
+          "simulation_id": "sim-sandbox-math",
+          "title": "Math Adventure Lab",
+          "mapping_type": "practice",
+          "verified": true
+        },
+        {
+          "mapping_id": "cbse-x-2026-27-maths-concept-irrationality-sim",
+          "concept_id": "cbse-x-2026-27-maths-concept-irrationality",
+          "simulation_id": "sim-sandbox-math",
+          "title": "Math Adventure Lab",
+          "mapping_type": "practice",
+          "verified": true
+        }
+      ],
+      "lesson_ids": [
+        "cbse-x-2026-27-maths-real-numbers-prime-factorisation",
+        "cbse-x-2026-27-maths-real-numbers-irrationality"
+      ],
+      "verified": true,
+      "source": {
+        "source_id": "ncert-x-mathematics-2026-27",
+        "source_type": "ncert_textbook",
+        "title": "Mathematics Textbook for Class X",
+        "publisher": "NCERT",
+        "url": "https://ncert.nic.in/textbook.php",
+        "version": "2026-27",
+        "academic_year": "2026-27",
+        "checksum_sha256": "9096892265bedb71a27e1eeeab3bc46d477ac0f04ee3a82f8c56c256f51320fa",
+        "notes": "Derived from mathematics.json (in-repo seed package)."
+      }
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-maths-polynomials",
+      "class_level": "Class X",
+      "subject_slug": "mathematics",
+      "chapter_number": 2,
+      "title": "Polynomials",
+      "summary": "Relate zeroes of a polynomial to its graph and coefficients.",
+      "description": "Relate zeroes of a polynomial to its graph and coefficients.",
+      "difficulty": "MEDIUM",
+      "prerequisites": [],
+      "competencies": [
+        "Apply",
+        "Understand"
+      ],
+      "concepts": [
+        {
+          "concept_id": "cbse-x-2026-27-maths-concept-zeroes",
+          "title": "Zeroes",
+          "description": "Values of x for which a polynomial evaluates to zero.",
+          "explanation": "Values of x for which a polynomial evaluates to zero.",
+          "difficulty": "EASY",
+          "learning_objectives": [
+            "cbse-x-2026-27-maths-polynomials-lo-01",
+            "cbse-x-2026-27-maths-polynomials-lo-02"
+          ],
+          "prerequisites": [
+            "cbse-x-2026-27-maths-concept-irrationality"
+          ],
+          "next_concepts": [
+            "cbse-x-2026-27-maths-concept-coefficient-relationship"
+          ],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-maths-q-zeroes-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-mathematics-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Mathematics Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "9096892265bedb71a27e1eeeab3bc46d477ac0f04ee3a82f8c56c256f51320fa",
+            "notes": "Derived from mathematics.json (in-repo seed package). | concept 'Zeroes' (lesson cbse-x-2026-27-maths-polynomials-zeroes-graph)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        },
+        {
+          "concept_id": "cbse-x-2026-27-maths-concept-coefficient-relationship",
+          "title": "Zero-coefficient relationship",
+          "description": "Sum and product of zeroes are fixed by the coefficients.",
+          "explanation": "Sum and product of zeroes are fixed by the coefficients.",
+          "difficulty": "EASY",
+          "learning_objectives": [
+            "cbse-x-2026-27-maths-polynomials-lo-03",
+            "cbse-x-2026-27-maths-polynomials-lo-04"
+          ],
+          "prerequisites": [
+            "cbse-x-2026-27-maths-concept-zeroes"
+          ],
+          "next_concepts": [],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-maths-q-coeff-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-mathematics-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Mathematics Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "9096892265bedb71a27e1eeeab3bc46d477ac0f04ee3a82f8c56c256f51320fa",
+            "notes": "Derived from mathematics.json (in-repo seed package). | concept 'Zero-coefficient relationship' (lesson cbse-x-2026-27-maths-polynomials-zeroes-coefficients)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        }
+      ],
+      "sub_concepts": [
+        {
+          "sub_concept_id": "cbse-x-2026-27-maths-polynomials-zeroes-graph-sc",
+          "concept_id": "cbse-x-2026-27-maths-concept-zeroes",
+          "title": "Reading Zeroes from a Graph",
+          "description": "Interpret x-intercepts as zeroes of a polynomial.",
+          "order": 1,
+          "verified": true
+        },
+        {
+          "sub_concept_id": "cbse-x-2026-27-maths-polynomials-zeroes-coefficients-sc",
+          "concept_id": "cbse-x-2026-27-maths-concept-coefficient-relationship",
+          "title": "Zeroes and the Coefficients of a Polynomial",
+          "description": "Link the sum and product of zeroes to the coefficients of a quadratic.",
+          "order": 2,
+          "verified": true
+        }
+      ],
+      "learning_objectives": [
+        {
+          "objective_id": "cbse-x-2026-27-maths-polynomials-lo-01",
+          "statement": "Identify zeroes from a graph",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-maths-concept-zeroes",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-maths-polynomials-lo-02",
+          "statement": "Verify the relationship between zeroes and coefficients",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-maths-concept-zeroes",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-maths-polynomials-lo-03",
+          "statement": "State the sum-of-zeroes formula",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-maths-concept-coefficient-relationship",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-maths-polynomials-lo-04",
+          "statement": "Use coefficients to check factorisation",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-maths-concept-coefficient-relationship",
+          "bloom_level": "Understand"
+        }
+      ],
+      "activities": [],
+      "simulation_mappings": [
+        {
+          "mapping_id": "cbse-x-2026-27-maths-concept-zeroes-sim",
+          "concept_id": "cbse-x-2026-27-maths-concept-zeroes",
+          "simulation_id": "sim-sandbox-math",
+          "title": "Math Adventure Lab",
+          "mapping_type": "practice",
+          "verified": true
+        },
+        {
+          "mapping_id": "cbse-x-2026-27-maths-concept-coefficient-relationship-sim",
+          "concept_id": "cbse-x-2026-27-maths-concept-coefficient-relationship",
+          "simulation_id": "sim-sandbox-math",
+          "title": "Math Adventure Lab",
+          "mapping_type": "practice",
+          "verified": true
+        }
+      ],
+      "lesson_ids": [
+        "cbse-x-2026-27-maths-polynomials-zeroes-graph",
+        "cbse-x-2026-27-maths-polynomials-zeroes-coefficients"
+      ],
+      "verified": true,
+      "source": {
+        "source_id": "ncert-x-mathematics-2026-27",
+        "source_type": "ncert_textbook",
+        "title": "Mathematics Textbook for Class X",
+        "publisher": "NCERT",
+        "url": "https://ncert.nic.in/textbook.php",
+        "version": "2026-27",
+        "academic_year": "2026-27",
+        "checksum_sha256": "9096892265bedb71a27e1eeeab3bc46d477ac0f04ee3a82f8c56c256f51320fa",
+        "notes": "Derived from mathematics.json (in-repo seed package)."
+      }
+    }
+  ],
+  "source": {
+    "source_id": "ncert-x-mathematics-2026-27",
+    "source_type": "ncert_textbook",
+    "title": "Mathematics Textbook for Class X",
+    "publisher": "NCERT",
+    "url": "https://ncert.nic.in/textbook.php",
+    "version": "2026-27",
+    "academic_year": "2026-27",
+    "checksum_sha256": "9096892265bedb71a27e1eeeab3bc46d477ac0f04ee3a82f8c56c256f51320fa",
+    "notes": "Derived from mathematics.json (in-repo seed package)."
+  }
+}

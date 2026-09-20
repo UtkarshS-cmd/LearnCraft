@@ -1,0 +1,242 @@
+{
+  "class_level": "Class X",
+  "academic_year": "2026-27",
+  "nodes": [
+    {
+      "concept_id": "cbse-x-2026-27-maths-concept-prime-factorisation",
+      "title": "Prime factorisation",
+      "chapter_id": "cbse-x-2026-27-maths-real-numbers",
+      "lesson_id": "cbse-x-2026-27-maths-real-numbers-prime-factorisation",
+      "difficulty": "FOUNDATION",
+      "estimated_minutes": 18,
+      "prerequisites": [],
+      "next_concepts": [
+        "cbse-x-2026-27-maths-concept-irrationality"
+      ]
+    },
+    {
+      "concept_id": "cbse-x-2026-27-maths-concept-irrationality",
+      "title": "Irrationality by contradiction",
+      "chapter_id": "cbse-x-2026-27-maths-real-numbers",
+      "lesson_id": "cbse-x-2026-27-maths-real-numbers-irrationality",
+      "difficulty": "MEDIUM",
+      "estimated_minutes": 20,
+      "prerequisites": [
+        "cbse-x-2026-27-maths-concept-prime-factorisation"
+      ],
+      "next_concepts": [
+        "cbse-x-2026-27-maths-concept-zeroes"
+      ]
+    },
+    {
+      "concept_id": "cbse-x-2026-27-maths-concept-zeroes",
+      "title": "Zeroes",
+      "chapter_id": "cbse-x-2026-27-maths-polynomials",
+      "lesson_id": "cbse-x-2026-27-maths-polynomials-zeroes-graph",
+      "difficulty": "EASY",
+      "estimated_minutes": 16,
+      "prerequisites": [
+        "cbse-x-2026-27-maths-concept-irrationality"
+      ],
+      "next_concepts": [
+        "cbse-x-2026-27-maths-concept-coefficient-relationship"
+      ]
+    },
+    {
+      "concept_id": "cbse-x-2026-27-maths-concept-coefficient-relationship",
+      "title": "Zero-coefficient relationship",
+      "chapter_id": "cbse-x-2026-27-maths-polynomials",
+      "lesson_id": "cbse-x-2026-27-maths-polynomials-zeroes-coefficients",
+      "difficulty": "EASY",
+      "estimated_minutes": 15,
+      "prerequisites": [
+        "cbse-x-2026-27-maths-concept-zeroes"
+      ],
+      "next_concepts": []
+    },
+    {
+      "concept_id": "cbse-x-2026-27-science-concept-conservation",
+      "title": "Conservation of mass",
+      "chapter_id": "cbse-x-2026-27-science-chemical-reactions",
+      "lesson_id": "cbse-x-2026-27-science-reactions-balancing",
+      "difficulty": "FOUNDATION",
+      "estimated_minutes": 20,
+      "prerequisites": [],
+      "next_concepts": [
+        "cbse-x-2026-27-science-concept-reaction-types"
+      ]
+    },
+    {
+      "concept_id": "cbse-x-2026-27-science-concept-reaction-types",
+      "title": "Reaction types",
+      "chapter_id": "cbse-x-2026-27-science-chemical-reactions",
+      "lesson_id": "cbse-x-2026-27-science-reactions-types",
+      "difficulty": "EASY",
+      "estimated_minutes": 18,
+      "prerequisites": [
+        "cbse-x-2026-27-science-concept-conservation"
+      ],
+      "next_concepts": [
+        "cbse-x-2026-27-science-concept-photosynthesis"
+      ]
+    },
+    {
+      "concept_id": "cbse-x-2026-27-science-concept-photosynthesis",
+      "title": "Photosynthesis",
+      "chapter_id": "cbse-x-2026-27-science-life-processes",
+      "lesson_id": "cbse-x-2026-27-science-life-processes-photosynthesis",
+      "difficulty": "EASY",
+      "estimated_minutes": 18,
+      "prerequisites": [
+        "cbse-x-2026-27-science-concept-reaction-types"
+      ],
+      "next_concepts": [
+        "cbse-x-2026-27-science-concept-respiration"
+      ]
+    },
+    {
+      "concept_id": "cbse-x-2026-27-science-concept-respiration",
+      "title": "Respiration",
+      "chapter_id": "cbse-x-2026-27-science-life-processes",
+      "lesson_id": "cbse-x-2026-27-science-life-processes-respiration",
+      "difficulty": "MEDIUM",
+      "estimated_minutes": 16,
+      "prerequisites": [
+        "cbse-x-2026-27-science-concept-photosynthesis"
+      ],
+      "next_concepts": []
+    },
+    {
+      "concept_id": "cbse-x-2026-27-sst-concept-sovereignty",
+      "title": "Popular sovereignty",
+      "chapter_id": "cbse-x-2026-27-sst-rise-of-nationalism",
+      "lesson_id": "cbse-x-2026-27-sst-nationalism-french-revolution",
+      "difficulty": "FOUNDATION",
+      "estimated_minutes": 18,
+      "prerequisites": [],
+      "next_concepts": [
+        "cbse-x-2026-27-sst-concept-romanticism"
+      ]
+    },
+    {
+      "concept_id": "cbse-x-2026-27-sst-concept-romanticism",
+      "title": "Romanticism",
+      "chapter_id": "cbse-x-2026-27-sst-rise-of-nationalism",
+      "lesson_id": "cbse-x-2026-27-sst-nationalism-making",
+      "difficulty": "MEDIUM",
+      "estimated_minutes": 20,
+      "prerequisites": [
+        "cbse-x-2026-27-sst-concept-sovereignty"
+      ],
+      "next_concepts": [
+        "cbse-x-2026-27-sst-concept-sustainable-development"
+      ]
+    },
+    {
+      "concept_id": "cbse-x-2026-27-sst-concept-sustainable-development",
+      "title": "Sustainable development",
+      "chapter_id": "cbse-x-2026-27-sst-resources-development",
+      "lesson_id": "cbse-x-2026-27-sst-resources-classification",
+      "difficulty": "EASY",
+      "estimated_minutes": 15,
+      "prerequisites": [
+        "cbse-x-2026-27-sst-concept-romanticism"
+      ],
+      "next_concepts": [
+        "cbse-x-2026-27-sst-concept-land-use"
+      ]
+    },
+    {
+      "concept_id": "cbse-x-2026-27-sst-concept-land-use",
+      "title": "Land use",
+      "chapter_id": "cbse-x-2026-27-sst-resources-development",
+      "lesson_id": "cbse-x-2026-27-sst-resources-land-use",
+      "difficulty": "EASY",
+      "estimated_minutes": 15,
+      "prerequisites": [
+        "cbse-x-2026-27-sst-concept-sustainable-development"
+      ],
+      "next_concepts": []
+    }
+  ],
+  "label_prerequisites": [
+    {
+      "chapter_id": "cbse-x-2026-27-maths-real-numbers",
+      "labels": [
+        {
+          "lesson_id": "cbse-x-2026-27-maths-real-numbers-prime-factorisation",
+          "prerequisite_label": "Factors and multiples"
+        },
+        {
+          "lesson_id": "cbse-x-2026-27-maths-real-numbers-irrationality",
+          "prerequisite_label": "Prime factorisation"
+        }
+      ]
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-maths-polynomials",
+      "labels": [
+        {
+          "lesson_id": "cbse-x-2026-27-maths-polynomials-zeroes-graph",
+          "prerequisite_label": "Coordinate geometry basics"
+        },
+        {
+          "lesson_id": "cbse-x-2026-27-maths-polynomials-zeroes-coefficients",
+          "prerequisite_label": "Reading zeroes from a graph"
+        }
+      ]
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-science-chemical-reactions",
+      "labels": [
+        {
+          "lesson_id": "cbse-x-2026-27-science-reactions-balancing",
+          "prerequisite_label": "Symbols and formulae"
+        },
+        {
+          "lesson_id": "cbse-x-2026-27-science-reactions-types",
+          "prerequisite_label": "Balancing chemical equations"
+        }
+      ]
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-science-life-processes",
+      "labels": [
+        {
+          "lesson_id": "cbse-x-2026-27-science-life-processes-photosynthesis",
+          "prerequisite_label": "Cell structure"
+        },
+        {
+          "lesson_id": "cbse-x-2026-27-science-life-processes-respiration",
+          "prerequisite_label": "Photosynthesis: Making Food"
+        }
+      ]
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-sst-rise-of-nationalism",
+      "labels": [
+        {
+          "lesson_id": "cbse-x-2026-27-sst-nationalism-french-revolution",
+          "prerequisite_label": "The French Revolution"
+        },
+        {
+          "lesson_id": "cbse-x-2026-27-sst-nationalism-making",
+          "prerequisite_label": "The French Revolution and the Idea of the Nation"
+        }
+      ]
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-sst-resources-development",
+      "labels": [
+        {
+          "lesson_id": "cbse-x-2026-27-sst-resources-classification",
+          "prerequisite_label": "Basic geography vocabulary"
+        },
+        {
+          "lesson_id": "cbse-x-2026-27-sst-resources-land-use",
+          "prerequisite_label": "How Resources Are Classified"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\cbse_class_x_2026_27.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\mathematics.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\ncert_class10_syllabus.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\science.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\social-science.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\concept_graph.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\manifest.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\meta.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\question_bank.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\roadmap.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\simulation_registry.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\subjects
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\subjects\mathematics.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\subjects\science.json
+E:\__007\Hackathon\LearnCraft\backend\data\curriculum\class10\subjects\social-science.json

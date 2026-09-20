@@ -1,0 +1,347 @@
+{
+  "subject_id": "cbse-x-2026-27-social-science",
+  "class_level": "Class X",
+  "board": "CBSE",
+  "slug": "social-science",
+  "name": "Social Science",
+  "description": "History, geography, political science and economics.",
+  "book_id": "ncert-x-social-science-2026-27",
+  "book_title": "Social Science Textbook for Class X",
+  "publisher": "NCERT",
+  "verified": true,
+  "chapters": [
+    {
+      "chapter_id": "cbse-x-2026-27-sst-rise-of-nationalism",
+      "class_level": "Class X",
+      "subject_slug": "social-science",
+      "chapter_number": 1,
+      "title": "The Rise of Nationalism in Europe",
+      "summary": "Trace the emergence of the nation-state and national identity in nineteenth-century Europe.",
+      "description": "Trace the emergence of the nation-state and national identity in nineteenth-century Europe.",
+      "difficulty": "MEDIUM",
+      "prerequisites": [],
+      "competencies": [
+        "Analyze",
+        "Remember"
+      ],
+      "concepts": [
+        {
+          "concept_id": "cbse-x-2026-27-sst-concept-sovereignty",
+          "title": "Popular sovereignty",
+          "description": "The idea that authority rests with the people rather than a hereditary ruler.",
+          "explanation": "The idea that authority rests with the people rather than a hereditary ruler.",
+          "difficulty": "FOUNDATION",
+          "learning_objectives": [
+            "cbse-x-2026-27-sst-rise-of-nationalism-lo-01",
+            "cbse-x-2026-27-sst-rise-of-nationalism-lo-02"
+          ],
+          "prerequisites": [],
+          "next_concepts": [
+            "cbse-x-2026-27-sst-concept-romanticism"
+          ],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-sst-q-nation-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-social-science-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Social Science Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "e22ade1ba8809233f7a758121935d93d3593ac72e5dab7a3ff81cfdabe4f6bb4",
+            "notes": "Derived from social-science.json (in-repo seed package). | concept 'Popular sovereignty' (lesson cbse-x-2026-27-sst-nationalism-french-revolution)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        },
+        {
+          "concept_id": "cbse-x-2026-27-sst-concept-romanticism",
+          "title": "Romanticism",
+          "description": "A cultural movement that glorified folk tradition and emotion as the basis of national identity.",
+          "explanation": "A cultural movement that glorified folk tradition and emotion as the basis of national identity.",
+          "difficulty": "MEDIUM",
+          "learning_objectives": [
+            "cbse-x-2026-27-sst-rise-of-nationalism-lo-03",
+            "cbse-x-2026-27-sst-rise-of-nationalism-lo-04"
+          ],
+          "prerequisites": [
+            "cbse-x-2026-27-sst-concept-sovereignty"
+          ],
+          "next_concepts": [
+            "cbse-x-2026-27-sst-concept-sustainable-development"
+          ],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-sst-q-making-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-social-science-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Social Science Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "e22ade1ba8809233f7a758121935d93d3593ac72e5dab7a3ff81cfdabe4f6bb4",
+            "notes": "Derived from social-science.json (in-repo seed package). | concept 'Romanticism' (lesson cbse-x-2026-27-sst-nationalism-making)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        }
+      ],
+      "sub_concepts": [
+        {
+          "sub_concept_id": "cbse-x-2026-27-sst-nationalism-french-revolution-sc",
+          "concept_id": "cbse-x-2026-27-sst-concept-sovereignty",
+          "title": "How the Nation Was Imagined",
+          "description": "Understand how revolutionary France created symbols of collective identity.",
+          "order": 1,
+          "verified": true
+        },
+        {
+          "sub_concept_id": "cbse-x-2026-27-sst-nationalism-making-sc",
+          "concept_id": "cbse-x-2026-27-sst-concept-romanticism",
+          "title": "The Making of Nationalism in Europe",
+          "description": "Trace how language, culture and romanticism shaped national identity after 1848.",
+          "order": 2,
+          "verified": true
+        }
+      ],
+      "learning_objectives": [
+        {
+          "objective_id": "cbse-x-2026-27-sst-rise-of-nationalism-lo-01",
+          "statement": "Describe two measures that created a sense of collective identity",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-sst-concept-sovereignty",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-sst-rise-of-nationalism-lo-02",
+          "statement": "Connect citizenship with the nation-state",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-sst-concept-sovereignty",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-sst-rise-of-nationalism-lo-03",
+          "statement": "Explain the role of romanticism",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-sst-concept-romanticism",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-sst-rise-of-nationalism-lo-04",
+          "statement": "Compare civic and ethnic nationalism",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-sst-concept-romanticism",
+          "bloom_level": "Understand"
+        }
+      ],
+      "activities": [],
+      "simulation_mappings": [],
+      "lesson_ids": [
+        "cbse-x-2026-27-sst-nationalism-french-revolution",
+        "cbse-x-2026-27-sst-nationalism-making"
+      ],
+      "verified": true,
+      "source": {
+        "source_id": "ncert-x-social-science-2026-27",
+        "source_type": "ncert_textbook",
+        "title": "Social Science Textbook for Class X",
+        "publisher": "NCERT",
+        "url": "https://ncert.nic.in/textbook.php",
+        "version": "2026-27",
+        "academic_year": "2026-27",
+        "checksum_sha256": "e22ade1ba8809233f7a758121935d93d3593ac72e5dab7a3ff81cfdabe4f6bb4",
+        "notes": "Derived from social-science.json (in-repo seed package)."
+      }
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-sst-resources-development",
+      "class_level": "Class X",
+      "subject_slug": "social-science",
+      "chapter_number": 2,
+      "title": "Resources and Development",
+      "summary": "Classify resources and understand sustainable planning and land use.",
+      "description": "Classify resources and understand sustainable planning and land use.",
+      "difficulty": "MEDIUM",
+      "prerequisites": [],
+      "competencies": [
+        "Analyze",
+        "Apply"
+      ],
+      "concepts": [
+        {
+          "concept_id": "cbse-x-2026-27-sst-concept-sustainable-development",
+          "title": "Sustainable development",
+          "description": "Development that meets present needs without compromising future generations.",
+          "explanation": "Development that meets present needs without compromising future generations.",
+          "difficulty": "EASY",
+          "learning_objectives": [
+            "cbse-x-2026-27-sst-resources-development-lo-01",
+            "cbse-x-2026-27-sst-resources-development-lo-02"
+          ],
+          "prerequisites": [
+            "cbse-x-2026-27-sst-concept-romanticism"
+          ],
+          "next_concepts": [
+            "cbse-x-2026-27-sst-concept-land-use"
+          ],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-sst-q-resources-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-social-science-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Social Science Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "e22ade1ba8809233f7a758121935d93d3593ac72e5dab7a3ff81cfdabe4f6bb4",
+            "notes": "Derived from social-science.json (in-repo seed package). | concept 'Sustainable development' (lesson cbse-x-2026-27-sst-resources-classification)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        },
+        {
+          "concept_id": "cbse-x-2026-27-sst-concept-land-use",
+          "title": "Land use",
+          "description": "How the total land area of a country is distributed among its different uses.",
+          "explanation": "How the total land area of a country is distributed among its different uses.",
+          "difficulty": "EASY",
+          "learning_objectives": [
+            "cbse-x-2026-27-sst-resources-development-lo-03",
+            "cbse-x-2026-27-sst-resources-development-lo-04"
+          ],
+          "prerequisites": [
+            "cbse-x-2026-27-sst-concept-sustainable-development"
+          ],
+          "next_concepts": [],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-sst-q-land-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-social-science-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Social Science Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "e22ade1ba8809233f7a758121935d93d3593ac72e5dab7a3ff81cfdabe4f6bb4",
+            "notes": "Derived from social-science.json (in-repo seed package). | concept 'Land use' (lesson cbse-x-2026-27-sst-resources-land-use)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        }
+      ],
+      "sub_concepts": [
+        {
+          "sub_concept_id": "cbse-x-2026-27-sst-resources-classification-sc",
+          "concept_id": "cbse-x-2026-27-sst-concept-sustainable-development",
+          "title": "How Resources Are Classified",
+          "description": "Classify resources by origin, exhaustibility, ownership and status of development.",
+          "order": 1,
+          "verified": true
+        },
+        {
+          "sub_concept_id": "cbse-x-2026-27-sst-resources-land-use-sc",
+          "concept_id": "cbse-x-2026-27-sst-concept-land-use",
+          "title": "Land Use and Resource Planning in India",
+          "description": "Analyse land-use patterns and the steps of national resource planning.",
+          "order": 2,
+          "verified": true
+        }
+      ],
+      "learning_objectives": [
+        {
+          "objective_id": "cbse-x-2026-27-sst-resources-development-lo-01",
+          "statement": "Use the four classification criteria",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-sst-concept-sustainable-development",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-sst-resources-development-lo-02",
+          "statement": "Explain why planning is needed for sustainable development",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-sst-concept-sustainable-development",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-sst-resources-development-lo-03",
+          "statement": "Explain the four steps of resource planning",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-sst-concept-land-use",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-sst-resources-development-lo-04",
+          "statement": "Read a basic land-use distribution",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-sst-concept-land-use",
+          "bloom_level": "Understand"
+        }
+      ],
+      "activities": [],
+      "simulation_mappings": [],
+      "lesson_ids": [
+        "cbse-x-2026-27-sst-resources-classification",
+        "cbse-x-2026-27-sst-resources-land-use"
+      ],
+      "verified": true,
+      "source": {
+        "source_id": "ncert-x-social-science-2026-27",
+        "source_type": "ncert_textbook",
+        "title": "Social Science Textbook for Class X",
+        "publisher": "NCERT",
+        "url": "https://ncert.nic.in/textbook.php",
+        "version": "2026-27",
+        "academic_year": "2026-27",
+        "checksum_sha256": "e22ade1ba8809233f7a758121935d93d3593ac72e5dab7a3ff81cfdabe4f6bb4",
+        "notes": "Derived from social-science.json (in-repo seed package)."
+      }
+    }
+  ],
+  "source": {
+    "source_id": "ncert-x-social-science-2026-27",
+    "source_type": "ncert_textbook",
+    "title": "Social Science Textbook for Class X",
+    "publisher": "NCERT",
+    "url": "https://ncert.nic.in/textbook.php",
+    "version": "2026-27",
+    "academic_year": "2026-27",
+    "checksum_sha256": "e22ade1ba8809233f7a758121935d93d3593ac72e5dab7a3ff81cfdabe4f6bb4",
+    "notes": "Derived from social-science.json (in-repo seed package)."
+  }
+}

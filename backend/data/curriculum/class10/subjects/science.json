@@ -1,0 +1,345 @@
+{
+  "subject_id": "cbse-x-2026-27-science",
+  "class_level": "Class X",
+  "board": "CBSE",
+  "slug": "science",
+  "name": "Science",
+  "description": "Core concepts in chemistry, biology and physics.",
+  "book_id": "ncert-x-science-2026-27",
+  "book_title": "Science Textbook for Class X",
+  "publisher": "NCERT",
+  "verified": true,
+  "chapters": [
+    {
+      "chapter_id": "cbse-x-2026-27-science-chemical-reactions",
+      "class_level": "Class X",
+      "subject_slug": "science",
+      "chapter_number": 1,
+      "title": "Chemical Reactions and Equations",
+      "summary": "Represent chemical reactions and identify common reaction types.",
+      "description": "Represent chemical reactions and identify common reaction types.",
+      "difficulty": "MEDIUM",
+      "prerequisites": [],
+      "competencies": [
+        "Apply",
+        "Understand"
+      ],
+      "concepts": [
+        {
+          "concept_id": "cbse-x-2026-27-science-concept-conservation",
+          "title": "Conservation of mass",
+          "description": "Atoms are rearranged in a reaction; they are not created or destroyed.",
+          "explanation": "Atoms are rearranged in a reaction; they are not created or destroyed.",
+          "difficulty": "FOUNDATION",
+          "learning_objectives": [
+            "cbse-x-2026-27-science-chemical-reactions-lo-01",
+            "cbse-x-2026-27-science-chemical-reactions-lo-02"
+          ],
+          "prerequisites": [],
+          "next_concepts": [
+            "cbse-x-2026-27-science-concept-reaction-types"
+          ],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-science-q-balance-001",
+            "cbse-x-2026-27-science-q-types-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-science-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Science Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "5cbe4cc7056f76604b2354c14e500a9510153c3e681fdf49544d037f8eaba1d3",
+            "notes": "Derived from science.json (in-repo seed package). | concept 'Conservation of mass' (lesson cbse-x-2026-27-science-reactions-balancing)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        },
+        {
+          "concept_id": "cbse-x-2026-27-science-concept-reaction-types",
+          "title": "Reaction types",
+          "description": "Combination, decomposition, displacement and double displacement patterns.",
+          "explanation": "Combination, decomposition, displacement and double displacement patterns.",
+          "difficulty": "EASY",
+          "learning_objectives": [
+            "cbse-x-2026-27-science-chemical-reactions-lo-03",
+            "cbse-x-2026-27-science-chemical-reactions-lo-04"
+          ],
+          "prerequisites": [
+            "cbse-x-2026-27-science-concept-conservation"
+          ],
+          "next_concepts": [
+            "cbse-x-2026-27-science-concept-photosynthesis"
+          ],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [],
+          "source_metadata": {
+            "source_id": "ncert-x-science-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Science Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "5cbe4cc7056f76604b2354c14e500a9510153c3e681fdf49544d037f8eaba1d3",
+            "notes": "Derived from science.json (in-repo seed package). | concept 'Reaction types' (lesson cbse-x-2026-27-science-reactions-types)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        }
+      ],
+      "sub_concepts": [
+        {
+          "sub_concept_id": "cbse-x-2026-27-science-reactions-balancing-sc",
+          "concept_id": "cbse-x-2026-27-science-concept-conservation",
+          "title": "Balancing Chemical Equations",
+          "description": "Balance equations using conservation of atoms.",
+          "order": 1,
+          "verified": true
+        },
+        {
+          "sub_concept_id": "cbse-x-2026-27-science-reactions-types-sc",
+          "concept_id": "cbse-x-2026-27-science-concept-reaction-types",
+          "title": "Types of Chemical Reactions",
+          "description": "Identify combination, decomposition, displacement and double-displacement reactions.",
+          "order": 2,
+          "verified": true
+        }
+      ],
+      "learning_objectives": [
+        {
+          "objective_id": "cbse-x-2026-27-science-chemical-reactions-lo-01",
+          "statement": "Count atoms on both sides",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-science-concept-conservation",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-science-chemical-reactions-lo-02",
+          "statement": "Balance an equation using coefficients",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-science-concept-conservation",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-science-chemical-reactions-lo-03",
+          "statement": "Classify reactions by pattern",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-science-concept-reaction-types",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-science-chemical-reactions-lo-04",
+          "statement": "Predict simple products",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-science-concept-reaction-types",
+          "bloom_level": "Understand"
+        }
+      ],
+      "activities": [],
+      "simulation_mappings": [],
+      "lesson_ids": [
+        "cbse-x-2026-27-science-reactions-balancing",
+        "cbse-x-2026-27-science-reactions-types"
+      ],
+      "verified": true,
+      "source": {
+        "source_id": "ncert-x-science-2026-27",
+        "source_type": "ncert_textbook",
+        "title": "Science Textbook for Class X",
+        "publisher": "NCERT",
+        "url": "https://ncert.nic.in/textbook.php",
+        "version": "2026-27",
+        "academic_year": "2026-27",
+        "checksum_sha256": "5cbe4cc7056f76604b2354c14e500a9510153c3e681fdf49544d037f8eaba1d3",
+        "notes": "Derived from science.json (in-repo seed package)."
+      }
+    },
+    {
+      "chapter_id": "cbse-x-2026-27-science-life-processes",
+      "class_level": "Class X",
+      "subject_slug": "science",
+      "chapter_number": 6,
+      "title": "Life Processes",
+      "summary": "Explain nutrition, respiration, transport and excretion in living organisms.",
+      "description": "Explain nutrition, respiration, transport and excretion in living organisms.",
+      "difficulty": "MEDIUM",
+      "prerequisites": [],
+      "competencies": [
+        "Understand"
+      ],
+      "concepts": [
+        {
+          "concept_id": "cbse-x-2026-27-science-concept-photosynthesis",
+          "title": "Photosynthesis",
+          "description": "The process by which green plants synthesise food using light energy.",
+          "explanation": "The process by which green plants synthesise food using light energy.",
+          "difficulty": "EASY",
+          "learning_objectives": [
+            "cbse-x-2026-27-science-life-processes-lo-01",
+            "cbse-x-2026-27-science-life-processes-lo-02"
+          ],
+          "prerequisites": [
+            "cbse-x-2026-27-science-concept-reaction-types"
+          ],
+          "next_concepts": [
+            "cbse-x-2026-27-science-concept-respiration"
+          ],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-science-q-photo-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-science-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Science Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "5cbe4cc7056f76604b2354c14e500a9510153c3e681fdf49544d037f8eaba1d3",
+            "notes": "Derived from science.json (in-repo seed package). | concept 'Photosynthesis' (lesson cbse-x-2026-27-science-life-processes-photosynthesis)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        },
+        {
+          "concept_id": "cbse-x-2026-27-science-concept-respiration",
+          "title": "Respiration",
+          "description": "The process of releasing energy from glucose inside living cells.",
+          "explanation": "The process of releasing energy from glucose inside living cells.",
+          "difficulty": "MEDIUM",
+          "learning_objectives": [
+            "cbse-x-2026-27-science-life-processes-lo-03",
+            "cbse-x-2026-27-science-life-processes-lo-04"
+          ],
+          "prerequisites": [
+            "cbse-x-2026-27-science-concept-photosynthesis"
+          ],
+          "next_concepts": [],
+          "competencies": [
+            "Understand"
+          ],
+          "activities": [],
+          "simulation_mappings": [],
+          "question_ids": [
+            "cbse-x-2026-27-science-q-respiration-001"
+          ],
+          "source_metadata": {
+            "source_id": "ncert-x-science-2026-27",
+            "source_type": "ncert_textbook",
+            "title": "Science Textbook for Class X",
+            "publisher": "NCERT",
+            "url": "https://ncert.nic.in/textbook.php",
+            "version": "2026-27",
+            "academic_year": "2026-27",
+            "checksum_sha256": "5cbe4cc7056f76604b2354c14e500a9510153c3e681fdf49544d037f8eaba1d3",
+            "notes": "Derived from science.json (in-repo seed package). | concept 'Respiration' (lesson cbse-x-2026-27-science-life-processes-respiration)."
+          },
+          "verified": true,
+          "verified_by": null,
+          "verified_at": null,
+          "ai_generation_notes": null
+        }
+      ],
+      "sub_concepts": [
+        {
+          "sub_concept_id": "cbse-x-2026-27-science-life-processes-photosynthesis-sc",
+          "concept_id": "cbse-x-2026-27-science-concept-photosynthesis",
+          "title": "Photosynthesis: Making Food",
+          "description": "Trace how green plants make glucose using light energy.",
+          "order": 1,
+          "verified": true
+        },
+        {
+          "sub_concept_id": "cbse-x-2026-27-science-life-processes-respiration-sc",
+          "concept_id": "cbse-x-2026-27-science-concept-respiration",
+          "title": "Respiration: Breaking Down Food for Energy",
+          "description": "Contrast aerobic and anaerobic respiration and locate the respiratory organs.",
+          "order": 2,
+          "verified": true
+        }
+      ],
+      "learning_objectives": [
+        {
+          "objective_id": "cbse-x-2026-27-science-life-processes-lo-01",
+          "statement": "State the word equation for photosynthesis",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-science-concept-photosynthesis",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-science-life-processes-lo-02",
+          "statement": "Explain the role of chlorophyll and stomata",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-science-concept-photosynthesis",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-science-life-processes-lo-03",
+          "statement": "Compare aerobic and anaerobic respiration",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-science-concept-respiration",
+          "bloom_level": "Understand"
+        },
+        {
+          "objective_id": "cbse-x-2026-27-science-life-processes-lo-04",
+          "statement": "Trace gas exchange in plants and animals",
+          "verified": true,
+          "concept_id": "cbse-x-2026-27-science-concept-respiration",
+          "bloom_level": "Understand"
+        }
+      ],
+      "activities": [],
+      "simulation_mappings": [],
+      "lesson_ids": [
+        "cbse-x-2026-27-science-life-processes-photosynthesis",
+        "cbse-x-2026-27-science-life-processes-respiration"
+      ],
+      "verified": true,
+      "source": {
+        "source_id": "ncert-x-science-2026-27",
+        "source_type": "ncert_textbook",
+        "title": "Science Textbook for Class X",
+        "publisher": "NCERT",
+        "url": "https://ncert.nic.in/textbook.php",
+        "version": "2026-27",
+        "academic_year": "2026-27",
+        "checksum_sha256": "5cbe4cc7056f76604b2354c14e500a9510153c3e681fdf49544d037f8eaba1d3",
+        "notes": "Derived from science.json (in-repo seed package)."
+      }
+    }
+  ],
+  "source": {
+    "source_id": "ncert-x-science-2026-27",
+    "source_type": "ncert_textbook",
+    "title": "Science Textbook for Class X",
+    "publisher": "NCERT",
+    "url": "https://ncert.nic.in/textbook.php",
+    "version": "2026-27",
+    "academic_year": "2026-27",
+    "checksum_sha256": "5cbe4cc7056f76604b2354c14e500a9510153c3e681fdf49544d037f8eaba1d3",
+    "notes": "Derived from science.json (in-repo seed package)."
+  }
+}

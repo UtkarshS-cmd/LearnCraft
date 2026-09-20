@@ -1,0 +1,168 @@
+{
+  "schema_version": "2026.09.1",
+  "description": "Canonical CBSE/NCERT curriculum schema for LearnCraft.",
+  "pipeline_stages": [
+    "RAW",
+    "EXTRACT",
+    "VERIFY",
+    "IMPORT",
+    "RUNTIME"
+  ],
+  "entities": {
+    "CurriculumPackage": {
+      "fields": [
+        "schema_version",
+        "board",
+        "class_level",
+        "academic_year",
+        "package_id",
+        "version",
+        "source_version",
+        "generated_at",
+        "generated_by",
+        "source",
+        "verified",
+        "verified_at",
+        "ai_generation_notes",
+        "subjects"
+      ]
+    },
+    "Subject": {
+      "fields": [
+        "subject_id",
+        "class_level",
+        "board",
+        "slug",
+        "name",
+        "description",
+        "book_id",
+        "book_title",
+        "publisher",
+        "source",
+        "verified",
+        "verified_at",
+        "chapters"
+      ]
+    },
+    "Chapter": {
+      "fields": [
+        "chapter_id",
+        "class_level",
+        "subject_slug",
+        "chapter_number",
+        "title",
+        "summary",
+        "description",
+        "concepts",
+        "sub_concepts",
+        "learning_objectives",
+        "activities",
+        "simulation_mappings",
+        "difficulty",
+        "prerequisites",
+        "competencies",
+        "lesson_ids",
+        "source",
+        "verified",
+        "verified_at"
+      ]
+    },
+    "Concept": {
+      "fields": [
+        "concept_id",
+        "title",
+        "description",
+        "explanation",
+        "difficulty",
+        "learning_objectives",
+        "prerequisites",
+        "next_concepts",
+        "competencies",
+        "activities",
+        "simulation_mappings",
+        "question_ids",
+        "source_metadata",
+        "verified",
+        "verified_by",
+        "verified_at",
+        "ai_generation_notes"
+      ]
+    },
+    "SubConcept": {
+      "fields": [
+        "sub_concept_id",
+        "concept_id",
+        "title",
+        "description",
+        "order",
+        "verified"
+      ]
+    },
+    "LearningObjective": {
+      "fields": [
+        "objective_id",
+        "concept_id",
+        "statement",
+        "bloom_level",
+        "verified"
+      ]
+    },
+    "Activity": {
+      "fields": [
+        "activity_id",
+        "concept_id",
+        "title",
+        "activity_type",
+        "description",
+        "duration_minutes",
+        "verified"
+      ]
+    },
+    "SimulationMapping": {
+      "fields": [
+        "mapping_id",
+        "concept_id",
+        "simulation_id",
+        "title",
+        "mapping_type",
+        "verified"
+      ]
+    },
+    "Question": {
+      "fields": [
+        "question_id",
+        "concept_id",
+        "chapter_id",
+        "question_type",
+        "prompt",
+        "answer",
+        "options",
+        "explanation",
+        "difficulty",
+        "competency",
+        "marks",
+        "source",
+        "verified",
+        "verified_at",
+        "ai_generation_notes",
+        "scenario",
+        "rubric",
+        "linked_concepts"
+      ]
+    },
+    "SourceMetadata": {
+      "fields": [
+        "source_id",
+        "source_type",
+        "title",
+        "publisher",
+        "url",
+        "version",
+        "academic_year",
+        "accessed_at",
+        "checksum_sha256",
+        "notes"
+      ]
+    }
+  }
+}

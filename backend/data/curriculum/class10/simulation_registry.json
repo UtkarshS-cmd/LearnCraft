@@ -1,0 +1,72 @@
+{
+  "catalog": [
+    {
+      "simulation_id": "sim-sandbox-math",
+      "title": "Math Adventure Lab",
+      "url_fragment": "static/sandbox-games/math/index.html",
+      "offline": true,
+      "domains": [
+        "mathematics"
+      ]
+    },
+    {
+      "simulation_id": "sim-sandbox-physics",
+      "title": "Physics Adventure Lab",
+      "url_fragment": "static/sandbox-games/physics/index.html",
+      "offline": true,
+      "domains": [
+        "science"
+      ]
+    },
+    {
+      "simulation_id": "sim-sandbox-circuits",
+      "title": "Electrical Circuits Lab",
+      "url_fragment": "static/sandbox-games/circuits/index.html",
+      "offline": true,
+      "domains": [
+        "science"
+      ]
+    },
+    {
+      "simulation_id": "sim-sandbox-coding",
+      "title": "Coding Adventure",
+      "url_fragment": "static/sandbox-games/coding/index.html",
+      "offline": true,
+      "domains": []
+    }
+  ],
+  "mappings": [
+    {
+      "mapping_id": "cbse-x-2026-27-maths-concept-prime-factorisation-sim",
+      "concept_id": "cbse-x-2026-27-maths-concept-prime-factorisation",
+      "simulation_id": "sim-sandbox-math",
+      "title": "Math Adventure Lab",
+      "mapping_type": "practice",
+      "verified": true
+    },
+    {
+      "mapping_id": "cbse-x-2026-27-maths-concept-irrationality-sim",
+      "concept_id": "cbse-x-2026-27-maths-concept-irrationality",
+      "simulation_id": "sim-sandbox-math",
+      "title": "Math Adventure Lab",
+      "mapping_type": "practice",
+      "verified": true
+    },
+    {
+      "mapping_id": "cbse-x-2026-27-maths-concept-zeroes-sim",
+      "concept_id": "cbse-x-2026-27-maths-concept-zeroes",
+      "simulation_id": "sim-sandbox-math",
+      "title": "Math Adventure Lab",
+      "mapping_type": "practice",
+      "verified": true
+    },
+    {
+      "mapping_id": "cbse-x-2026-27-maths-concept-coefficient-relationship-sim",
+      "concept_id": "cbse-x-2026-27-maths-concept-coefficient-relationship",
+      "simulation_id": "sim-sandbox-math",
+      "title": "Math Adventure Lab",
+      "mapping_type": "practice",
+      "verified": true
+    }
+  ]
+}

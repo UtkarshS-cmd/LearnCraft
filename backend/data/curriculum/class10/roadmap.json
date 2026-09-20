@@ -1,0 +1,331 @@
+{
+  "class_level": "Class X",
+  "academic_year": "2026-27",
+  "generated_from": "concept_graph.json",
+  "algorithm": "concept-chain topological order (documented deterministic rule)",
+  "generated_at": "2026-09-19T20:19:39Z",
+  "subjects": [
+    {
+      "subject_slug": "mathematics",
+      "subject_id": "cbse-x-2026-27-mathematics",
+      "name": "Mathematics",
+      "terms": [
+        {
+          "term": 1,
+          "chapters": [
+            {
+              "chapter_id": "cbse-x-2026-27-maths-real-numbers",
+              "chapter_number": 1,
+              "title": "Real Numbers",
+              "difficulty": "MEDIUM",
+              "lesson_ids": [
+                "cbse-x-2026-27-maths-real-numbers-prime-factorisation",
+                "cbse-x-2026-27-maths-real-numbers-irrationality"
+              ],
+              "concepts": [
+                {
+                  "concept_id": "cbse-x-2026-27-maths-concept-prime-factorisation",
+                  "title": "Prime factorisation",
+                  "prerequisites": [],
+                  "next_concepts": [
+                    "cbse-x-2026-27-maths-concept-irrationality"
+                  ],
+                  "difficulty": "FOUNDATION",
+                  "estimated_minutes": 18,
+                  "simulation_ids": [
+                    "sim-sandbox-math"
+                  ],
+                  "question_ids": [
+                    "cbse-x-2026-27-maths-q-hcf-001"
+                  ],
+                  "verified": true
+                },
+                {
+                  "concept_id": "cbse-x-2026-27-maths-concept-irrationality",
+                  "title": "Irrationality by contradiction",
+                  "prerequisites": [
+                    "cbse-x-2026-27-maths-concept-prime-factorisation"
+                  ],
+                  "next_concepts": [
+                    "cbse-x-2026-27-maths-concept-zeroes"
+                  ],
+                  "difficulty": "MEDIUM",
+                  "estimated_minutes": 20,
+                  "simulation_ids": [
+                    "sim-sandbox-math"
+                  ],
+                  "question_ids": [
+                    "cbse-x-2026-27-maths-q-rational-001"
+                  ],
+                  "verified": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "term": 2,
+          "chapters": [
+            {
+              "chapter_id": "cbse-x-2026-27-maths-polynomials",
+              "chapter_number": 2,
+              "title": "Polynomials",
+              "difficulty": "MEDIUM",
+              "lesson_ids": [
+                "cbse-x-2026-27-maths-polynomials-zeroes-graph",
+                "cbse-x-2026-27-maths-polynomials-zeroes-coefficients"
+              ],
+              "concepts": [
+                {
+                  "concept_id": "cbse-x-2026-27-maths-concept-zeroes",
+                  "title": "Zeroes",
+                  "prerequisites": [
+                    "cbse-x-2026-27-maths-concept-irrationality"
+                  ],
+                  "next_concepts": [
+                    "cbse-x-2026-27-maths-concept-coefficient-relationship"
+                  ],
+                  "difficulty": "EASY",
+                  "estimated_minutes": 16,
+                  "simulation_ids": [
+                    "sim-sandbox-math"
+                  ],
+                  "question_ids": [
+                    "cbse-x-2026-27-maths-q-zeroes-001"
+                  ],
+                  "verified": true
+                },
+                {
+                  "concept_id": "cbse-x-2026-27-maths-concept-coefficient-relationship",
+                  "title": "Zero-coefficient relationship",
+                  "prerequisites": [
+                    "cbse-x-2026-27-maths-concept-zeroes"
+                  ],
+                  "next_concepts": [],
+                  "difficulty": "EASY",
+                  "estimated_minutes": 15,
+                  "simulation_ids": [
+                    "sim-sandbox-math"
+                  ],
+                  "question_ids": [
+                    "cbse-x-2026-27-maths-q-coeff-001"
+                  ],
+                  "verified": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject_slug": "science",
+      "subject_id": "cbse-x-2026-27-science",
+      "name": "Science",
+      "terms": [
+        {
+          "term": 1,
+          "chapters": [
+            {
+              "chapter_id": "cbse-x-2026-27-science-chemical-reactions",
+              "chapter_number": 1,
+              "title": "Chemical Reactions and Equations",
+              "difficulty": "MEDIUM",
+              "lesson_ids": [
+                "cbse-x-2026-27-science-reactions-balancing",
+                "cbse-x-2026-27-science-reactions-types"
+              ],
+              "concepts": [
+                {
+                  "concept_id": "cbse-x-2026-27-science-concept-conservation",
+                  "title": "Conservation of mass",
+                  "prerequisites": [],
+                  "next_concepts": [
+                    "cbse-x-2026-27-science-concept-reaction-types"
+                  ],
+                  "difficulty": "FOUNDATION",
+                  "estimated_minutes": 20,
+                  "simulation_ids": [],
+                  "question_ids": [
+                    "cbse-x-2026-27-science-q-balance-001",
+                    "cbse-x-2026-27-science-q-types-001"
+                  ],
+                  "verified": true
+                },
+                {
+                  "concept_id": "cbse-x-2026-27-science-concept-reaction-types",
+                  "title": "Reaction types",
+                  "prerequisites": [
+                    "cbse-x-2026-27-science-concept-conservation"
+                  ],
+                  "next_concepts": [
+                    "cbse-x-2026-27-science-concept-photosynthesis"
+                  ],
+                  "difficulty": "EASY",
+                  "estimated_minutes": 18,
+                  "simulation_ids": [],
+                  "question_ids": [],
+                  "verified": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "term": 2,
+          "chapters": [
+            {
+              "chapter_id": "cbse-x-2026-27-science-life-processes",
+              "chapter_number": 6,
+              "title": "Life Processes",
+              "difficulty": "MEDIUM",
+              "lesson_ids": [
+                "cbse-x-2026-27-science-life-processes-photosynthesis",
+                "cbse-x-2026-27-science-life-processes-respiration"
+              ],
+              "concepts": [
+                {
+                  "concept_id": "cbse-x-2026-27-science-concept-photosynthesis",
+                  "title": "Photosynthesis",
+                  "prerequisites": [
+                    "cbse-x-2026-27-science-concept-reaction-types"
+                  ],
+                  "next_concepts": [
+                    "cbse-x-2026-27-science-concept-respiration"
+                  ],
+                  "difficulty": "EASY",
+                  "estimated_minutes": 18,
+                  "simulation_ids": [],
+                  "question_ids": [
+                    "cbse-x-2026-27-science-q-photo-001"
+                  ],
+                  "verified": true
+                },
+                {
+                  "concept_id": "cbse-x-2026-27-science-concept-respiration",
+                  "title": "Respiration",
+                  "prerequisites": [
+                    "cbse-x-2026-27-science-concept-photosynthesis"
+                  ],
+                  "next_concepts": [],
+                  "difficulty": "MEDIUM",
+                  "estimated_minutes": 16,
+                  "simulation_ids": [],
+                  "question_ids": [
+                    "cbse-x-2026-27-science-q-respiration-001"
+                  ],
+                  "verified": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject_slug": "social-science",
+      "subject_id": "cbse-x-2026-27-social-science",
+      "name": "Social Science",
+      "terms": [
+        {
+          "term": 1,
+          "chapters": [
+            {
+              "chapter_id": "cbse-x-2026-27-sst-rise-of-nationalism",
+              "chapter_number": 1,
+              "title": "The Rise of Nationalism in Europe",
+              "difficulty": "MEDIUM",
+              "lesson_ids": [
+                "cbse-x-2026-27-sst-nationalism-french-revolution",
+                "cbse-x-2026-27-sst-nationalism-making"
+              ],
+              "concepts": [
+                {
+                  "concept_id": "cbse-x-2026-27-sst-concept-sovereignty",
+                  "title": "Popular sovereignty",
+                  "prerequisites": [],
+                  "next_concepts": [
+                    "cbse-x-2026-27-sst-concept-romanticism"
+                  ],
+                  "difficulty": "FOUNDATION",
+                  "estimated_minutes": 18,
+                  "simulation_ids": [],
+                  "question_ids": [
+                    "cbse-x-2026-27-sst-q-nation-001"
+                  ],
+                  "verified": true
+                },
+                {
+                  "concept_id": "cbse-x-2026-27-sst-concept-romanticism",
+                  "title": "Romanticism",
+                  "prerequisites": [
+                    "cbse-x-2026-27-sst-concept-sovereignty"
+                  ],
+                  "next_concepts": [
+                    "cbse-x-2026-27-sst-concept-sustainable-development"
+                  ],
+                  "difficulty": "MEDIUM",
+                  "estimated_minutes": 20,
+                  "simulation_ids": [],
+                  "question_ids": [
+                    "cbse-x-2026-27-sst-q-making-001"
+                  ],
+                  "verified": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "term": 2,
+          "chapters": [
+            {
+              "chapter_id": "cbse-x-2026-27-sst-resources-development",
+              "chapter_number": 2,
+              "title": "Resources and Development",
+              "difficulty": "MEDIUM",
+              "lesson_ids": [
+                "cbse-x-2026-27-sst-resources-classification",
+                "cbse-x-2026-27-sst-resources-land-use"
+              ],
+              "concepts": [
+                {
+                  "concept_id": "cbse-x-2026-27-sst-concept-sustainable-development",
+                  "title": "Sustainable development",
+                  "prerequisites": [
+                    "cbse-x-2026-27-sst-concept-romanticism"
+                  ],
+                  "next_concepts": [
+                    "cbse-x-2026-27-sst-concept-land-use"
+                  ],
+                  "difficulty": "EASY",
+                  "estimated_minutes": 15,
+                  "simulation_ids": [],
+                  "question_ids": [
+                    "cbse-x-2026-27-sst-q-resources-001"
+                  ],
+                  "verified": true
+                },
+                {
+                  "concept_id": "cbse-x-2026-27-sst-concept-land-use",
+                  "title": "Land use",
+                  "prerequisites": [
+                    "cbse-x-2026-27-sst-concept-sustainable-development"
+                  ],
+                  "next_concepts": [],
+                  "difficulty": "EASY",
+                  "estimated_minutes": 15,
+                  "simulation_ids": [],
+                  "question_ids": [
+                    "cbse-x-2026-27-sst-q-land-001"
+                  ],
+                  "verified": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

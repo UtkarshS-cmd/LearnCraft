@@ -72,6 +72,7 @@ from app.api.v1.lessons import bp as lessons_api_bp
 from app.api.v1.progress import bp as progress_api_bp
 from app.api.v1.quizzes import bp as quizzes_api_bp
 from app.api.v1.subjects import bp as subjects_api_bp
+from app.api.v1.curriculum import bp as curriculum_api_bp
 from app.api.v1.users import bp as users_api_bp
 from app.api.v1.teacher import bp as teacher_api_bp
 
@@ -84,6 +85,7 @@ for blueprint in (
     progress_api_bp,
     quizzes_api_bp,
     subjects_api_bp,
+    curriculum_api_bp,
     users_api_bp,
     teacher_api_bp,
 ):

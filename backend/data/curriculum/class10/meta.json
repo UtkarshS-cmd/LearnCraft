@@ -1,0 +1,17 @@
+{
+  "package_id": "cbse-class-x-2026-27",
+  "schema_version": "2026.09.1",
+  "generated_at": "2026-09-19T20:19:39Z",
+  "counts": {
+    "subjects": 3,
+    "chapters": 6,
+    "concepts": 12,
+    "questions_total": 9050,
+    "questions_verified": 12,
+    "questions_unverified": 9038
+  },
+  "verification_policy": {
+    "legacy_human_authored": "verified=true (repo seed packages)",
+    "ncert_syllabus_extraction": "verified=false (pending human review)"
+  }
+}

@@ -75,6 +75,7 @@ from app.api.v1.subjects import bp as subjects_api_bp
 from app.api.v1.curriculum import bp as curriculum_api_bp
 from app.api.v1.users import bp as users_api_bp
 from app.api.v1.teacher import bp as teacher_api_bp
+from app.api.v1.resources import bp as resources_api_bp
 
 for blueprint in (
     api_bp,
@@ -88,6 +89,7 @@ for blueprint in (
     curriculum_api_bp,
     users_api_bp,
     teacher_api_bp,
+    resources_api_bp,
 ):
     app.register_blueprint(blueprint)
 _secret = os.environ.get("LEARNCRAFT_SECRET_KEY")
@@ -129,6 +131,11 @@ def seed_local_content():
     except Exception:
         # Curriculum seeding must never break app startup (fresh checkout,
         # read-only FS, partial data). Tests seed explicitly.
+        pass
+    try:
+        from app.services.external_resources import ensure_external_resource_seed
+        ensure_external_resource_seed()
+    except Exception:
         pass
     for subject in M.SUBJECTS:
         try:
@@ -378,8 +385,10 @@ def shell_ctx(active, user=None):
             pending = len(student_assignments(user["id"]))
         except Exception:
             pending = 0
-    return dict(nav=M.NAV, student=build_student_profile(user), active=active, pending_count=pending,
-                is_teacher=is_teacher_user(user))
+    ctx = dict(nav=M.NAV, student=build_student_profile(user), active=active, pending_count=pending)
+    if user and is_teacher_user(user):
+        ctx["is_teacher"] = True
+    return ctx
 
 
 def live_today_work(user_id):
@@ -985,6 +994,28 @@ def notes():
                                     "source_id": request.args.get("source_id", ""),
                                     "source_title": request.args.get("source_title", "")},
                            **shell_ctx("notes", current_user()))
+
+@app.route("/resources")
+@require_auth
+def resources_hub():
+    from app.services.external_providers import list_providers
+    from app.services.external_resources import list_resources, user_bookmarks
+    user = current_user()
+    args = request.args
+    q = args.get("q", "").strip()
+    provider = args.get("provider", "").strip()
+    subject = args.get("subject", "").strip()
+    rtype = args.get("type", "").strip()
+    items = list_resources({"q": q, "provider": provider, "subject": subject, "resource_type": rtype})
+    ctx = shell_ctx("resources", user)
+    ctx["is_teacher"] = is_teacher_user(user)
+    return render_template("pages/resources.html", title="Learning Resources",
+                           providers=list_providers(), items=items,
+                           bookmarks={b["resource_id"]: b for b in user_bookmarks(user["id"])},
+                           q=q, provider=provider, subject=subject, rtype=rtype, **ctx)
+
+
+
 
 
 @app.post("/api/notes")

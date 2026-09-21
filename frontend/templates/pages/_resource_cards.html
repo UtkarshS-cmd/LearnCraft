@@ -1,0 +1,17 @@
+<div class="res-grid">{% for r in items %}
+<article class="res-card" data-online="{{ 0 if r.offline_supported else 1 }}">
+<div class="caption">{{ r.provider.replace('_',' ').title() }} · {{ r.resource_type }} {% if r.verified %}· ✓ verified{% endif %}</div>
+<h3>{{ r.title }}</h3>
+<div class="caption">{{ r.description }}{% if r.chapter %} · {{ r.chapter }}{% endif %}{% if r.subject %} · {{ r.subject }}{% endif %}</div>
+<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+<a class="btn btn-primary btn-sm" href="#" data-provider="{{ r.provider }}" data-url="{{ r.url }}"
+   data-subject="{{ r.subject }}" data-chapter="{{ r.chapter }}" data-topic="{{ r.topic }}" data-title="{{ r.title }}"
+   onclick="return resOpen(this, '{{ r.id }}')" {% if not r.offline_supported %}data-online-only{% endif %}>Open</a>
+<button class="btn btn-secondary btn-sm" data-saved="{{ 1 if r.id in bookmarks else 0 }}" onclick="resBookmark('{{ r.id }}', this)">{{ '★ Saved' if r.id in bookmarks else '☆ Save' }}</button>
+{% if r.id in bookmarks %}<button class="btn btn-ghost btn-sm" onclick="resComplete('{{ r.id }}')">Mark done</button>{% endif %}
+</div>
+{% if r.provider == 'obsidian' %}<div class="caption" style="margin-top:6px">Local-first: uses obsidian:// links when the app is installed.</div>{% endif %}
+{% if r.requires_login %}<div class="caption">May require provider login.</div>{% endif %}
+</article>
+{% else %}<div class="empty" style="grid-column:1/-1">No resources match. Teachers can add verified links.</div>
+{% endfor %}</div>

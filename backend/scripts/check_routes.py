@@ -31,6 +31,10 @@ os.environ["LEARNCRAFT_DB_PATH"] = str(_DB)
 from app.main import create_app  # noqa: E402
 
 FRONTEND = ROOT / "frontend"
+# Repo layout keeps frontend/ at the project root (sibling of backend/), not
+# inside backend/. Fall back to backend/frontend for packaged layouts.
+if not FRONTEND.exists():
+    FRONTEND = ROOT.parent / "frontend"
 
 CALL_RE = re.compile(r"""(?:fetch|\bapi|apiPost|apiJson)\s*\(\s*['"`](/[^'"`\s]*)['"`]""")
 ASSET_RE = re.compile(r"""^\s*'(/[^']+)',\s*$""")
@@ -67,6 +71,11 @@ def main() -> int:
             regex = re.sub(r"<[^>]+>", "[^/]+", str(rule))
             if re.fullmatch(regex, path):
                 return True
+        # Concatenated calls such as fetch("/api/v1/resources/" + id + "/open")
+        # end at the closing quote, leaving a fragment ending in "/". Accept it
+        # when a registered rule continues from that prefix.
+        if path.endswith("/") and any(str(rule).startswith(path) for rule in rules):
+            return True
         return False
 
     problems: list[str] = []

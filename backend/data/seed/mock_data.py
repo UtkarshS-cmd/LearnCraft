@@ -287,6 +287,7 @@ NAV = [
     {"slug": "home", "label": "Home", "href": "/home", "icon": "home"},
     {"slug": "my-learning", "label": "My Learning", "href": "/my-learning", "icon": "play"},
     {"slug": "subjects", "label": "Subjects", "href": "/subjects", "icon": "grid"},
+    {"slug": "resources", "label": "Resources", "href": "/resources", "icon": "grid"},
     {"slug": "tests", "label": "Tests", "href": "/tests", "icon": "clip"},
     {"slug": "practical", "label": "Practical", "href": "/practical", "icon": "flask"},
     {"slug": "assignments", "label": "Assignments", "href": "/assignments", "icon": "clip"},

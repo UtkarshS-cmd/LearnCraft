@@ -355,7 +355,64 @@ def initialize_database():
         )
     """)
 
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS external_resources (
+            id TEXT PRIMARY KEY,
+            provider TEXT NOT NULL,
+            resource_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            url TEXT NOT NULL UNIQUE,
+            subject TEXT NOT NULL DEFAULT '',
+            class_level TEXT NOT NULL DEFAULT '',
+            chapter TEXT NOT NULL DEFAULT '',
+            topic TEXT NOT NULL DEFAULT '',
+            concept_ids_json TEXT NOT NULL DEFAULT '[]',
+            language TEXT NOT NULL DEFAULT 'en',
+            difficulty TEXT NOT NULL DEFAULT 'FOUNDATION',
+            is_official INTEGER NOT NULL DEFAULT 1,
+            requires_login INTEGER NOT NULL DEFAULT 0,
+            embed_supported INTEGER NOT NULL DEFAULT 0,
+            offline_supported INTEGER NOT NULL DEFAULT 0,
+            verified INTEGER NOT NULL DEFAULT 0,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            priority INTEGER NOT NULL DEFAULT 0,
+            created_by INTEGER,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS resource_bookmarks (
+            user_id INTEGER NOT NULL,
+            resource_id TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+            pinned INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, resource_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (resource_id) REFERENCES external_resources(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS resource_activity (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            resource_id TEXT NOT NULL,
+            provider TEXT NOT NULL DEFAULT '',
+            concept_id TEXT NOT NULL DEFAULT '',
+            action TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_extres_provider ON external_resources(provider)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_extres_subject ON external_resources(subject)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_extres_enabled ON external_resources(enabled, verified)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_resact_user ON resource_activity(user_id)")
     connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+
     connection.execute("CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id)")
     connection.execute("CREATE INDEX IF NOT EXISTS idx_learning_progress_user ON learning_progress(user_id)")
     connection.execute("CREATE INDEX IF NOT EXISTS idx_learning_progress_subject ON learning_progress(subject_slug)")

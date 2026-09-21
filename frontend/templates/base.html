@@ -52,7 +52,7 @@
       <button class="btn btn-secondary btn-sm menu-btn" onclick="document.body.classList.toggle('nav-open')">☰ Menu</button>
       <div class="search">⌕ <input id="globalSearch" placeholder="Search lessons, practicals, assignments…" oninput="filterCards(this.value)"></div>
       <div class="top-actions">
-        {% if not is_teacher %}
+        {% if is_teacher is not defined or not is_teacher %}
         <div class="notif-wrap">
           <button class="notif-btn" id="notifBell" type="button" aria-expanded="false" aria-controls="notifMenu" aria-label="Notifications">🔔<span class="notif-count" id="notifCount" hidden>0</span></button>
           <div class="notif-menu" id="notifMenu" hidden role="menu" aria-label="Notifications">
@@ -76,12 +76,13 @@
         </div>
       </div>
     </div>
-    <div class="content">{% if is_teacher %}<div class="card" style="margin-bottom:14px;border-color:#C7D2FE;background:linear-gradient(135deg,#EEF2FF,#F5F3FF)"><div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><b>Teacher preview</b><div class="caption">You are viewing the student side. Your Control Center is still open in the other tab.</div></div><a class="btn btn-primary btn-sm" href="/teacher">← Back to Teacher Control Center</a></div></div>{% endif %}{% block content %}{% endblock %}</div>
+    <div class="content">{% if is_teacher is defined and is_teacher %}<div class="card" style="margin-bottom:14px;border-color:#C7D2FE;background:linear-gradient(135deg,#EEF2FF,#F5F3FF)"><div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><b>Teacher preview</b><div class="caption">You are viewing the student side. Your Control Center is still open in the other tab.</div></div><a class="btn btn-primary btn-sm" href="/teacher">← Back to Teacher Control Center</a></div></div>{% endif %}{% block content %}{% endblock %}</div>
   </div>
 </div>
 <div class="modal-back" id="modalBack"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 <script src="/static/js/app.js"></script>
+<script src="/static/js/external-links.js"></script>
 <script src="/static/js/sandbox-engine.js"></script>
 <script src="/static/js/offline-store.js"></script>
 <script>

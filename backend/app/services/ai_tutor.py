@@ -679,6 +679,17 @@ def build_system_prompt(context: AIContext, chunks: list[dict]) -> str:
             f"Retrieved application documentation and evidence:\n{evidence or 'No application documentation retrieved.'}"
         )
 
+    # Registry-grounded external suggestions (link-only, never invented URLs).
+    external_note = ""
+    try:
+        from app.services.external_resources import resources_for_ai_context
+        suggestions = resources_for_ai_context(context.subject, context.chapter, context.topic, limit=3)
+        if suggestions:
+            lines = [f"- {s['title']} ({s['provider'].replace('_', ' ')}): {s['url']}" for s in suggestions]
+            external_note = "Registry-linked external resources the student may open:\n" + "\n".join(lines)
+    except Exception:
+        external_note = ""
+
     return (
         "You are LearnCraft's AI tutor — a friendly, knowledgeable assistant for students. "
         "Your specialty is CBSE Class IX/X school work, but you answer ANY question the user asks: "
@@ -687,9 +698,12 @@ def build_system_prompt(context: AIContext, chunks: list[dict]) -> str:
         "Use the retrieved curriculum evidence when it is relevant to the question; otherwise rely on your "
         "own knowledge and ignore it. Explain step by step, adapt the answer to the question type "
         "(definition, why/how, numerical, comparison, opinion), and keep it clear for a student. "
+        "When the registry note lists external resources, you may mention at most two of them by title and provider; "
+        "never invent, shorten, or guess external URLs — only use URLs printed in the registry note, and say so explicitly. "
         "If you are genuinely unsure about a specific fact, say so briefly and still give your best answer. "
         f"Mode: {context.mode}. Subject: {context.subject}. Chapter: {context.chapter}. Topic: {context.topic}.\n"
         f"Retrieved curriculum evidence (may be empty — use only if relevant):\n{evidence or 'None.'}"
+        + (f"\n{external_note}" if external_note else "")
     )
 
 

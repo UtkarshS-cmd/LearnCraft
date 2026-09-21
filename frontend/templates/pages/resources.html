@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.res-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.res-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px}
+.res-card h3{margin:6px 0;font-size:15px}
+.prov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:16px}
+.prov-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px;display:flex;gap:10px;align-items:flex-start}
+.prov-ico{font-size:24px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.off-badge{font-size:11px;font-weight:800;color:#B45309;background:#FFFBEB;border:1px solid #FDE68A;border-radius:99px;padding:2px 8px}
+.teach-form{border:1px dashed var(--line);border-radius:16px;padding:12px;margin:12px 0;background:#FCFDFF}
+</style>
+<div class="page-head"><div><div class="eyebrow">External learning ecosystem</div><div class="h1">Learning Resources</div>
+<p>LearnCraft stays the hub. Open provider platforms in a new tab — progress here is tracked as opened vs completed.</p></div></div>
+<form class="toolbar" method="get">
+<input class="input" name="q" value="{{ q }}" placeholder="Search resources..." aria-label="Search resources" style="flex:1;min-width:200px">
+<select class="input" name="provider"><option value="">All providers</option>{% for p in providers %}<option value="{{ p.provider_id }}" {% if provider==p.provider_id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+<input class="input" name="subject" value="{{ subject }}" placeholder="Subject" aria-label="Subject">
+<select class="input" name="type"><option value="">All types</option>{% for t in ['lecture','course','video','note','document','flashcard','repository','practice','simulation','article','study_plan'] %}<option {% if rtype==t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+<button class="btn btn-primary btn-sm" type="submit">Search</button>
+</form>
+<div class="h2" style="margin:8px 0">External platforms</div>
+<div class="prov-grid">{% for p in providers %}
+<div class="prov-card"><div class="prov-ico">{{ p.icon }}</div><div style="flex:1"><b>{{ p.name }}</b><div class="caption">{{ p.description }}</div>
+<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><a class="btn btn-secondary btn-sm" href="{{ p.official_url }}" target="_blank" rel="noopener">Open Platform</a>
+<a class="btn btn-ghost btn-sm" href="/resources?provider={{ p.provider_id }}">View Resources</a></div></div></div>
+{% endfor %}</div>
+{% if is_teacher is defined and is_teacher %}
+<details class="teach-form"><summary><b>Add verified resource (teacher)</b></summary>
+<form id="teachRes" style="display:grid;gap:8px;margin-top:10px">
+<input class="input" id="trTitle" placeholder="Title *" required>
+<input class="input" id="trUrl" placeholder="https:// official provider URL *" required>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<select class="input" id="trProvider">{% for p in providers %}<option value="{{ p.provider_id }}">{{ p.name }}</option>{% endfor %}</select>
+<select class="input" id="trType">{% for t in ['lecture','course','video','note','document','flashcard','repository','practice','simulation','article','study_plan'] %}<option>{{ t }}</option>{% endfor %}</select>
+<input class="input" id="trSubject" placeholder="Subject">
+<input class="input" id="trChapter" placeholder="Chapter/topic">
+</div>
+<button class="btn btn-primary btn-sm" type="submit">Add resource</button>
+<span class="caption" id="trMsg"></span>
+</form></details>
+{% endif %}
+<div class="h2" style="margin:8px 0">{{ items|length }} resources {% if q %}for &ldquo;{{ q }}&rdquo;{% endif %}</div>
+{% include "pages/_resource_cards.html" %}
+{% endblock %}
+{% block scripts %}<script>
+function resBookmark(id, btn){
+  var saved = btn.dataset.saved === "1";
+  fetch("/api/v1/resources/" + id + "/bookmark", {method: saved ? "DELETE" : "POST", headers: {"Content-Type": "application/json"}, body: saved ? undefined : JSON.stringify({status: "IN_PROGRESS"})}).then(function(r){return r.json();}).then(function(){location.reload();});
+}
+/* Obsidian vault settings live in localStorage only (see external-links.js):
+   the deep link is assembled in the browser and never sent to the server. */
+function resOpen(el, id){
+  return lcOpenExternal(el, id);
+}
+function resComplete(id){
+  fetch("/api/v1/resources/" + id + "/complete", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"}).then(function(){location.reload();});
+}
+lcMarkOfflineOnly(document);
+var tf=document.getElementById('teachRes');
+if(tf){tf.onsubmit=function(e){e.preventDefault();var m=document.getElementById('trMsg');m.textContent='Saving…';
+  fetch('/api/v1/resources',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:document.getElementById('trTitle').value,url:document.getElementById('trUrl').value,provider:document.getElementById('trProvider').value,resource_type:document.getElementById('trType').value,subject:document.getElementById('trSubject').value,chapter:document.getElementById('trChapter').value})}).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(x){m.textContent=x.ok?'Saved. Reloading…':('Error: '+(x.d.message||'rejected'));if(x.ok)location.reload();}).catch(function(){m.textContent='Could not save.';});};}
+</script>{% endblock %}
+

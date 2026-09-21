@@ -5,6 +5,7 @@ const APP_ASSETS = [
   '/static/css/design-system.css',
   '/static/css/app.css',
   '/static/js/app.js',
+  '/static/js/external-links.js',
   '/static/js/sandbox-engine.js',
   '/static/js/offline-store.js',
   '/static/sandbox-games/math/index.html',

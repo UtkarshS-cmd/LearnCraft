@@ -17,8 +17,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-STATIC_DIR = ROOT / "frontend" / "static"
-TEMPLATES = ROOT / "frontend" / "templates"
+# Repo layout keeps frontend/ at the project root (sibling of backend/),
+# not inside backend/. Fall back to backend/frontend for packaged layouts.
+_PROJECT_ROOT = ROOT.parent if (ROOT.parent / "frontend").exists() else ROOT
+STATIC_DIR = _PROJECT_ROOT / "frontend" / "static"
+TEMPLATES = _PROJECT_ROOT / "frontend" / "templates"
 PATTERN = re.compile(r"/(?:static|assets)/[A-Za-z0-9_./-]+")
 
 

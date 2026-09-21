@@ -115,11 +115,16 @@ def main() -> int:
         # Authenticated pages/APIs must render directly (no auth redirect).
         for path in ("/home", "/subjects", "/my-learning", "/practical", "/assignments",
                      "/sandbox", "/progress", "/notes", "/profile", "/settings",
-                     "/help", "/tests", "/ask-ai", "/api/v1/dashboard",
-                     "/api/v1/progress", "/api/v1/users", "/api/content/catalog"):
+                     "/help", "/tests", "/ask-ai", "/resources", "/api/v1/dashboard",
+                     "/api/v1/progress", "/api/content/catalog"):
             response = client.get(path)
             if response.status_code != 200:
                 failures.append(f"[auth] GET {path} -> {response.status_code}")
+
+        # /api/v1/users is teacher/admin-only: a student must get 403 here.
+        users_as_student = client.get("/api/v1/users")
+        if users_as_student.status_code != 403:
+            failures.append(f"[auth] student GET /api/v1/users -> {users_as_student.status_code} (expected 403)")
 
         # The teacher console must reject a student account outright.
         teacher_as_student = client.get("/teacher")

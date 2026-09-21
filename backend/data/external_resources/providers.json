@@ -1,0 +1,4 @@
+{
+  "providers": ["notion", "obsidian", "physics_wallah", "khan_academy", "anki", "github", "youtube", "google_drive"],
+  "note": "Official platform homepages only. Concept links below are official provider URLs, verified 2026-09-21."
+}

@@ -163,6 +163,11 @@
   <div class="card"><div class="h3" style="margin-bottom:10px">Chapter references</div>
     {% for r in page.references %}<div class="activity"><span class="dot" style="color:{{ page.color }};margin-top:7px"></span><div style="flex:1"><b>{{ r.title }}</b><div class="caption">{{ r.chapter }}</div></div><a class="btn btn-secondary btn-sm" href="{{ r.url }}" target="_blank" rel="noopener">Open source ↗</a></div>{% endfor %}
   </div>
+  <div class="card" style="margin-top:12px"><div class="h3" style="margin-bottom:6px">External learning resources</div>
+    <div class="caption" style="margin-bottom:10px">Curated provider links for {{ page.name }}. Opens in a new tab; LearnCraft records opened vs completed separately.</div>
+    <div id="extRes"><div class="caption">Loading resources…</div></div>
+    <div style="margin-top:10px"><a class="btn btn-secondary btn-sm" href="/resources?subject={{ page.name }}">Open Resource Hub →</a></div>
+  </div>
 </div>
 
 <!-- PROGRESS -->
@@ -185,4 +190,20 @@ document.querySelectorAll('.sub-tabs .tab').forEach(btn=>{btn.addEventListener('
   document.getElementById(btn.dataset.pane).classList.add('show');
 });});
 if(location.hash){const id='pane-'+location.hash.slice(1);const p=document.getElementById(id);if(p){document.querySelectorAll('.pane').forEach(x=>x.classList.remove('show'));p.classList.add('show');document.querySelectorAll('.sub-tabs .tab').forEach(b=>b.classList.toggle('active',b.dataset.pane===id));}}
+(function(){
+  var box=document.getElementById('extRes');if(!box)return;
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  fetch('/api/v1/resources/context?subject='+encodeURIComponent({{ page.name|tojson }})).then(function(r){return r.json();}).then(function(d){
+    var items=(d.items||[]).slice(0,6);
+    if(!items.length){box.innerHTML='<div class="caption">No linked resources yet. Open the hub for platform links.</div>';return;}
+    box.innerHTML=items.map(function(r){
+      var offline=r.offline_supported?'':' data-online-only';
+      var attrs='data-provider="'+esc(r.provider)+'" data-url="'+esc(r.url)+'" data-subject="'+esc(r.subject||'')+'"'
+        +' data-chapter="'+esc(r.chapter||'')+'" data-topic="'+esc(r.topic||'')+'" data-title="'+esc(r.title)+'"';
+      var href=(r.provider==='obsidian')?'#':'/api/v1/resources/'+encodeURIComponent(r.id)+'/open';
+      return '<div class="activity"><span class="dot" style="margin-top:7px"'+offline+'></span><div style="flex:1"><b>'+esc(r.title)+'</b><div class="caption">'+esc(String(r.provider).replace(/_/g,' '))+' · '+esc(r.resource_type)+'</div></div><a class="btn btn-secondary btn-sm" href="'+href+'" '+attrs+' onclick="return lcOpenExternal(this, '+JSON.stringify(String(r.id))+')" target="_blank" rel="noopener">Open ↗</a></div>';
+    }).join('');
+    lcMarkOfflineOnly(box);
+  }).catch(function(){box.innerHTML='<div class="caption">Resources unavailable offline from server; saved bookmarks remain on the hub.</div>';});
+})();
 </script>{% endblock %}

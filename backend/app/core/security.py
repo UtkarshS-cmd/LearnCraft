@@ -28,6 +28,24 @@ def verify_password(password: str, password_hash: str) -> bool:
     return check_password_hash(password_hash, password)
 
 
+def safe_verify_password(password: str, password_hash: str) -> bool:
+    """Verify a password without ever raising on a malformed stored hash.
+
+    Corrupt/legacy rows (e.g. ``password_hash='x'`` from an old import) made
+    ``check_password_hash`` raise, which surfaced to existing users as a 500
+    "server error" on login instead of a clean invalid-credentials response.
+    Any hash we cannot parse simply does not match.
+    """
+    if not password_hash or not isinstance(password_hash, str):
+        return False
+    if not password_hash.startswith(("scrypt:", "pbkdf2:")):
+        return False
+    try:
+        return check_password_hash(password_hash, password)
+    except (ValueError, TypeError):
+        return False
+
+
 def session_cookie_name() -> str:
     return current_app.config.get("SESSION_COOKIE_NAME", "learncraft_session")
 

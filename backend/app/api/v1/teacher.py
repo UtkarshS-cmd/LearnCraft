@@ -14,6 +14,7 @@ from app.services.teacher_control import (
     activity_report,
     create_announcement,
     create_assignment,
+    decide_join_request,
     delete_class,
     recent_notifications,
     mark_notifications_read,
@@ -21,6 +22,7 @@ from app.services.teacher_control import (
     student_profile,
     set_access_rule,
     teacher_classes,
+    teacher_join_requests,
     teacher_sent_assignments,
     teacher_sent_announcements,
 )
@@ -77,6 +79,45 @@ def students(class_id):
     return jsonify({"success": True, "items": class_students(user_id, class_id)})
 
 
+@bp.get("/join-requests")
+def join_requests():
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    return jsonify({"success": True, "items": teacher_join_requests(user_id)})
+
+
+@bp.post("/join-requests/<int:request_id>/approve")
+def approve_join_request(request_id):
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    payload = request.get_json(silent=True) or {}
+    class_id = payload.get("class_id")
+    if not class_id:
+        # Fall back to the teacher's first class when the request has none.
+        classes = teacher_classes(user_id)
+        if classes:
+            class_id = classes[0]["id"]
+    if not class_id:
+        return jsonify({"success": False, "message": "Create a class first, then approve this student into it.", "code": "VALIDATION_ERROR"}), 400
+    result = decide_join_request(user_id, request_id, True, int(class_id))
+    if not result:
+        return jsonify({"success": False, "message": "Join request was not found or already handled.", "code": "NOT_FOUND"}), 404
+    return jsonify({"success": True, "message": "Student added to class.", "item": result})
+
+
+@bp.post("/join-requests/<int:request_id>/reject")
+def reject_join_request(request_id):
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    result = decide_join_request(user_id, request_id, False)
+    if not result:
+        return jsonify({"success": False, "message": "Join request was not found or already handled.", "code": "NOT_FOUND"}), 404
+    return jsonify({"success": True, "message": "Join request rejected.", "item": result})
+
+
 @bp.delete("/classes/<int:class_id>")
 def delete_teacher_class(class_id):
     user_id = teacher_id()
@@ -103,10 +144,23 @@ def add_student(class_id):
     if not user_id:
         return forbidden()
     payload = request.get_json(silent=True) or {}
+    from app.database.connection import get_user_by_email
+    from app.services.teacher_control import class_owned as _owned
+
     student_id = payload.get("student_id")
-    if not student_id or not add_class_member(user_id, class_id, int(student_id)):
+    email = str(payload.get("email", "")).strip().lower()
+    if not student_id and email:
+        found = get_user_by_email(email)
+        if not found:
+            return jsonify({"success": False, "message": "No student account found with that email. Ask them to create an account first.", "code": "NOT_FOUND"}), 404
+        if found.get("role") != "STUDENT":
+            return jsonify({"success": False, "message": "That email belongs to a teacher account, not a student.", "code": "VALIDATION_ERROR"}), 400
+        student_id = found["id"]
+    if not student_id or not _owned(user_id, class_id):
         return jsonify({"success": False, "message": "Class or student was not found.", "code": "NOT_FOUND"}), 404
-    return jsonify({"success": True, "message": "Student added to class."}), 201
+    if not add_class_member(user_id, class_id, int(student_id)):
+        return jsonify({"success": False, "message": "Class or student was not found.", "code": "NOT_FOUND"}), 404
+    return jsonify({"success": True, "message": "Student added to class.", "item": {"student_id": int(student_id), "class_id": class_id}}), 201
 
 
 @bp.post("/access")

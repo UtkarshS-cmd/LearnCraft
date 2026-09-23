@@ -55,7 +55,14 @@ from app.services.content_catalog import (
     simulations_for_subject,
     subject_detail as get_academic_subject,
 )
-from app.services.teacher_control import access_allowed, record_event, student_announcements, student_assignments, teacher_classes
+from app.services.teacher_control import (
+    access_allowed,
+    enqueue_student_join_requests,
+    record_event,
+    student_announcements,
+    student_assignments,
+    teacher_classes,
+)
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 app = Flask(
@@ -462,7 +469,10 @@ def register_page():
 def logout_page():
     user = current_user()
     if user:
-        record_event(user["id"], "USER_LOGOUT", detail=f"{user['name']} signed out")
+        try:
+            record_event(user["id"], "USER_LOGOUT", detail=f"{user['name']} signed out")
+        except Exception:
+            pass
     session.clear()
     return redirect("/login")
 
@@ -506,11 +516,25 @@ def auth_register():
     except ValueError as exc:
         return json_error(str(exc), "VALIDATION_ERROR", 400)
 
+    auto_registered = 0
+    if user.get("role") == "STUDENT":
+        # Auto-register the new learner with every teaching teacher so they
+        # appear in the teacher's join-request queue immediately. Registration
+        # must never fail because of this optional side effect.
+        try:
+            auto_registered = enqueue_student_join_requests(user["id"])
+        except Exception:
+            auto_registered = 0
+
     session.clear()
     session["user_id"] = user["id"]
     session.permanent = True
 
-    return json_success("Account created successfully.", "REGISTERED", {"user": user_payload(user)}, 201)
+    return json_success(
+        "Account created successfully." if not auto_registered
+        else f"Account created successfully. Sent to {auto_registered} teacher(s) for class approval.",
+        "REGISTERED", {"user": user_payload(user), "auto_registered": auto_registered}, 201,
+    )
 
 
 @app.post("/auth/login")
@@ -531,12 +555,21 @@ def auth_login():
         )
     portal = str(payload.get("portal", "student")).strip().lower()
     if not auth_service.validate_portal(user, portal):
+        if portal == "teacher":
+            return json_error(
+                "This account is a student account. Use the Student portal (or switch to the Teacher tab only for teacher accounts).",
+                "TEACHER_ACCOUNT_REQUIRED", 403,
+            )
         return json_error("This account is not a teacher account.", "TEACHER_ACCOUNT_REQUIRED", 403)
 
     session.clear()
     session["user_id"] = user["id"]
     session.permanent = True
-    record_event(user["id"], "USER_LOGIN", detail=f"{user['name']} signed in")
+    try:
+        record_event(user["id"], "USER_LOGIN", detail=f"{user['name']} signed in")
+    except Exception:
+        # Telemetry must never block a successful login (e.g. read-only DB).
+        pass
     return json_success("Login successful.", "LOGIN_SUCCESS", {"user": user_payload(user)}, 200)
 
 
@@ -579,7 +612,10 @@ def confirm_password_reset():
 def auth_logout():
     user = current_user()
     if user:
-        record_event(user["id"], "USER_LOGOUT", detail=f"{user['name']} signed out")
+        try:
+            record_event(user["id"], "USER_LOGOUT", detail=f"{user['name']} signed out")
+        except Exception:
+            pass
     session.clear()
     return json_success("Signed out successfully.", "LOGOUT_SUCCESS", None, 200)
 

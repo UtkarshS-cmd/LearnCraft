@@ -21,6 +21,20 @@ TEST_DB = Path(tempfile.gettempdir()) / f"learncraft_pytest_{os.getpid()}.db"
 if TEST_DB.exists():
     TEST_DB.unlink()
 
+# Legacy integration modules still pin their own LEARNCRAFT_DB_PATH at import
+# time (test_auth -> learncraft_test_*, test_teacher_control -> learncraft_*,
+# etc.), and those throwaway files persist across sessions. Stale rows (e.g. a
+# previously registered student@example.com) then fail this session's
+# registrations with 409 EMAIL_EXISTS. Purge every learncraft test database in
+# the temp directory before the session starts; the real database lives in
+# backend/data and is never touched by this cleanup.
+for stale in Path(tempfile.gettempdir()).glob("learncraft_*.db"):
+    for candidate in (stale, stale.with_suffix(".db-wal"), stale.with_suffix(".db-shm")):
+        try:
+            candidate.unlink()
+        except OSError:
+            pass
+
 os.environ["LEARNCRAFT_DB_PATH"] = str(TEST_DB)
 os.environ["LEARNCRAFT_SECRET_KEY"] = "pytest-secret-key"
 

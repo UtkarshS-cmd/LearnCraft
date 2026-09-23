@@ -288,6 +288,7 @@
             <input id="loginPassword" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required />
           </div>
           <button type="button" class="link-button" id="forgotPasswordLink" hidden>Forgot password?</button>
+          <p class="muted" id="loginStatus" style="text-align:left;margin:8px 0 0;min-height:1.2em"></p>
           <button type="submit" class="btn btn-primary btn-lg" id="loginSubmit">Sign in</button>
         </form>
 
@@ -420,10 +421,18 @@
       const payload = Object.fromEntries(formData.entries());
       const response = await fetch(endpoint, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const result = await response.json();
+      const text = await response.text();
+      let result = {};
+      try {
+        result = JSON.parse(text);
+      } catch (err) {
+        // Non-JSON (e.g. HTML error page): surface a readable message.
+        throw new Error(response.ok ? 'Unexpected server response.' : `Server error (${response.status}). Please retry in a moment.`);
+      }
       if (!response.ok) {
         const error = new Error(result.message || 'Authentication failed');
         error.code = result.code;
@@ -432,8 +441,14 @@
       return result;
     }
 
+    function showLoginStatus(message) {
+      const status = document.getElementById('loginStatus');
+      if (status) status.textContent = message || '';
+    }
+
     loginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+      showLoginStatus('Signing in...');
       try {
         const result = await submitJson(loginForm, '/auth/login');
         const role = result.user && result.user.role;
@@ -443,7 +458,7 @@
           window.location.href = next;
         }
       } catch (error) {
-        alert(error.message);
+        showLoginStatus(error.message);
         forgotPasswordLink.hidden = error.code !== 'INVALID_CREDENTIALS';
       }
     });
@@ -499,12 +514,14 @@
       status.textContent = 'Creating account...';
       try {
         const result = await submitJson(registerForm, '/auth/register');
-        status.textContent = 'Account created. Opening dashboard...';
+        const queued = (result.data && result.data.auto_registered) || result.auto_registered || 0;
+        status.textContent = queued > 0
+          ? `Account created. Sent to ${queued} teacher(s) for class approval. Opening dashboard...`
+          : 'Account created. Opening dashboard...';
         // New teacher onboarding -> fresh teacher dashboard; new student -> student home.
         window.location.href = result.user && ['TEACHER', 'ADMIN'].includes(result.user.role) ? '/teacher?fresh=1' : next;
       } catch (error) {
         status.textContent = error.message;
-        alert(error.message);
       }
     });
 

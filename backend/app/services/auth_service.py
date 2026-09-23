@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.security import hash_password, password_policy, verify_password
+from app.core.security import hash_password, password_policy, safe_verify_password
 from app.repositories.user_repository import UserRepository
 
 
@@ -29,7 +29,7 @@ class AuthService:
         user = self.repository.get_by_email(str(email).strip().lower())
         if not user:
             return None
-        if not verify_password(password, user["password_hash"]):
+        if not safe_verify_password(password, user["password_hash"]):
             return None
         return user
 

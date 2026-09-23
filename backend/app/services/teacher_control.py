@@ -9,6 +9,102 @@ from app.database.connection import get_connection
 VALID_ACCESS_STATES = {"ENABLED", "DISABLED", "LOCKED", "ASSIGNED_ONLY"}
 
 
+def enqueue_student_join_requests(student_id: int) -> int:
+    """Auto-register a freshly created student with every teaching teacher.
+
+    Called right after a student account is created so teachers see the
+    learner in a pending queue and can approve them into a class with one
+    click — instead of the old manual "type a numeric user ID" flow.
+    Returns the number of pending requests created.
+    """
+    from app.database.connection import _transaction
+
+    def work(connection):
+        # Every teacher/admin gets the request; class_id is the teacher's first
+        # class when one exists, otherwise NULL (they can pick a class at
+        # approval time). This way a student who registers before the teacher
+        # creates any class still shows up in the approval queue.
+        teachers = connection.execute(
+            "SELECT u.id AS teacher_id, "
+            "(SELECT MIN(c.id) FROM teacher_classes c WHERE c.teacher_id = u.id) AS class_id "
+            "FROM users u WHERE u.role IN ('TEACHER', 'ADMIN') ORDER BY u.id",
+        ).fetchall()
+        created = 0
+        for teacher in teachers:
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO student_join_requests (student_id, teacher_id, class_id, status) "
+                "VALUES (?, ?, ?, 'PENDING')",
+                (int(student_id), int(teacher["teacher_id"]), teacher["class_id"]),
+            )
+            created += cursor.rowcount
+        if created:
+            student = connection.execute("SELECT name FROM users WHERE id = ?", (int(student_id),)).fetchone()
+            student_name = student["name"] if student else "A new student"
+            for teacher in teachers:
+                connection.execute(
+                    "INSERT INTO teacher_notifications (teacher_id, kind, message) VALUES (?, ?, ?)",
+                    (int(teacher["teacher_id"]), "STUDENT_JOIN_REQUEST",
+                     f"{student_name} created an account and is waiting for approval into your class."),
+                )
+        return created
+
+    return int(_transaction(work))
+
+
+def teacher_join_requests(teacher_id: int) -> list[dict]:
+    """Pending student join requests for this teacher's dashboard."""
+    connection = get_connection()
+    rows = connection.execute(
+        "SELECT r.id, r.student_id, r.class_id, r.status, r.created_at, u.name, u.email, u.avatar, c.name AS class_name "
+        "FROM student_join_requests r JOIN users u ON u.id = r.student_id "
+        "LEFT JOIN teacher_classes c ON c.id = r.class_id "
+        "WHERE r.teacher_id = ? AND r.status = 'PENDING' ORDER BY r.created_at DESC",
+        (int(teacher_id),),
+    ).fetchall()
+    connection.close()
+    return _dicts(rows)
+
+
+def decide_join_request(teacher_id: int, request_id: int, approve: bool, class_id: int | None = None) -> dict | None:
+    """Approve or reject a student join request.
+
+    Approval adds the student to the (suggested or overridden) class, which
+    is exactly what connects them to this teacher's assignments,
+    announcements, analytics, activity feed and access-control rules.
+    Returns a summary dict, or ``None`` when the request is not pending /
+    not owned by this teacher.
+    """
+    from app.database.connection import _transaction
+
+    def work(connection):
+        row = connection.execute(
+            "SELECT * FROM student_join_requests WHERE id = ? AND teacher_id = ? AND status = 'PENDING'",
+            (int(request_id), int(teacher_id)),
+        ).fetchone()
+        if not row:
+            return None
+        target_class = int(class_id) if class_id else row["class_id"]
+        if approve and target_class:
+            owned = connection.execute(
+                "SELECT 1 FROM teacher_classes WHERE id = ? AND teacher_id = ?",
+                (target_class, int(teacher_id)),
+            ).fetchone()
+            if not owned:
+                return None
+            connection.execute(
+                "INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (?, ?)",
+                (target_class, int(row["student_id"])),
+            )
+        connection.execute(
+            "UPDATE student_join_requests SET status = ?, class_id = ?, decided_at = CURRENT_TIMESTAMP WHERE id = ?",
+            ("APPROVED" if approve else "REJECTED", target_class, int(request_id)),
+        )
+        return {"request_id": int(request_id), "student_id": int(row["student_id"]),
+                "class_id": target_class, "status": "APPROVED" if approve else "REJECTED"}
+
+    return _transaction(work)
+
+
 def _clean_due_at(value):
     """Normalize optional assignment due dates to SQLite timestamps.
 
@@ -164,6 +260,9 @@ def dashboard_snapshot(teacher_id: int) -> dict:
     student_ids = [row[0] for row in connection.execute(
         "SELECT DISTINCT cm.student_id FROM class_members cm JOIN teacher_classes c ON c.id = cm.class_id WHERE c.teacher_id = ?", (int(teacher_id),)
     ).fetchall()]
+    pending_requests = connection.execute(
+        "SELECT COUNT(*) FROM student_join_requests WHERE teacher_id = ? AND status = 'PENDING'", (int(teacher_id),)
+    ).fetchone()[0]
     ids = tuple(student_ids)
     count = len(student_ids)
     events = []
@@ -207,7 +306,7 @@ def dashboard_snapshot(teacher_id: int) -> dict:
     connection.close()
     return {"kpis": {"total_students": count, "active_now": active_now, "idle": inactive, "offline": count - active_now - inactive, "lessons_completed": progress,
                       "games_played": games, "quizzes_completed": quizzes, "average_score": round(score, 1) if score is not None else None,
-                      "active_classes": len(teacher_classes(teacher_id))}, "students": students, "events": events}
+                      "active_classes": len(teacher_classes(teacher_id)), "pending_requests": pending_requests}, "students": students, "events": events}
 
 
 def access_state(student_id: int, resource_type: str, resource_id: str) -> str:

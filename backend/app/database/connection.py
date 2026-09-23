@@ -46,6 +46,56 @@ def get_connection():
     return connection
 
 
+def _repair_corrupt_password_hashes(connection):
+    """Reset legacy/corrupt password hashes so existing accounts can log in.
+
+    Older builds wrote placeholder values (e.g. ``'x'``) into
+    ``users.password_hash``. Those rows can never authenticate with any
+    password, which looked like "login is broken for an existing account".
+    Affected rows get a random unusable hash plus a fresh profile row so the
+    normal offline Forgot-password (OTP) flow can recover the account.
+    """
+    from werkzeug.security import gen_salt
+
+    rows = connection.execute(
+        "SELECT id FROM users WHERE password_hash IS NULL OR password_hash = '' "
+        "OR password_hash NOT LIKE 'scrypt:%' AND password_hash NOT LIKE 'pbkdf2:%'"
+    ).fetchall()
+    if not rows:
+        return
+    for row in rows:
+        connection.execute(
+            "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (f"scrypt:32768:8:1${gen_salt(32)}${gen_salt(32)}", row["id"]),
+        )
+        # Merge the reset flag into the profile; plain INSERT OR IGNORE would
+        # silently skip users that already have a profile row.
+        existing = connection.execute(
+            "SELECT preferences_json FROM user_profiles WHERE user_id = ?", (row["id"],)
+        ).fetchone()
+        if existing:
+            try:
+                prefs = json.loads(existing["preferences_json"] or "{}")
+            except (TypeError, ValueError):
+                prefs = {}
+            prefs["password_reset_required"] = True
+            connection.execute(
+                "UPDATE user_profiles SET preferences_json = ?, updated_at = CURRENT_TIMESTAMP "
+                "WHERE user_id = ?",
+                (json.dumps(prefs), row["id"]),
+            )
+        else:
+            connection.execute(
+                "INSERT INTO user_profiles (user_id, preferences_json, created_at, updated_at) "
+                "VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                (row["id"], json.dumps({"theme": "system", "offline_mode": True, "password_reset_required": True})),
+            )
+    try:
+        connection.commit()
+    except sqlite3.Error:
+        pass
+
+
 def initialize_database():
     connection = get_connection()
     connection.execute("PRAGMA journal_mode=WAL")
@@ -561,6 +611,25 @@ def initialize_database():
     connection.execute("CREATE INDEX IF NOT EXISTS idx_activity_events_type_time ON activity_events(event_type, created_at)")
     connection.execute("CREATE INDEX IF NOT EXISTS idx_class_members_student ON class_members(student_id)")
     connection.execute("CREATE INDEX IF NOT EXISTS idx_teacher_notifications_teacher ON teacher_notifications(teacher_id, created_at)")
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS student_join_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER NOT NULL,
+            teacher_id INTEGER NOT NULL,
+            class_id INTEGER,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            decided_at TIMESTAMP,
+            UNIQUE(student_id, teacher_id),
+            FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (class_id) REFERENCES teacher_classes(id) ON DELETE SET NULL
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_join_requests_teacher ON student_join_requests(teacher_id, status)")
+
+    _repair_corrupt_password_hashes(connection)
 
     connection.commit()
     connection.close()

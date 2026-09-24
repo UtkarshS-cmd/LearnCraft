@@ -10,7 +10,7 @@ Companions: TARGET_ARCHITECTURE.md, EXTERNAL_LEARNING_ECOSYSTEM.md.
 - backend/app/{core,database,models,repositories,routes,schemas,services,utils}.
 - services: ai_tutor.py (cloud + Ollama + LM Studio + built-in retrieval tutor), content_catalog.py (legacy curriculum JSON -> academic_* tables), curriculum_pipeline.py (versioned class<N> packages, concept graph, roadmap, question bank), teacher_control.py, auth_service.py, password_reset.py.
 - backend/data/curriculum/: mathematics/science/social-science.json + class10/{manifest,concept_graph,question_bank (15MB),roadmap,simulation_registry}.json + ncert_class10_syllabus.json.
-- frontend/templates + static/js (app, offline-store IndexedDB queue, sandbox-engine, service-worker learncraft-shell-v3) + sandbox-games/{math,physics,circuits,coding}.
+- frontend/templates + static/js (app, offline-store IndexedDB queue, sandbox-engine, service-worker learncraft-shell-v4 + learncraft-private-v1 page cache) + sandbox-games/{math,physics,circuits,coding}.
 - docker/, run_server.bat/ps1, backend/scripts/* validation + tests/* (31 tests).
 
 ## 2. Per-system audit
@@ -18,7 +18,7 @@ Companions: TARGET_ARCHITECTURE.md, EXTERNAL_LEARNING_ECOSYSTEM.md.
 Frontend (Jinja + vanilla JS): server-rendered shell, sidebar NAV from seed mock_data, offline pill, notifications bell. Strength: zero build, fully offline shell. Debt: all pages in main.py god-module; routes/ is a stub; DOM-only search.
 Backend (Flask monolith + blueprints): simple runners, HttpOnly SameSite=Lax sessions. Debt: god-module main.py; middleware imports current_user from main (cycle risk); duplicate app/config vs app/core/config; create_app returns global (no factory isolation).
 Database (SQLite, connection.py ~880 lines): WAL + FK, CREATE TABLE IF NOT EXISTS (~30 tables), _transaction helper, idempotent sync_queue ON CONFLICT(event_id). No migrations (additive guards via PRAGMA). Keep SQLite; avoid leaking SQLite SQL into services.
-Auth (STUDENT/TEACHER/ADMIN): AuthService shared by HTML + JSON logins, password policy 8+upper+lower+digit+special, validate_portal, session.clear on login, OTP hashed 10-min + offline direct-reset fallback. Gaps: GET /logout state-changing; no rate limit; users.role free text.
+Auth (STUDENT/TEACHER/ADMIN): AuthService shared by HTML + JSON logins, password policy 8+upper+lower+digit+special, validate_portal, session.clear on login, OTP hashed 10-min + offline direct-reset fallback. Gaps: no rate limit; users.role free text. (GET /logout was state-changing — fixed 2026-09-24: POST-only plus a same-origin Origin/Referer guard on all write methods.)
 AI tutor (ai_tutor.py ~766 lines): AIService{cloud OpenAI-compat, Ollama autodetect + embedding-model filter + thinking-strip, LM Studio, offline retrieval tutor}; env LEARNCRAFT_AI_MODE/AUTO|ONLINE|OFFLINE; retrieve_context with provenance (source_id, content_version, chapter_id, topic_id); per-user conversations. Gap: no app/ai/ package, keyword retrieval only, no learner memory.
 Curriculum: dual loader (legacy content_catalog -> academic_* DB + canonical curriculum_pipeline class<N> packages). CBSE IX/X production dataset. Debt: CBSE constants hardcoded; class9 has no class9/ dir; 15MB bank loaded per filter (cached partly).
 Concept graph: build_concept_graph + validate (missing refs, dupes, cycles). Gap: no mastery join, no API validation tests.
@@ -38,7 +38,7 @@ Docker: py3.11-slim gunicorn 4 workers; compose persists backend/data + frontend
 
 Critical (fix first): (1) test_app_structure expects backend/frontend but repo uses root/frontend - fix test root. (2) smoke_test expects student GET /api/v1/users 200 but teacher-only 403 is correct - fix script. (3) main.py god-module - extract blueprints without URL changes.
 Debt: duplicate config; create_app not a factory; routes stub; repos only users; 15MB bank sync load (API limit<=200 already); check_assets ROOT bug (scans backend/frontend, always passes).
-Security: hashing/policy/OTP/sessions/SQL/Jinja OK. Watch: next= redirects, SSRF/embeds (new validator: HTTPS + allowlist, reject javascript/data/file/localhost), GET /logout, no rate limit, AI injection (registry URLs only). No secrets committed.
+Security: hashing/policy/OTP/sessions/SQL/Jinja OK. Watch: next= redirects, SSRF/embeds (new validator: HTTPS + allowlist, reject javascript/data/file/localhost), no rate limit, AI injection (registry URLs only). No secrets committed. (2026-09-24 audit pass: /logout POST-only; same-origin Origin/Referer guard on writes; /api/v1/questions answers stripped; sync queue per-user; Werkzeug debugger env opt-in — see SECURITY_AUDIT.md §9.)
 
 
 ## 4. CURRENT -> TRANSITION -> TARGET
@@ -77,3 +77,17 @@ Done in P2: Obsidian client deep links + vault settings, server `obsidian_uri` b
 Anki TSV export, GitHub repo validation seam, adapter status endpoint, offline precache of the link helper, AI registry grounding.
 Next: learner profile + mastery engine (`services/learning/`), then AI orchestrator/RAG/memory so resource
 recommendations become mastery- and goal-aware; OAuth (Notion/Drive) and external progress sync remain P3.
+
+## 9. Security / integration / UX audit pass (2026-09-24)
+
+Full report: `docs/architecture/SECURITY_AUDIT.md`. Fixed: `/api/v1/questions` answer-key leak (P0);
+per-user `sync_queue` ownership incl. server-forced `user_id` and scoped `/api/sync/queue` (P1);
+POST-only `/logout` + same-origin Origin/Referer guard on all write methods (P1); service worker
+private page cache (`learncraft-private-v1`) purged on logout, auth pages never cached (P2);
+Werkzeug debugger now `FLASK_DEBUG` opt-in instead of `debug=True` on `0.0.0.0` (P2); `.gitignore`
+covers scratch probes/snapshots (P4). Verified non-findings: password-reset OTP flow, teacher-route
+ownership scoping, session-scoped quiz answer gating, server-authoritative grading.
+
+Tests: `pytest backend/tests -q` -> 60 passed + 4 subtests (was 52 + 4; +8 regression tests in
+`tests/integration/test_security_fixes.py`). `smoke_test.py` -> 17 pages / 6 APIs pass.
+`route_sweep.py` -> 180 requests, no 5xx/unexpected statuses.

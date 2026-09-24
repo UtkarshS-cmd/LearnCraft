@@ -22,3 +22,16 @@ desktop.ini
 # LearnCraft specific
 # Secret key file (auto-generated, unique per installation)
 .secret_key
+
+# Local scratch artifacts (schema probes, snapshots, device-registration helpers)
+temp_test
+register_dbclient_connection.*
+_snap_*
+_tmp_*
+_mid*.txt
+_state_report.txt
+vp.py
+_check_pkgs.py
+_setup.py
+backend/logs/
+*.log

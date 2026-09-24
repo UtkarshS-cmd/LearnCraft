@@ -20,7 +20,7 @@ Two layers, deliberately separated:
 
 Settings UI: `/settings` → "External learning (Obsidian)" saves vault + template to localStorage. If Obsidian is not installed (or no vault is set) the hub opens the official website and tells the user to configure a vault — LearnCraft never claims access to a local vault it cannot see.
 
-Shared helper is precached by the service worker (`learncraft-shell-v3`), so resource cards and offline badges still work with no connection.
+Shared helper is precached by the service worker (`learncraft-shell-v4`), so resource cards and offline badges still work with no connection.
 
 ## PW / Khan / Anki / GitHub / YouTube / Drive
 

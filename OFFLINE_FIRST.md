@@ -65,25 +65,32 @@ The drain processes events sequentially (FIFO) to preserve ordering. On server a
 - `enqueue_sync_event` uses `ON CONFLICT(event_id) DO UPDATE` in the `sync_queue` table.
 - Retrying with the same `event_id` updates the existing row rather than inserting a duplicate.
 - This prevents duplicate `sync_queue` entries when a server response is lost mid-flight.
+- Each queued row records the authenticated `user_id` owner. The upsert only touches an existing
+  row when it belongs to the same account (or is a legacy unowned row), so one account can never
+  adopt or overwrite another account's queued event by guessing an `event_id`.
 
 ## Boundaries
 
 - `/api/system/status` — reports the active mode, storage backend, and local storage counts. Does not require authentication.
 - `/api/content/catalog` — exposes the locally seeded subject and lesson catalog. Requires authentication.
 - `/api/local/state` — records progress and submissions locally; bridges lesson progress to `learning_progress`; enqueues submissions into `sync_queue`. Requires authentication. Returns `401 JSON` (not redirect) for unauthenticated API calls.
-- `/api/sync/queue` — exposes queued events for a future local-network sync worker. Requires authentication.
+- `/api/sync/queue` — exposes queued events for a future local-network sync worker, scoped to the
+  authenticated user (events queued by other accounts are never returned). Requires authentication.
+- `/logout` — POST-only sign-out, so a cross-site link cannot sign a user out; the service worker
+  purges its private page cache during this round-trip.
 - `/service-worker.js` — served with `Content-Type: application/javascript` and `Service-Worker-Allowed: /` header. Registered with root scope `{ scope: '/' }` from `base.html`.
 - `/offline` — navigation fallback page served by the service worker when offline.
 
 ## Service Worker
 
-Cache name: `learncraft-shell-v2`
+Caches: `learncraft-shell-v4` (public shell assets) + `learncraft-private-v1` (visited page HTML).
 
 - **Install**: Pre-caches all shell assets and bundled sandbox files using `Promise.allSettled`-style per-asset caching — a missing asset does not break SW installation.
-- **Activate**: Deletes all previous cache versions; claims clients.
+- **Activate**: Deletes all previous cache versions (keeping the private page cache); claims clients.
 - **Fetch (static assets `/static/`)**: Cache-first with background network revalidation.
-- **Fetch (navigation)**: Network-first with `/offline` fallback when server is unreachable.
-- **Never cached**: `/api/*` and `/auth/*` routes are explicitly excluded from SW caching.
+- **Fetch (navigation)**: Network-first with `/offline` fallback when server is unreachable. Authenticated pages are stored in the private cache so they can be purged in one step; `/login`, `/register` and `/auth/*` pages are never cached.
+- **Fetch (`POST /logout`, `POST /auth/logout`)**: Forwards the sign-out request, then deletes the private page cache so a signed-out device cannot replay another account's authenticated HTML offline.
+- **Never cached**: `/api/*` responses (and all `/auth/*` pages) are explicitly excluded from SW caching.
 
 ## Bundled Sandboxes (Offline-Capable)
 

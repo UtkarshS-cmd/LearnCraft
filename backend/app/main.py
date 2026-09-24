@@ -3,7 +3,7 @@ import os
 from datetime import timedelta
 from functools import wraps
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from flask import Flask, jsonify, redirect, render_template, request, session
 
@@ -227,6 +227,38 @@ def require_auth(view):
         return view(*args, **kwargs)
     return wrapped
 
+
+_UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _same_origin(source: str) -> bool:
+    """True when an Origin/Referer URL points at this exact host and port."""
+    parsed = urlsplit(source)
+    return bool(parsed.netloc) and parsed.netloc.lower() == request.host.lower()
+
+
+@app.before_request
+def verify_same_origin_write():
+    """Reject cross-origin state-changing requests (CSRF defense-in-depth).
+
+    Sessions are SameSite=Lax, so browsers already withhold cookies on
+    cross-site writes; this explicit Origin/Referer check additionally covers
+    legacy browsers, laxity carve-outs and any future cookie-attribute change.
+    Requests with neither header (test clients, curl, local scripts) behave
+    like same-origin browser traffic and stay allowed.
+    """
+    if request.method not in _UNSAFE_METHODS:
+        return None
+    origin = request.headers.get("Origin", "").strip()
+    referer = request.headers.get("Referer", "").strip()
+    allowed = True
+    if origin:
+        allowed = _same_origin(origin)
+    elif referer:
+        allowed = _same_origin(referer)
+    if allowed:
+        return None
+    return json_error("Cross-origin state change rejected.", "CSRF_BLOCKED", 403)
 
 
 def require_roles(*roles):
@@ -465,8 +497,9 @@ def register_page():
     return render_template("login.html", title="Create account")
 
 
-@app.route("/logout")
+@app.post("/logout")
 def logout_page():
+    # POST-only: a GET sign-out link can be triggered cross-site (logout CSRF).
     user = current_user()
     if user:
         try:
@@ -1123,7 +1156,8 @@ def api_local_state():
     if not record_id or kind not in {"progress", "submission"}:
         return json_error("A valid local record is required.", "VALIDATION_ERROR", 400)
 
-    if "user_id" not in record and user:
+    # Identity is server-authoritative: never trust a client-supplied user_id.
+    if user:
         record["user_id"] = user["id"]
 
     try:
@@ -1142,7 +1176,8 @@ def api_local_state():
                              activity_type="lesson", activity_id=lesson_id, detail=f"{lesson_id} · {prog_status}")
 
         if status in {"SUBMITTED", "submitted", "completed"} or kind == "submission":
-            event_id = enqueue_sync_event(kind, record_id, "upsert", record, event_id=client_event_id)
+            event_id = enqueue_sync_event(kind, record_id, "upsert", record, event_id=client_event_id,
+                                          user_id=user["id"] if user else None)
             if user:
                 record_event(user["id"], "ASSIGNMENT_SUBMITTED" if kind == "submission" else "ACTIVITY_COMPLETED",
                              activity_type=kind, activity_id=record_id, detail=f"{record_id} saved locally")
@@ -1173,9 +1208,12 @@ def api_content_catalog():
 @require_auth
 def api_sync_queue():
     from app.database.connection import get_connection
+    user = current_user()
     connection = get_connection()
     rows = connection.execute(
-        "SELECT event_id, entity_type, entity_id, operation, payload_json, status, created_at FROM sync_queue WHERE status = 'queued' ORDER BY id"
+        "SELECT event_id, entity_type, entity_id, operation, payload_json, status, created_at "
+        "FROM sync_queue WHERE status = 'queued' AND user_id = ? ORDER BY id",
+        (user["id"],),
     ).fetchall()
     connection.close()
     return jsonify([{**dict(row), "payload": json.loads(row["payload_json"])} for row in rows])
@@ -1249,7 +1287,10 @@ if __name__ == "__main__":
     print(" LearnCraft Local Server")
     print("--------------------------------")
     print("Server starting...")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # The Werkzeug debugger must stay opt-in: it executes code from the network
+    # and this server binds 0.0.0.0 for LAN classroom access.
+    debug_mode = os.environ.get("FLASK_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
+    app.run(host="0.0.0.0", port=5000, debug=debug_mode)
 
 
 def create_app():

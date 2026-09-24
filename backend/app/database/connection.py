@@ -234,9 +234,15 @@ def initialize_database():
             payload_json TEXT NOT NULL DEFAULT '{}',
             status TEXT NOT NULL DEFAULT 'queued',
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            attempted_at TIMESTAMP
+            attempted_at TIMESTAMP,
+            user_id INTEGER
         )
     """)
+    # Additive migration for databases created before queue events were owned.
+    sync_queue_columns = {row[1] for row in connection.execute("PRAGMA table_info(sync_queue)").fetchall()}
+    if "user_id" not in sync_queue_columns:
+        connection.execute("ALTER TABLE sync_queue ADD COLUMN user_id INTEGER")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_sync_queue_user ON sync_queue(user_id)")
 
     connection.execute("""
         CREATE TABLE IF NOT EXISTS app_state (
@@ -972,7 +978,13 @@ def save_local_submission(submission_id, activity_id, payload, status="draft", s
     _transaction(work)
 
 
-def enqueue_sync_event(entity_type, entity_id, operation, payload, event_id=None):
+def enqueue_sync_event(entity_type, entity_id, operation, payload, event_id=None, user_id=None):
+    """Queue one local event for the future local-network sync worker.
+
+    ``user_id`` is the authenticated session user, written by the caller. On an
+    idempotent retry the original owner is kept: a conflicting event_id from a
+    different account can neither adopt nor overwrite an existing row.
+    """
     if not event_id:
         event_id = str(uuid.uuid4())
 
@@ -980,14 +992,16 @@ def enqueue_sync_event(entity_type, entity_id, operation, payload, event_id=None
         # status is intentionally NOT overwritten: a queued event stays queued
         # even when the browser retries with the same idempotent event_id.
         connection.execute(
-            """INSERT INTO sync_queue (event_id, entity_type, entity_id, operation, payload_json)
-            VALUES (?, ?, ?, ?, ?)
+            """INSERT INTO sync_queue (event_id, entity_type, entity_id, operation, payload_json, user_id)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(event_id) DO UPDATE SET
                 entity_type=excluded.entity_type,
                 entity_id=excluded.entity_id,
                 operation=excluded.operation,
-                payload_json=excluded.payload_json""",
-            (event_id, entity_type, entity_id, operation, json.dumps(payload)),
+                payload_json=excluded.payload_json,
+                user_id=COALESCE(sync_queue.user_id, excluded.user_id)
+            WHERE sync_queue.user_id IS NULL OR sync_queue.user_id = excluded.user_id""",
+            (event_id, entity_type, entity_id, operation, json.dumps(payload), user_id),
         )
     _transaction(work)
     return event_id

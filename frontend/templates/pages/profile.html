@@ -1,16 +1,27 @@
 {% extends "base.html" %}{% from "components.html" import badge %}
 {% block content %}
-<div class="page-head"><div><div class="h1">Profile</div><p>Your learner identity in the lab.</p></div><button class="btn btn-secondary" onclick="toast('Avatar editor coming soon')">Edit profile</button></div>
+<div class="page-head"><div><div class="h1">Profile</div><p>Your learner identity in the lab.</p></div></div>
 <div class="grid grid-2">
-  <div class="card" style="display:flex;gap:16px;align-items:center"><div class="avatar" style="width:64px;height:64px;font-size:22px">{{ student.avatar }}</div><div><div class="h2">{{ student.name }}</div><div class="caption">{{ student.roll_no }} · Lab A · Class 10</div><div style="margin-top:8px;display:flex;gap:6px"><span class="badge info">Level {{ student.level }}</span><span class="badge ok">▲ {{ student.streak_days }}-day streak</span><span class="badge warn">★ {{ student.xp }} XP</span></div></div></div>
-  <div class="card"><div class="h2" style="margin-bottom:12px">Next step for you</div>{% if cont %}<div class="banner ok">✓ <span>Continue <b>{{ cont.lesson }}</b> ({{ cont.progress_pct }}% complete).</span></div><div style="margin-top:12px;display:flex;gap:8px"><a class="btn btn-primary btn-sm" href="{{ cont.resume_url }}">Continue learning →</a><a class="btn btn-secondary btn-sm" href="/progress">View progress</a></div>{% else %}<div class="empty" style="padding:14px 0">Choose a subject to create your first learning checkpoint.<div style="margin-top:10px"><a class="btn btn-primary btn-sm" href="/subjects">Browse subjects</a></div></div>{% endif %}</div>
+  <div class="card" style="display:flex;gap:16px;align-items:center"><div class="avatar" style="width:64px;height:64px;font-size:22px">{{ student.avatar }}</div><div><div class="h2">{{ student.name }}</div><div class="caption">{{ student.roll_no }} · Level {{ xp.level }} · {{ xp.xp }} XP</div><div style="margin-top:8px;display:flex;gap:6px"><span class="badge info">Level {{ xp.level }}</span><span class="badge ok">▲ {{ student.streak_days }}-day streak</span><span class="badge warn">★ {{ xp.xp }} XP</span></div></div></div>
+  <div class="card"><div class="h2" style="margin-bottom:12px">Next step for you</div><div class="banner ok" id="nextBox">Loading your adaptive next step…</div><div style="margin-top:12px;display:flex;gap:8px"><a class="btn btn-primary btn-sm" id="nextLink" href="/progress">View progress</a></div></div>
 </div>
-<div class="card" style="margin-top:16px"><div class="h2" style="margin-bottom:12px">Preferences (saved on this device)</div>
-  <div class="grid grid-2">
-    <label class="row-item"><input type="checkbox" checked onchange="toast('Sound effects on')"> <b class="body-sm">Sound effects</b></label>
-    <label class="row-item"><input type="checkbox" checked onchange="toast('Reminders on')"> <b class="body-sm">Daily reminder · 6 PM</b></label>
-    <label class="row-item"><input type="checkbox" onchange="toast('High-contrast ' + (this.checked?'on':'off'))"> <b class="body-sm">High contrast text</b></label>
-    <label class="row-item"><input type="checkbox" checked onchange="toast('Offline mode always on')"> <b class="body-sm">Offline-first mode</b></label>
-  </div>
+<div class="card" style="margin-top:16px"><div class="h2">Learning pathway</div>
+<p class="caption">Stored on this device's server profile · works offline.</p>
+<div class="grid grid-2" style="margin-top:10px">
+<label class="lbl">Education level<select class="input" id="fLevel"><option>school</option><option>college</option><option>competitive</option><option>professional</option><option>researcher</option><option>other</option></select></label>
+<label class="lbl">Pathway<select class="input" id="fPath"><option>school</option><option>college</option><option>competitive</option><option>gate</option><option>industrial</option><option>research</option><option>career</option><option>custom</option></select></label>
+<label class="lbl">Goal<input class="input" id="fGoal" placeholder="e.g. AI/ML"></label>
+<label class="lbl">Daily minutes<input class="input" id="fDaily" type="number" min="5" max="480" value="30"></label>
 </div>
+<div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="saveLearner()">Save pathway</button><span class="caption" id="fMsg"></span></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function j(u,o){const r=await fetch(u,o);if(!r.ok)throw new Error('req');return r.json();}
+async function loadLearner(){try{const d=await j('/api/v1/profile/learner');const p=d.profile||{};fLevel.value=p.education_level||'school';fPath.value=p.pathway||'school';fGoal.value=(p.goals||[])[0]||'';fDaily.value=p.daily_target_min||30;}catch(e){}
+try{const n=await j('/api/v1/learning/next');const x=n.next||{};document.getElementById('nextBox').innerHTML='✓ <span><b>'+x.title+'</b> — '+x.reason+'</span>';if(x.href)document.getElementById('nextLink').href=x.href;}catch(e){document.getElementById('nextBox').textContent='Open a subject to begin.';}}
+async function saveLearner(){try{await j('/api/v1/profile/learner',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({education_level:fLevel.value,pathway:fPath.value,goals:[fGoal.value],daily_target_min:+fDaily.value})});document.getElementById('fMsg').textContent='Saved.';loadLearner();}catch(e){document.getElementById('fMsg').textContent='Could not save.';}}
+loadLearner();
+</script>
 {% endblock %}

@@ -29,7 +29,38 @@ def list_quizzes():
     chapter_id = request.args.get("chapter_id")
     limit = request.args.get("limit", type=int) or 10
     items = list_questions(subject, chapter_id)[: max(1, min(limit, 50))]
+    adaptive = str(request.args.get("adaptive", "")).lower() in ("1", "true", "yes")
+    if adaptive and session.get("user_id"):
+        try:
+            from app.services.mastery import list_mastery
+            weak = {m["concept_key"].lower() for m in list_mastery(session["user_id"], 50) if m["mastery"] < 60}
+            if weak:
+                pri = [q for q in items if str(q.get("chapter_id", "")).lower() in weak]
+                rest = [q for q in items if q not in pri]
+                items = (pri + rest)[: max(1, min(limit, 50))]
+        except Exception:
+            pass
     return jsonify({"items": [_public_question(item) for item in items]})
+
+
+def _grade(match, given):
+    correct_ids = [o["option_id"] for o in match.get("options", []) if o.get("is_correct")]
+    expl = match.get("explanation", "")
+    expected = (match.get("answer") or "").strip()
+    if correct_ids:
+        ids = given if isinstance(given, list) else [given]
+        ids = [str(g).strip() for g in ids if str(g).strip()]
+        ok = sorted(ids) == sorted(correct_ids)
+        return ok, {"correct_option_ids": correct_ids, "explanation": expl}
+    def norm(v):
+        return " ".join(str(v or "").strip().lower().split())
+    ok = norm(given) == norm(expected)
+    if not ok:
+        try:
+            ok = abs(float(str(given).strip()) - float(expected)) < 1e-9
+        except (ValueError, TypeError):
+            ok = False
+    return ok, {"answer": expected, "explanation": expl}
 
 
 @bp.post("/quizzes/check")
@@ -48,29 +79,14 @@ def check_quiz():
     if not match:
         return jsonify({"success": False, "message": "Question not found."}), 404
 
-    correct_option_ids = [o["option_id"] for o in match.get("options", []) if o.get("is_correct")]
-    explanation = match.get("explanation", "")
-    expected = (match.get("answer") or "").strip()
-
-    if correct_option_ids:
-        given_ids = given if isinstance(given, list) else [given]
-        given_ids = [str(g).strip() for g in given_ids if str(g).strip()]
-        correct = sorted(given_ids) == sorted(correct_option_ids)
-        return jsonify({
-            "success": True,
-            "correct": correct,
-            "correct_option_ids": correct_option_ids,
-            "explanation": explanation,
-        })
-
-    # Short/numerical answer: case-insensitive comparison, numeric tolerance.
-    def norm(value) -> str:
-        return " ".join(str(value or "").strip().lower().split())
-
-    correct = norm(given) == norm(expected)
-    if not correct:
-        try:
-            correct = abs(float(str(given).strip()) - float(expected)) < 1e-9
-        except (ValueError, TypeError):
-            correct = False
-    return jsonify({"success": True, "correct": correct, "answer": expected, "explanation": explanation})
+    correct, extra = _grade(match, given)
+    try:
+        from app.services.mastery import record_attempt
+        from app.services.gamification import award
+        concept = match.get("chapter_id") or match.get("subject_slug") or "general"
+        record_attempt(user_id, concept, correct, match.get("difficulty", "MEDIUM"),
+                       match.get("subject_slug", ""))
+        award(user_id, "quiz_correct" if correct else "practice", question_id)
+    except Exception:
+        pass
+    return jsonify({"success": True, "correct": correct, **extra})

@@ -635,6 +635,74 @@ def initialize_database():
     """)
     connection.execute("CREATE INDEX IF NOT EXISTS idx_join_requests_teacher ON student_join_requests(teacher_id, status)")
 
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS learner_profiles (
+            user_id INTEGER PRIMARY KEY,
+            education_level TEXT NOT NULL DEFAULT 'school',
+            pathway TEXT NOT NULL DEFAULT 'school',
+            goals_json TEXT NOT NULL DEFAULT '[]',
+            target_exam TEXT NOT NULL DEFAULT '',
+            target_career TEXT NOT NULL DEFAULT '',
+            subjects_json TEXT NOT NULL DEFAULT '[]',
+            interests_json TEXT NOT NULL DEFAULT '[]',
+            skill_levels_json TEXT NOT NULL DEFAULT '{}',
+            learning_style TEXT NOT NULL DEFAULT 'mixed',
+            daily_target_min INTEGER NOT NULL DEFAULT 30,
+            weekly_target_min INTEGER NOT NULL DEFAULT 180,
+            available_time TEXT NOT NULL DEFAULT '',
+            preferred_difficulty TEXT NOT NULL DEFAULT 'medium',
+            preferences_json TEXT NOT NULL DEFAULT '{}',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS concept_mastery (
+            user_id INTEGER NOT NULL,
+            concept_key TEXT NOT NULL,
+            subject_slug TEXT NOT NULL DEFAULT '',
+            accuracy REAL NOT NULL DEFAULT 0,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            correct INTEGER NOT NULL DEFAULT 0,
+            streak INTEGER NOT NULL DEFAULT 0,
+            best_streak INTEGER NOT NULL DEFAULT 0,
+            difficulty_sum REAL NOT NULL DEFAULT 0,
+            last_correct INTEGER NOT NULL DEFAULT 0,
+            last_attempt_at TIMESTAMP,
+            mastery REAL NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, concept_key),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_mastery_user ON concept_mastery(user_id)")
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS gamification (
+            user_id INTEGER PRIMARY KEY,
+            xp INTEGER NOT NULL DEFAULT 0,
+            level INTEGER NOT NULL DEFAULT 1,
+            streak_days INTEGER NOT NULL DEFAULT 0,
+            last_active_date TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS xp_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            action TEXT NOT NULL,
+            points INTEGER NOT NULL DEFAULT 0,
+            ref TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_xp_user ON xp_events(user_id, created_at)")
+
     _repair_corrupt_password_hashes(connection)
 
     connection.commit()

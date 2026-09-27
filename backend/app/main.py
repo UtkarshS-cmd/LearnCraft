@@ -83,6 +83,8 @@ from app.api.v1.curriculum import bp as curriculum_api_bp
 from app.api.v1.users import bp as users_api_bp
 from app.api.v1.teacher import bp as teacher_api_bp
 from app.api.v1.resources import bp as resources_api_bp
+from app.api.v1.learning_a import bp as learning_a_bp
+from app.api.v1.learning_b import bp2 as learning_b_bp
 
 for blueprint in (
     api_bp,
@@ -97,6 +99,8 @@ for blueprint in (
     users_api_bp,
     teacher_api_bp,
     resources_api_bp,
+    learning_a_bp,
+    learning_b_bp,
 ):
     app.register_blueprint(blueprint)
 _secret = os.environ.get("LEARNCRAFT_SECRET_KEY")
@@ -283,9 +287,14 @@ def build_student_profile(user=None):
     rows = get_user_progress(user["id"])
     completed = sum(row["status"] == "completed" for row in rows)
     overall = round(sum(row["percent_complete"] for row in rows) / len(rows)) if rows else 0
+    try:
+        from app.services.gamification import profile as _xp
+        xp = _xp(user["id"])
+    except Exception:
+        xp = {"xp": completed * 100, "level": 1 + completed // 5}
     profile.update({"name": user.get("name") or "Student", "avatar": (user.get("avatar") or "LC").upper(),
-                   "roll_no": user.get("roll_no") or "Student", "xp": completed * 100,
-                   "overall_progress": overall, "level": 1 + completed // 5})
+                   "roll_no": user.get("roll_no") or "Student", "xp": xp.get("xp", 0),
+                   "overall_progress": overall, "level": xp.get("level", 1)})
     return profile
 
 
@@ -1223,8 +1232,13 @@ def api_sync_queue():
 @require_auth
 def profile():
     user = current_user()
+    try:
+        from app.services.gamification import profile as _xp
+        xp = _xp(user["id"])
+    except Exception:
+        xp = {"xp": 0, "level": 1, "xp_next": 250}
     return render_template("pages/profile.html", title="Profile", cont=continue_learning(user["id"]),
-                           **shell_ctx("profile", user))
+                           xp=xp, **shell_ctx("profile", user))
 
 
 @app.route("/settings")
@@ -1248,8 +1262,19 @@ def tests_page():
     except Exception:
         subjects = []
     selected = request.args.get("subject", "").strip()
+    adaptive = request.args.get("adaptive", "1").strip().lower() in ("1", "true", "yes")
     try:
         questions = list_questions(selected or None)[:10]
+        if adaptive:
+            try:
+                from app.services.mastery import list_mastery
+                weak = {m["concept_key"].lower() for m in
+                        list_mastery(current_user()["id"], 50) if m["mastery"] < 60}
+                if weak:
+                    pri = [q for q in questions if str(q.get("chapter_id", "")).lower() in weak]
+                    questions = (pri + [q for q in questions if q not in pri])[:10]
+            except Exception:
+                pass
     except Exception:
         questions = []
     # Strip answers before rendering; checking goes through /api/v1/quizzes/check.

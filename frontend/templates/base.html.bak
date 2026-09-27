@@ -4,9 +4,8 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ title or "LearnCraft" }} · LearnCraft OS</title>
 <link rel="manifest" href="/static/manifest.webmanifest">
-<meta name="theme-color" content="#05070A">
+<meta name="theme-color" content="#4F46E5">
 <link rel="stylesheet" href="/static/css/design-system.css">
-<link rel="stylesheet" href="/static/css/command-center.css">
 <style>
 .notif-wrap{position:relative}
 .notif-btn{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 10px;font-size:16px;cursor:pointer;line-height:1}
@@ -19,18 +18,11 @@
 .notif-item b{display:block;font-size:13.5px}
 </style>
 </head>
-<body class="lc">
+<body>
 {% from "components.html" import icon %}
-<a class="skip-link" href="#lcContent">Skip to content</a>
-<nav class="mobile-bottom-nav" aria-label="Primary">
-  {% for item in nav[:5] %}
-  <a class="{% if active == item.slug %}active{% endif %}" href="{{ item.href }}">{{ icon(item.icon) }}<span>{{ item.label }}</span></a>
-  {% endfor %}
-</nav>
 <div class="shell">
-  <aside class="sidebar" id="sidebar" aria-label="LearnCraft command navigation">
-    <div class="brand"><div class="brand-mark" aria-hidden="true">L</div><div><div class="brand-name">LearnCraft</div><div class="brand-sub">STEM Command · Offline</div></div></div>
-    <div class="lc-sysline" aria-hidden="true"><span class="lc-sysdot"></span><span>LEARN_OS · v1 · LOCAL</span><span class="lc-sysver">SYS.ONLINE</span></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="brand-mark">L</div><div><div class="brand-name">LearnCraft</div><div class="brand-sub">Student OS · Offline</div></div></div>
     <nav class="nav">
       <div class="nav-label">Learn</div>
       {% for item in nav %}
@@ -84,7 +76,7 @@
         </div>
       </div>
     </div>
-    <div class="content" id="lcContent">{% if is_teacher is defined and is_teacher %}<div class="card" style="margin-bottom:14px;border-color:#C7D2FE;background:linear-gradient(135deg,#EEF2FF,#F5F3FF)"><div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><b>Teacher preview</b><div class="caption">You are viewing the student side. Your Control Center is still open in the other tab.</div></div><a class="btn btn-primary btn-sm" href="/teacher">← Back to Teacher Control Center</a></div></div>{% endif %}{% block content %}{% endblock %}</div>
+    <div class="content">{% if is_teacher is defined and is_teacher %}<div class="card" style="margin-bottom:14px;border-color:#C7D2FE;background:linear-gradient(135deg,#EEF2FF,#F5F3FF)"><div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><b>Teacher preview</b><div class="caption">You are viewing the student side. Your Control Center is still open in the other tab.</div></div><a class="btn btn-primary btn-sm" href="/teacher">← Back to Teacher Control Center</a></div></div>{% endif %}{% block content %}{% endblock %}</div>
   </div>
 </div>
 <div class="modal-back" id="modalBack"><div class="modal" id="modalBox"></div></div>

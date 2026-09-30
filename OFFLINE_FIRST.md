@@ -17,6 +17,12 @@ Set `LEARNCRAFT_NETWORK_MODE` to one of:
 - `LOCAL_NETWORK`: a future Master Server may receive teacher assignments, submissions, lab status, and queued changes.
 - `INTERNET`: reserved for a future optional capability and currently has no cloud implementation.
 
+Sharing stays local-first too: `run_server.bat share` (or `run_server.ps1
+-Share`) opens a temporary public HTTPS tunnel so phones on any network can
+open the same local server. The app keeps using the local SQLite database and
+bundled assets — the tunnel only relays HTTP, and no cloud service is required
+to run the lesson (see `docs/deployment/networking.md` §5).
+
 `LEARNCRAFT_MASTER_URL` is reserved for the future local Master Server address. Core routes never require it.
 
 ## Offline State Detection (Browser)

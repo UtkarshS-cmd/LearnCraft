@@ -8,9 +8,31 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
 
 
+def _configured_db_value() -> str:
+    """Raw DB location: LEARNCRAFT_DB_PATH wins, DATABASE_URL accepted too."""
+    value = os.environ.get("LEARNCRAFT_DB_PATH") or os.environ.get("DATABASE_URL") or ""
+    value = value.strip()
+    if value.lower().startswith("sqlite:"):
+        # Normalise SQLAlchemy-style URLs while leaving plain paths untouched:
+        #   sqlite:////srv/learncraft.db -> /srv/learncraft.db  (POSIX absolute)
+        #   sqlite:///relative.db        -> relative.db         (repo-relative)
+        #   sqlite:///C:/data/db.sqlite  -> C:/data/db.sqlite   (Windows)
+        #   sqlite:///:memory:           -> :memory:
+        rest = value.split(":", 1)[1]
+        if rest.startswith("///"):
+            value = rest[3:]
+        elif rest.startswith("//"):
+            value = "//" + rest[2:]  # UNC-style //host/share path
+        else:
+            value = rest
+        if value.strip("/") == "":
+            value = ""  # bare "sqlite://" means "not configured"
+    return value
+
+
 def _candidate_db_paths():
     """All locations that may already hold a LearnCraft database."""
-    configured = os.environ.get("LEARNCRAFT_DB_PATH")
+    configured = _configured_db_value()
     if configured:
         candidate = Path(configured)
         if not candidate.is_absolute():
@@ -23,7 +45,7 @@ def _candidate_db_paths():
 
 
 def resolve_db_path():
-    configured = os.environ.get("LEARNCRAFT_DB_PATH")
+    configured = _configured_db_value()
     if configured:
         candidate = Path(configured)
         if not candidate.is_absolute():

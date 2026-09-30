@@ -14,6 +14,10 @@ env/
 *.db-wal
 *.db-shm
 
+# Environment files with secrets (copy from .env.example / docker/.env.docker.example)
+.env
+backend/.env
+
 # Editor / OS noise
 .vscode/
 .idea/

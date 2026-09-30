@@ -1,4 +1,4 @@
-version: '3.8'
+# Modern compose spec: no top-level `version` key (obsolete in Compose v2).
 
 services:
   learncraft:
@@ -7,10 +7,18 @@ services:
       dockerfile: docker/Dockerfile
     container_name: learncraft
     ports:
-      - "5000:5000"
+      - "${APP_PORT:-5000}:${APP_PORT:-5000}"
     environment:
-      - LEARNCRAFT_SECRET_KEY=${LEARNCRAFT_SECRET_KEY:-changeme-in-production}
-      - LEARNCRAFT_DB_PATH=${LEARNCRAFT_DB_PATH:-/app/data/learncraft.db}
+      - APP_HOST=0.0.0.0
+      - APP_PORT=${APP_PORT:-5000}
+      - APP_ENV=${APP_ENV:-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - APP_TRUST_PROXY=${APP_TRUST_PROXY:-1}
+      # Fail fast with instructions instead of silently starting with a
+      # publicly known session key. Copy the example file first:
+      #   copy docker\.env.docker.example docker\.env
+      - LEARNCRAFT_SECRET_KEY=${LEARNCRAFT_SECRET_KEY:?Set LEARNCRAFT_SECRET_KEY in docker/.env (copy docker/.env.docker.example docker/.env)}
+      - LEARNCRAFT_DB_PATH=${LEARNCRAFT_DB_PATH:-/app/backend/data/learncraft.db}
       - LEARNCRAFT_NETWORK_MODE=${LEARNCRAFT_NETWORK_MODE:-OFFLINE}
       - LEARNCRAFT_MASTER_URL=${LEARNCRAFT_MASTER_URL:-}
       # AI Configuration (optional)
@@ -22,13 +30,16 @@ services:
       - LEARNCRAFT_MAIL_PASSWORD=${LEARNCRAFT_MAIL_PASSWORD:-}
       - LEARNCRAFT_MAIL_FROM=${LEARNCRAFT_MAIL_FROM:-}
     volumes:
-      # Persist SQLite database
-      - ../backend/data:/app/data
+      # Persist SQLite database (path matches LEARNCRAFT_DB_PATH above)
+      - ../backend/data:/app/backend/data
       # Frontend static files (if you want to modify them)
       - ../frontend:/app/frontend
+      # LearnCraft source layout on disk; keeps local dev and container equal.
+      - ../backend/app:/app/backend/app
+      - ../backend/server.py:/app/backend/server.py
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      test: ["CMD-SHELL", "python -c \"import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('APP_PORT','5000')+'/api/health')\""]
       interval: 30s
       timeout: 10s
       retries: 3

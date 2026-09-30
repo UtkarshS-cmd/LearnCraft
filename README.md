@@ -15,7 +15,7 @@ That's it! The script will:
 1. Create a virtual environment if it doesn't exist
 2. Install dependencies automatically
 3. Generate a secure secret key (saved locally, never committed to git)
-4. Start the Flask server on http://localhost:5000
+4. Start the Flask server on http://localhost:5000 (local-only by default)
 
 ```powershell
 # Option 1: Run from project root (CMD or PowerShell)
@@ -25,6 +25,48 @@ That's it! The script will:
 .\run_server.ps1
 ```
 
+### LAN / hotspot (phones & other devices on the same network)
+
+```powershell
+.\run_server.bat lan
+# or
+.\run_server.ps1 -Lan
+```
+
+This binds `0.0.0.0` and the server prints the exact `LAN: http://<IP>:5000`
+line — open that URL on the other device (same Wi-Fi, or join the laptop's
+mobile hotspot first). No rebuild needed: the frontend uses same-origin
+relative `/api/...` paths, so one build works on localhost, LAN IPs, hotspot
+IPs and deployed domains. Full guide (firewall, hotspot steps, Docker,
+offline mode, VPS deployment): [`docs/deployment/networking.md`](docs/deployment/networking.md)
+and [`docs/deployment/production.md`](docs/deployment/production.md).
+
+### Phone on any network — temporary public link (+ QR code)
+
+When phones are not on the same Wi-Fi (at home, on 4G, or guest Wi-Fi blocks
+device-to-device traffic), start share mode instead:
+
+```powershell
+.\run_server.bat share
+# or
+.\run_server.ps1 -Share          # -Share -Tool ssh  (pin a provider)
+```
+
+The banner prints a **public `https://…` link and a scannable QR code** — point
+a phone camera at the screen and it opens. One tunnel client is used
+(auto-detected: `cloudflared` → `ngrok` → the built-in `ssh`). `cloudflared`
+needs no account: `winget install --id Cloudflare.cloudflared`. `Ctrl+C`
+closes the link. Details, limits and security notes:
+[`docs/deployment/networking.md`](docs/deployment/networking.md) §5.
+
+**Which link do I open on the phone?**
+
+| Situation | Start with | Open on the phone |
+|---|---|---|
+| Same Wi-Fi or laptop hotspot | `run_server.bat lan` | `LAN: http://<IP>:5000` from the banner |
+| Any network (4G, guest Wi-Fi, home) | `run_server.bat share` | the public `https://…` link / QR from the banner |
+| This laptop only | `run_server.bat` | `http://localhost:5000` |
+
 ### Manual method
 
 ```bash
@@ -32,8 +74,18 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+
+# Required: session signing key. The server refuses to start without one
+# (FATAL: LEARNCRAFT_SECRET_KEY must be set for this deployment).
+python -c "import secrets; print(secrets.token_hex(32))"   # generate
+set LEARNCRAFT_SECRET_KEY=<paste-the-value>                # PowerShell: $env:LEARNCRAFT_SECRET_KEY="<value>"
+
 python server.py
 ```
+
+Add `set APP_HOST=0.0.0.0` (PowerShell: `$env:APP_HOST="0.0.0.0"`) before
+starting to reach the app from phones/tablets on the same Wi-Fi or hotspot;
+the startup banner prints the exact LAN URL.
 
 ## Desktop application
 
@@ -92,8 +144,8 @@ LearnCraft/
 ├── docker/                  # Docker configuration
 │   ├── Dockerfile           # Docker image definition
 │   ├── docker-compose.yml   # Docker Compose orchestration
-│   ├── .dockerignore        # Files excluded from Docker build
-│   └── .env.docker.example  # Environment variable template
+│   ├── .dockerignore        # Reference copy (root .dockerignore is the one Docker reads)
+│   └── .env.docker.example  # Environment variable template (copy to docker\.env)
 ├── frontend/                # Frontend templates and static assets
 │   ├── templates/           # Jinja2 HTML templates
 │   │   ├── components/      # Reusable template components
@@ -101,6 +153,9 @@ LearnCraft/
 │   └── static/              # Static files (CSS, JS, images)
 │       ├── sandbox-games/   # Offline games (circuits, coding)
 │       └── ...              # Other static assets
+├── docs/                    # Operator documentation
+│   └── deployment/          # networking.md (local/LAN/hotspot/Docker) + production.md (VPS/HTTPS)
+├── .dockerignore            # Docker build context ignores (build context = repo root)
 ├── .env.example             # Environment variable example (root)
 ├── .gitignore               # Git ignore rules
 ├── OFFLINE_FIRST.md         # Offline-first architecture notes
@@ -132,19 +187,28 @@ Key directories:
 ### Build and run with Docker Compose
 
 ```powershell
-# Copy the environment template
-copy docker\.env.docker.example .env
+# Copy the environment template NEXT TO docker-compose.yml (docker\.env).
+# Docker Compose loads .env from the compose file's folder, not the repo root,
+# and the build fails fast with instructions if the key is missing.
+copy docker\.env.docker.example docker\.env
 
-# Edit .env and set LEARNCRAFT_SECRET_KEY
+# Edit docker\.env and set LEARNCRAFT_SECRET_KEY
+#   (python -c "import secrets; print(secrets.token_hex(32))")
 
 # Build and start (from project root)
-docker-compose -f docker\docker-compose.yml up --build -d
+docker compose -f docker\docker-compose.yml up --build -d
 
 # View logs
-docker-compose -f docker\docker-compose.yml logs -f
+docker compose -f docker\docker-compose.yml logs -f
 
 # Stop
-docker-compose -f docker\docker-compose.yml down
+docker compose -f docker\docker-compose.yml down
+```
+
+Prefer keeping `.env` at the repo root? Pass it explicitly:
+
+```powershell
+docker compose --env-file .env -f docker\docker-compose.yml up --build -d
 ```
 
 ### Build and run with Docker directly
@@ -153,9 +217,9 @@ docker-compose -f docker\docker-compose.yml down
 # Build the image
 docker build -t learncraft:latest -f docker\Dockerfile .
 
-# Run the container
+# Run the container (repo layout preserved: /app/backend + /app/frontend)
 docker run -d --name learncraft -p 5000:5000 `
-  -v ${PWD}\backend\data:/app/data `
+  -v ${PWD}\backend\data:/app/backend/data `
   -v ${PWD}\frontend:/app/frontend `
   -e LEARNCRAFT_SECRET_KEY="your-secret-key" `
   learncraft:latest
@@ -163,12 +227,20 @@ docker run -d --name learncraft -p 5000:5000 `
 
 ### Environment variables
 
-The application requires these environment variables:
+The application requires this environment variable:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LEARNCRAFT_SECRET_KEY` | (required) | Secret key for session encryption |
-| `LEARNCRAFT_DB_PATH` | `/app/data/learncraft.db` | SQLite database path |
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_HOST` | `127.0.0.1` | Bind interface (`0.0.0.0` = LAN + hotspot). |
+| `APP_PORT` | `5000` | Bind/advertised port (Docker + PaaS aware). |
+| `APP_ENV` | `development` | `development` or `production` (Secure cookies, ProxyFix, strict CORS, no debug). |
+| `CORS_ORIGINS` | (empty) | Extra frontend origins, comma-separated. Empty = same-origin only. `*` dev-only. |
+| `APP_TRUST_PROXY` | auto-on in prod | `1` behind nginx/Caddy/ingress (compose sets it). |
+| `LEARNCRAFT_DB_PATH` | `/app/backend/data/learncraft.db` | SQLite database path (container) |
 | `LEARNCRAFT_NETWORK_MODE` | `OFFLINE` | Network mode: OFFLINE, ONLINE, or AUTO |
 | `LEARNCRAFT_MASTER_URL` | (empty) | Master server URL for multi-instance setups |
 
@@ -178,6 +250,8 @@ Optional AI configuration:
 
 Optional email configuration (for password reset OTPs):
 - `LEARNCRAFT_MAIL_HOST`, `LEARNCRAFT_MAIL_PORT`, `LEARNCRAFT_MAIL_USERNAME`, `LEARNCRAFT_MAIL_PASSWORD`, `LEARNCRAFT_MAIL_FROM`
+
+Remote (VPS) deployment behind HTTPS: see [`docs/deployment/production.md`](docs/deployment/production.md) — gunicorn container + Caddy/nginx, never the dev server.
 
 ## Verification
 

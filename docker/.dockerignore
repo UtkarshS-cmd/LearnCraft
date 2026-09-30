@@ -1,49 +1,27 @@
-# Python
+# =============================================================================
+# NOTE: this file is NOT the one Docker uses.
+# =============================================================================
+# LearnCraft builds with the repository root as the build context
+# (`docker build -f docker/Dockerfile .` or compose `context: ..`), and Docker
+# reads `<context>/.dockerignore` — that is the repository-root `.dockerignore`.
+# It keeps .secret_key, .env files and *.db out of the image.
+#
+# This copy is kept only for reference by anyone running a `docker/`-scoped
+# build; the root file is authoritative.
+# =============================================================================
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
 venv/
-.env
-*.egg-info/
-.eggs/
-*.egg
-
-# Virtual environments
 .venv/
-venv/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Logs and temp files
-*.log
-server.err.log
-server.log
-server_err.log
-server_out.log
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-
-# SQLite databases (if any in repo)
+backend/.venv/
+.env
+.secret_key
+backend/.secret_key
 *.db
 *.sqlite
 *.sqlite3
-
-# Build artifacts
-*.zip
-*.tar.gz
-dist/
-build/
-
-# OS files
+.pytest_cache/
+*.log
 .DS_Store
 Thumbs.db
+

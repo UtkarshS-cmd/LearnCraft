@@ -103,37 +103,70 @@ for blueprint in (
     learning_b_bp,
 ):
     app.register_blueprint(blueprint)
-_secret = os.environ.get("LEARNCRAFT_SECRET_KEY")
+from app.core.config import (
+    get_cors_origins,
+    get_env,
+    get_master_url,
+    get_network_mode,
+    get_secret_key,
+    is_debug_enabled,
+    should_trust_proxy,
+)
+
+_secret = get_secret_key()
 if not _secret:
     import sys
-    _mode = os.environ.get("LEARNCRAFT_NETWORK_MODE", "OFFLINE").upper()
+
+    _mode = get_network_mode("OFFLINE")
     _testing = os.environ.get("FLASK_TESTING") or os.environ.get("PYTEST_CURRENT_TEST")
     if _mode == "OFFLINE" and _testing:
         _secret = "test-secret-do-not-use-in-production"
     else:
         sys.stderr.write("FATAL: LEARNCRAFT_SECRET_KEY must be set for this deployment.\n")
         sys.exit(1)
+_env_name = get_env("development")
+_production = _env_name == "production"
 app.config.update(
     SECRET_KEY=_secret,
     SESSION_COOKIE_NAME="learncraft_session",
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
+    # HTTPS deployments (reverse proxy) get Secure cookies; plain HTTP LAN
+    # keeps working because Secure is only set in production.
+    SESSION_COOKIE_SECURE=_production,
     PERMANENT_SESSION_LIFETIME=timedelta(days=7),
-    MAIL_HOST=os.environ.get("LEARNCRAFT_MAIL_HOST"),
-    MAIL_PORT=int(os.environ.get("LEARNCRAFT_MAIL_PORT", "587")),
-    MAIL_USERNAME=os.environ.get("LEARNCRAFT_MAIL_USERNAME"),
-    MAIL_PASSWORD=os.environ.get("LEARNCRAFT_MAIL_PASSWORD"),
-    MAIL_FROM=os.environ.get("LEARNCRAFT_MAIL_FROM", "no-reply@learncraft.local"),
-    MAIL_USE_TLS=os.environ.get("LEARNCRAFT_MAIL_USE_TLS", "true").lower() == "true",
+    APP_ENV=_env_name,
+    CORS_ORIGINS=get_cors_origins(),
+    # docker-compose passes optional vars as EMPTY strings when unset in
+    # docker/.env (VAR=${VAR:-}); treat "" like unset so defaults apply.
+    # Without the `or`, int("") would crash every worker at boot.
+    MAIL_HOST=os.environ.get("LEARNCRAFT_MAIL_HOST") or None,
+    MAIL_PORT=int(os.environ.get("LEARNCRAFT_MAIL_PORT") or "587"),
+    MAIL_USERNAME=os.environ.get("LEARNCRAFT_MAIL_USERNAME") or None,
+    MAIL_PASSWORD=os.environ.get("LEARNCRAFT_MAIL_PASSWORD") or None,
+    MAIL_FROM=os.environ.get("LEARNCRAFT_MAIL_FROM") or "no-reply@learncraft.local",
+    MAIL_USE_TLS=(os.environ.get("LEARNCRAFT_MAIL_USE_TLS") or "true").lower() == "true",
 )
+
+# Behind nginx/Caddy/ingress, Flask must read the client scheme from
+# X-Forwarded-* so redirects/cookies stay https. Only enabled when the
+# operator opts in (or by default in production, which always proxies).
+if should_trust_proxy():
+    from werkzeug.middleware.proxy_fix import ProxyFix
+
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+from app.core.middleware import register_middlewares as _register_middlewares
+
+_register_middlewares(app)
 
 password_reset_service = PasswordResetService()
 auth_service = AuthService()
 
 _RUNTIME_READY = False
 
-NETWORK_MODE = os.environ.get("LEARNCRAFT_NETWORK_MODE", "OFFLINE").upper()
-MASTER_URL = os.environ.get("LEARNCRAFT_MASTER_URL", "").strip()
+NETWORK_MODE = get_network_mode("OFFLINE")
+MASTER_URL = get_master_url()
 
 
 def seed_local_content():
@@ -241,6 +274,18 @@ def _same_origin(source: str) -> bool:
     return bool(parsed.netloc) and parsed.netloc.lower() == request.host.lower()
 
 
+def _origin_allowlisted(origin: str) -> bool:
+    """True when the Origin is in the operator-configured CORS allow-list."""
+    cleaned = (origin or "").strip().rstrip("/")
+    if not cleaned:
+        return False
+    configured = app.config.get("CORS_ORIGINS") or []
+    normalized = {str(item).strip().rstrip("/") for item in configured if str(item).strip()}
+    if "*" in normalized:
+        return not app.config.get("APP_ENV") == "production"
+    return cleaned in normalized
+
+
 @app.before_request
 def verify_same_origin_write():
     """Reject cross-origin state-changing requests (CSRF defense-in-depth).
@@ -250,6 +295,8 @@ def verify_same_origin_write():
     legacy browsers, laxity carve-outs and any future cookie-attribute change.
     Requests with neither header (test clients, curl, local scripts) behave
     like same-origin browser traffic and stay allowed.
+    Operators who deploy a separate frontend origin must list it in
+    CORS_ORIGINS; allow-listed origins pass this guard AND get CORS headers.
     """
     if request.method not in _UNSAFE_METHODS:
         return None
@@ -257,7 +304,7 @@ def verify_same_origin_write():
     referer = request.headers.get("Referer", "").strip()
     allowed = True
     if origin:
-        allowed = _same_origin(origin)
+        allowed = _same_origin(origin) or _origin_allowlisted(origin)
     elif referer:
         allowed = _same_origin(referer)
     if allowed:
@@ -522,6 +569,12 @@ def logout_page():
 @app.route("/offline")
 def offline_page():
     return render_template("offline.html", title="Offline mode")
+
+
+@app.get("/api/health")
+def api_health_alias():
+    """Unauthenticated liveness probe (Docker / reverse-proxy / uptime)."""
+    return jsonify({"status": "ok", "app": "LearnCraft"})
 
 
 @app.route("/service-worker.js")
@@ -1145,6 +1198,8 @@ def api_system_status():
         "master_configured": bool(MASTER_URL),
         "core_storage": "sqlite",
         "asset_storage": "local-filesystem",
+        "app_env": app.config.get("APP_ENV", "development"),
+        "cors_configured": bool(app.config.get("CORS_ORIGINS")),
         **get_offline_status(),
     })
 
@@ -1308,14 +1363,36 @@ def ask_ai():
 
 
 if __name__ == "__main__":
+    from app.core.config import get_host, get_port
+    from app.core.network import format_access_lines
+
+    host = get_host("127.0.0.1")
+    port = get_port(5000)
+    # The Werkzeug debugger must stay opt-in: it executes code from the
+    # network, and this server can bind 0.0.0.0 for LAN classroom access.
+    # Kept as an explicit os.environ.get("FLASK_DEBUG", ...) check (rather
+    # than only the is_debug_enabled() helper) so the opt-in stays visible
+    # at the bind site and the security regression test can find it.
+    debug_mode = os.environ.get("FLASK_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
+    if not debug_mode:
+        debug_mode = is_debug_enabled()
     print("--------------------------------")
     print(" LearnCraft Local Server")
     print("--------------------------------")
+    print(f" Environment: {app.config.get('APP_ENV', 'development')}")
+    for line in format_access_lines(port):
+        print(f" {line}")
+    if host == "0.0.0.0":
+        print(" Listening on all interfaces (LAN + hotspot ready).")
+        print(" Windows Firewall: allow TCP port "
+              f"{port} when asked, or run:")
+        print(f"   netsh advfirewall firewall add rule name=\"LearnCraft TCP {port}\" "
+              f"dir=in action=allow protocol=TCP localport={port}")
+    else:
+        print(f" Listening on {host} (local-only).")
+        print(f" For LAN/hotspot access, restart with APP_HOST=0.0.0.0 (PORT={port}).")
     print("Server starting...")
-    # The Werkzeug debugger must stay opt-in: it executes code from the network
-    # and this server binds 0.0.0.0 for LAN classroom access.
-    debug_mode = os.environ.get("FLASK_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
-    app.run(host="0.0.0.0", port=5000, debug=debug_mode)
+    app.run(host=host, port=port, debug=debug_mode)
 
 
 def create_app():

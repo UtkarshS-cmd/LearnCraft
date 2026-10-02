@@ -1,0 +1,6 @@
+ LearnCraft Local Server
+ Local: http://localhost:5000
+ LAN:   http://192.168.198.213:5000
+ Listening on 127.0.0.1:5000 (local-only).
+ * Serving Flask app 'app.main'
+ * Debug mode: off

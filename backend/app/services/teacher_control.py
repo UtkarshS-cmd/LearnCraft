@@ -51,6 +51,55 @@ def enqueue_student_join_requests(student_id: int) -> int:
     return int(_transaction(work))
 
 
+def enqueue_existing_students_for_teacher(teacher_id: int) -> int:
+    """Backfill join requests for students that predate this teacher account.
+
+    ``enqueue_student_join_requests`` runs when a *student* registers, so any
+    learner that created an account before this teacher existed (or before the
+    teacher's first class existed) never shows up in the approval queue — the
+    teacher sees an empty class with no way to connect short of typing raw
+    numeric IDs. Called right after a teacher account is created so both
+    registration orders behave identically.
+
+    Idempotent: rows already requested, already approved/rejected, or already
+    members of one of this teacher's classes are skipped.
+    """
+    from app.database.connection import _transaction
+
+    def work(connection):
+        teacher = connection.execute(
+            "SELECT id FROM users WHERE id = ? AND role IN ('TEACHER','ADMIN')",
+            (int(teacher_id),),
+        ).fetchone()
+        if not teacher:
+            return 0
+        default_class = connection.execute(
+            "SELECT MIN(id) AS class_id FROM teacher_classes WHERE teacher_id = ?",
+            (int(teacher_id),),
+        ).fetchone()
+        class_id = default_class["class_id"] if default_class else None
+        students = connection.execute(
+            "SELECT id, name FROM users WHERE role = 'STUDENT' ORDER BY id",
+        ).fetchall()
+        created = 0
+        for student in students:
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO student_join_requests "
+                "(student_id, teacher_id, class_id, status) VALUES (?, ?, ?, 'PENDING')",
+                (int(student["id"]), int(teacher_id), class_id),
+            )
+            created += cursor.rowcount
+        if created:
+            connection.execute(
+                "INSERT INTO teacher_notifications (teacher_id, kind, message) VALUES (?, ?, ?)",
+                (int(teacher_id), "STUDENT_JOIN_REQUEST",
+                 f"{created} existing student account(s) are waiting for approval into your class."),
+            )
+        return created
+
+    return int(_transaction(work))
+
+
 def teacher_join_requests(teacher_id: int) -> list[dict]:
     """Pending student join requests for this teacher's dashboard."""
     connection = get_connection()
@@ -99,10 +148,22 @@ def decide_join_request(teacher_id: int, request_id: int, approve: bool, class_i
             "UPDATE student_join_requests SET status = ?, class_id = ?, decided_at = CURRENT_TIMESTAMP WHERE id = ?",
             ("APPROVED" if approve else "REJECTED", target_class, int(request_id)),
         )
+        # Notification is sent after commit (see _notify_assignment_targets).
         return {"request_id": int(request_id), "student_id": int(row["student_id"]),
                 "class_id": target_class, "status": "APPROVED" if approve else "REJECTED"}
 
-    return _transaction(work)
+    result = _transaction(work)
+    if result and result.get("status") == "APPROVED":
+        # Sent post-commit: notifications open their own write transaction.
+        try:
+            from app.services.notifications import notify
+
+            notify(int(result["student_id"]), "join_approved",
+                   "You are in the class", "Your teacher approved your request.",
+                   href="/assignments", dedupe_key=f"join-{int(request_id)}")
+        except Exception:
+            pass
+    return result
 
 
 def _clean_due_at(value):
@@ -155,7 +216,16 @@ def create_class(teacher_id: int, name: str, grade: str = "", section: str = "")
             "INSERT INTO teacher_classes (teacher_id, name, grade, section) VALUES (?, ?, ?, ?)",
             (int(teacher_id), cleaned, str(grade or "").strip(), str(section or "").strip()),
         )
-        return connection.execute("SELECT * FROM teacher_classes WHERE id = ?", (cursor.lastrowid,)).fetchone()
+        class_id = cursor.lastrowid
+        # Pending requests created before this class existed (teacher account
+        # backfill) carry class_id NULL — bind them to the first class so the
+        # approval queue shows where the student will land.
+        connection.execute(
+            "UPDATE student_join_requests SET class_id = ? "
+            "WHERE teacher_id = ? AND status = 'PENDING' AND class_id IS NULL",
+            (int(class_id), int(teacher_id)),
+        )
+        return connection.execute("SELECT * FROM teacher_classes WHERE id = ?", (class_id,)).fetchone()
     return dict(_transaction(work))
 
 
@@ -436,8 +506,31 @@ def create_assignment(teacher_id: int, payload: dict) -> dict:
             "INSERT OR IGNORE INTO assignment_targets (assignment_id, student_id) VALUES (?, ?)",
             [(assignment_id, int(student_id)) for student_id in students],
         )
-        return connection.execute("SELECT * FROM teacher_assignments WHERE id = ?", (assignment_id,)).fetchone()
-    return dict(_transaction(work))
+        # Return the target list too: notifications must be sent AFTER this
+        # transaction commits (they open their own write transaction).
+        return (connection.execute(
+            "SELECT * FROM teacher_assignments WHERE id = ?", (assignment_id,)).fetchone(),
+            students)
+    row, students = _transaction(work)
+    created = dict(row)
+    _notify_assignment_targets(created["id"], students, payload.get("title"), due_at)
+    return created
+
+
+def _notify_assignment_targets(assignment_id: int, students: list, title, due_at) -> None:
+    """Raise one persistent notification per assigned student (post-commit)."""
+    try:
+        from app.services.notifications import notify
+
+        for student_id in students:
+            notify(int(student_id), "assignment_assigned",
+                   str(title or "New assignment"),
+                   f"Assigned by your teacher · due {due_at}" if due_at
+                   else "Assigned by your teacher",
+                   href=f"/assignments#{assignment_id}",
+                   dedupe_key=f"assignment-{assignment_id}-student-{student_id}")
+    except Exception:
+        pass
 
 
 def student_assignments(student_id: int) -> list[dict]:

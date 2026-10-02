@@ -80,13 +80,22 @@ def check_quiz():
         return jsonify({"success": False, "message": "Question not found."}), 404
 
     correct, extra = _grade(match, given)
+    concept = match.get("concept_id") or match.get("chapter_id") or match.get("subject_slug") or "general"
     try:
         from app.services.mastery import record_attempt
         from app.services.gamification import award
-        concept = match.get("chapter_id") or match.get("subject_slug") or "general"
         record_attempt(user_id, concept, correct, match.get("difficulty", "MEDIUM"),
                        match.get("subject_slug", ""))
         award(user_id, "quiz_correct" if correct else "practice", question_id)
     except Exception:
         pass
-    return jsonify({"success": True, "correct": correct, **extra})
+    # Per-question history: the evidence behind missions, the mastery map
+    # drill-down, teacher early warning and assignment intelligence.
+    try:
+        from app.services.question_log import record_attempt as log_attempt
+
+        log_attempt(user_id, question_id, concept, match.get("subject_slug", ""),
+                    match.get("difficulty", "MEDIUM"), bool(correct), given)
+    except Exception:
+        pass
+    return jsonify({"success": True, "correct": correct, "concept": concept, **extra})

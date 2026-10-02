@@ -1,0 +1,105 @@
+{% extends "base.html" %}{% from "components.html" import progressbar, badge %}
+{% block content %}
+<style>
+.mission-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.mission-card{border-left:4px solid var(--line)}
+.mission-card.active{border-left-color:var(--primary)}
+.mission-card.completed{border-left-color:var(--green)}
+.mission-card.dismissed{opacity:.6}
+.mission-steps{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px}
+.mission-steps li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+.mission-steps .dot{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:11px;font-weight:800}
+.mission-steps .dot.done{background:var(--green-soft);color:var(--green)}
+.mission-steps .dot.todo{background:var(--surface-2);color:var(--muted)}
+.mission-why{background:var(--primary-soft);border-radius:10px;padding:8px 10px;font-size:12.5px;color:var(--ink);margin-top:8px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.kpi b{display:block;font-size:20px}
+@media(max-width:760px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+<div class="page-head">
+  <div>
+    <div class="eyebrow">Learning mission engine</div>
+    <div class="h1">Your missions</div>
+    <p>Generated from your mastery, unfinished lessons and teacher assignments — and completed only from real recorded activity.</p>
+  </div>
+  <button class="btn btn-secondary" id="refreshMissions" type="button">↻ Refresh</button>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi"><b>{{ mission_summary.offered }}</b><span class="caption">Offered</span></div>
+  <div class="kpi"><b>{{ mission_summary.active }}</b><span class="caption">In progress</span></div>
+  <div class="kpi"><b>{{ mission_summary.completed }}</b><span class="caption">Completed</span></div>
+  <div class="kpi"><b>{{ mission_summary.total }}</b><span class="caption">Total</span></div>
+</div>
+
+{% if missions %}
+<div class="mission-grid" id="missionGrid">
+  {% for m in missions %}
+  <article class="card mission-card {{ m.state }}" data-mission="{{ m.id }}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div>
+        <div class="eyebrow">{{ m.kind|capitalize }} mission</div>
+        <div class="h3" style="margin-top:4px">{{ m.title }}</div>
+      </div>
+      <span class="badge {{ 'ok' if m.state == 'completed' else ('info' if m.state == 'active' else 'muted') }}">{{ m.state }}</span>
+    </div>
+    <p class="body-sm" style="margin:8px 0 0">{{ m.brief }}</p>
+    {% if m.why %}<div class="mission-why"><b>Why this:</b> {{ m.why }}</div>{% endif %}
+    <div style="margin-top:12px">{{ progressbar(m.percent) }}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <span class="caption">{{ m.completed_steps }}/{{ m.total_steps }} steps · {{ m.percent }}%</span>
+      <span class="badge warn">+{{ m.reward_xp }} XP</span>
+    </div>
+    <ul class="mission-steps">
+      {% for s in m.steps %}
+      <li><span class="dot {{ 'done' if s.done else 'todo' }}">{{ '✓' if s.done else '○' }}</span>
+        <span>{{ s.title }}<div class="caption">{{ s.progress }}/{{ s.required_count }} verified</div></span></li>
+      {% endfor %}
+    </ul>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <a class="btn btn-primary btn-sm" href="{{ m.steps[0].href if m.steps else '/missions' }}">Continue →</a>
+      <button class="btn btn-secondary btn-sm" type="button" onclick="checkMission({{ m.id }}, this)">Check progress</button>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  <div class="h3" style="color:var(--ink)">No missions yet</div>
+  <div class="body-sm" style="margin:6px 0 14px">Missions appear once you have learning activity: answer a quiz, start a lesson, or receive an assignment from your teacher.</div>
+  <a class="btn btn-primary btn-sm" href="/tests">Take a practice quiz</a>
+</div>
+{% endif %}
+
+<script>
+async function checkMission(id, button){
+  const original = button.textContent;
+  button.disabled = true; button.textContent = 'Checking…';
+  try{
+    const response = await fetch(`/api/v1/missions/${id}/progress`, {method:'POST'});
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.message || 'Could not refresh');
+    const mission = data.mission;
+    const card = document.querySelector(`[data-mission="${id}"]`);
+    if(card){
+      card.querySelector('.h3').textContent = mission.title;
+      const badge = card.querySelector('.badge');
+      badge.textContent = mission.state;
+      const bar = card.querySelector('.pbar i');
+      if(bar) bar.style.width = mission.percent + '%';
+      card.querySelector('.caption').textContent = `${mission.completed_steps}/${mission.total_steps} steps · ${mission.percent}%`;
+      card.querySelectorAll('.mission-steps .dot').forEach((dot, index) => {
+        const step = mission.steps[index];
+        if(step){ dot.className = 'dot ' + (step.done ? 'done' : 'todo'); dot.textContent = step.done ? '✓' : '○'; }
+      });
+    }
+    toast(`Progress verified: ${mission.percent}%`);
+    if(mission.state === 'completed') setTimeout(() => location.reload(), 1200);
+  }catch(error){ toast(error.message, false); }
+  finally{ button.disabled = false; button.textContent = original; }
+}
+document.getElementById('refreshMissions')?.addEventListener('click', () => location.reload());
+</script>
+{% endblock %}

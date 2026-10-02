@@ -121,11 +121,44 @@
   <a class="card hover" href="/notes"><span class="q-ico" style="background:var(--green-soft);color:var(--green)">✎</span><b class="body-sm">Notes</b><span class="caption">{{ note_count }} saved</span></a>
 </div>
 
-<!-- 6. Recent Activity -->
+<!-- 7. Adaptive next action with evidence -->
+<div class="section-h"><h2>Recommended next</h2><a href="/missions">See all missions →</a></div>
+<div class="card" id="nextActionCard">
+  <div class="caption">Loading your next action…</div>
+</div>
+
+<!-- 8. Recent Activity -->
 <div class="section-h"><h2>Recent activity</h2></div>
 <div class="card" style="padding-top:8px;padding-bottom:8px">
   {% for e in activity %}
   <div class="activity"><span class="dot" style="color:{{ e.dot }};margin-top:7px"></span><div style="flex:1;font-size:14px">{{ e.text }}<div class="caption">{{ e.time }}</div></div></div>
   {% endfor %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  var card=document.getElementById('nextActionCard');
+  if(!card) return;
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function render(next){
+    if(!next){card.innerHTML='<div class="empty">No recommendation available yet. Answer a quiz to get a personalised next step.</div>';return;}
+    var why=(next.why||[]).map(function(w){return '<li>'+esc(w)+'</li>';}).join('');
+    var actions=(next.actions||[]).map(function(a){
+      return '<a class="btn btn-primary btn-sm" href="'+esc(a.href)+'">'+esc(a.label)+'</a>';
+    }).join('');
+    card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'+
+      '<div><div class="eyebrow">Adaptive recommendation</div>'+
+      '<div class="h2" style="margin-top:4px">'+esc(next.title)+'</div>'+
+      '<div class="caption">'+esc(next.detail||'')+'</div></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+actions+'</div></div>'+
+      '<div style="margin-top:12px"><b class="caption">Recommended because</b>'+
+      '<ul style="margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:13px">'+why+'</ul></div>';
+  }
+  fetch('/api/v1/learning/next')
+    .then(function(r){return r.json();})
+    .then(function(data){ render(data.next); })
+    .catch(function(){ card.innerHTML='<div class="empty">Could not load your next action. <button class="btn btn-secondary btn-sm" onclick="location.reload()">Retry</button></div>'; });
+})();
+</script>
 {% endblock %}

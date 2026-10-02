@@ -106,6 +106,9 @@ class AIContext:
     lesson_id: str = ""
     question: str = ""
     mode: str = "Explain"
+    # Privacy-safe, server-resolved learning state (weak concepts, recent
+    # misses, active session, current mission). Never contains PII.
+    learner_summary: str = ""
 
 
 class AIProvider:
@@ -703,6 +706,9 @@ def build_system_prompt(context: AIContext, chunks: list[dict]) -> str:
         "If you are genuinely unsure about a specific fact, say so briefly and still give your best answer. "
         f"Mode: {context.mode}. Subject: {context.subject}. Chapter: {context.chapter}. Topic: {context.topic}.\n"
         f"Retrieved curriculum evidence (may be empty — use only if relevant):\n{evidence or 'None.'}"
+        + (f"\nThis learner's own state (use to pitch the explanation, never mention it was "
+           f"shared or quote identifiers): {context.learner_summary}"
+           if getattr(context, "learner_summary", "") else "")
         + (f"\n{external_note}" if external_note else "")
     )
 
@@ -767,14 +773,23 @@ def save_message(user_id: int, conversation_id: str, role: str, content: str, co
 
 
 def ai_context_from_payload(payload: dict) -> AIContext:
-    return AIContext(
-        subject=str(payload.get("subject", ""))[:120],
-        chapter=str(payload.get("chapter", ""))[:160],
-        topic=str(payload.get("topic", ""))[:160],
-        lesson_id=str(payload.get("lesson_id", ""))[:180],
-        question=str(payload.get("current_question", ""))[:1000],
-        mode=str(payload.get("mode", "Explain"))[:30],
-    )
+    """Controlled learning context for one AI turn.
+
+    The browser may hint at where the learner is (``lesson_id``, ``mode``), but
+    every learning fact below is resolved SERVER-SIDE from the signed-in
+    learner's own rows, so a client cannot inject another learner's state. The
+    object intentionally carries no PII: no name, email, class membership or
+    teacher data is ever placed in the prompt.
+    """
+    from app.services.ai_context import build_learning_context
+
+    return build_learning_context(payload, session_user_id=_current_user_id())
+
+
+def _current_user_id():
+    from flask import session
+
+    return session.get("user_id")
 
 
 ai_service = AIService()

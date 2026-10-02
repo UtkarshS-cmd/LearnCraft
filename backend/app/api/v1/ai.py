@@ -53,6 +53,24 @@ def chat():
     })
 
 
+@bp.get("/context")
+def context_preview():
+    """Show exactly what the copilot would receive for this request.
+
+    Transparency: the learner can see (and turn off) the learning-state sharing
+    before asking anything. Provider modes (ONLINE/OFFLINE/AUTO) are unchanged.
+    """
+    user_id = _user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Authentication required.",
+                        "code": "AUTH_REQUIRED"}), 401
+    from app.services.ai_context import context_preview as build_preview
+
+    payload = request.get_json(silent=True) or {}
+    return jsonify({"success": True, "context": build_preview(int(user_id), payload),
+                    "provider": ai_service.status()})
+
+
 @bp.get("/conversations/<conversation_id>")
 def conversation(conversation_id):
     user_id = _user_id()

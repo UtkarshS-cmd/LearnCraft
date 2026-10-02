@@ -725,6 +725,151 @@ def initialize_database():
     """)
     connection.execute("CREATE INDEX IF NOT EXISTS idx_xp_user ON xp_events(user_id, created_at)")
 
+    # ------------------------------------------------------------------
+    # Product layer (additive, safe for existing installs): question
+    # attempts, missions, learning sessions, notifications, assignment
+    # submissions, search index. Every table uses CREATE TABLE IF NOT EXISTS
+    # and every column addition is guarded by PRAGMA table_info, so an
+    # existing database migrates in place without data loss.
+    # ------------------------------------------------------------------
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS question_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            question_id TEXT NOT NULL,
+            concept_key TEXT NOT NULL DEFAULT '',
+            subject_slug TEXT NOT NULL DEFAULT '',
+            difficulty TEXT NOT NULL DEFAULT 'MEDIUM',
+            correct INTEGER NOT NULL DEFAULT 0,
+            given_answer TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_qa_user_time ON question_attempts(user_id, created_at)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_qa_concept ON question_attempts(concept_key)")
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS missions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            mission_key TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            brief TEXT NOT NULL DEFAULT '',
+            concept_key TEXT NOT NULL DEFAULT '',
+            subject_slug TEXT NOT NULL DEFAULT '',
+            reason_json TEXT NOT NULL DEFAULT '{}',
+            state TEXT NOT NULL DEFAULT 'offered',
+            reward_xp INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            started_at TIMESTAMP,
+            completed_at TIMESTAMP,
+            UNIQUE(user_id, mission_key),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_missions_user_state ON missions(user_id, state)")
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS mission_steps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mission_id INTEGER NOT NULL,
+            step_index INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            target_type TEXT NOT NULL DEFAULT '',
+            target_id TEXT NOT NULL DEFAULT '',
+            required_count INTEGER NOT NULL DEFAULT 1,
+            progress INTEGER NOT NULL DEFAULT 0,
+            completed_at TIMESTAMP,
+            UNIQUE(mission_id, step_index),
+            FOREIGN KEY (mission_id) REFERENCES missions(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_mission_steps_mission ON mission_steps(mission_id)")
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS learning_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            mission_id INTEGER,
+            lesson_id TEXT NOT NULL DEFAULT '',
+            subject_slug TEXT NOT NULL DEFAULT '',
+            goal TEXT NOT NULL DEFAULT '',
+            stage TEXT NOT NULL DEFAULT 'CONCEPT',
+            stage_index INTEGER NOT NULL DEFAULT 0,
+            state TEXT NOT NULL DEFAULT 'active',
+            summary_json TEXT NOT NULL DEFAULT '{}',
+            started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_state ON learning_sessions(user_id, state)")
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL DEFAULT '',
+            href TEXT NOT NULL DEFAULT '',
+            dedupe_key TEXT,
+            read_at TIMESTAMP,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_notifications_user_time ON notifications(user_id, created_at)")
+    notification_cols = {r[1] for r in connection.execute("PRAGMA table_info(notifications)").fetchall()}
+    if "dedupe_key" not in notification_cols:
+        connection.execute("ALTER TABLE notifications ADD COLUMN dedupe_key TEXT")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_notifications_dedupe ON notifications(user_id, dedupe_key)")
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS assignment_submissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            assignment_id INTEGER NOT NULL,
+            student_id INTEGER NOT NULL,
+            payload_json TEXT NOT NULL DEFAULT '{}',
+            score REAL,
+            submitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(assignment_id, student_id),
+            FOREIGN KEY (assignment_id) REFERENCES teacher_assignments(id) ON DELETE CASCADE,
+            FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_assign_sub_assignment ON assignment_submissions(assignment_id)")
+
+    # Notes 2.0: additive columns (guarded so an existing notes table migrates
+    # in place and is never re-altered).
+    note_cols = {row[1] for row in connection.execute("PRAGMA table_info(notes)").fetchall()}
+    if "tags_json" not in note_cols:
+        connection.execute("ALTER TABLE notes ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]'")
+    if "concept_key" not in note_cols:
+        connection.execute("ALTER TABLE notes ADD COLUMN concept_key TEXT NOT NULL DEFAULT ''")
+
+    # Application-wide search: FTS5 index over canonical entities. Curriculum
+    # rows are (re)built at boot; user rows (notes) stay in sync through the
+    # note write paths. Falls back to LIKE search when FTS5 is unavailable.
+    try:
+        connection.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
+                entity_type UNINDEXED,
+                entity_id UNINDEXED,
+                title,
+                body,
+                href UNINDEXED,
+                owner_id UNINDEXED,
+                tokenize='unicode61'
+            )
+        """)
+    except Exception:
+        pass  # FTS5 missing -> the search service degrades to LIKE queries.
+
     _repair_corrupt_password_hashes(connection)
 
     connection.commit()
@@ -979,6 +1124,30 @@ def get_notes(user_id, search="", subject="", pinned_only=False):
     ).fetchall()
     connection.close()
     return [_row_to_dict(note) for note in notes]
+
+
+def get_note(user_id, client_id):
+    """One note owned by this learner (or None)."""
+    connection = get_connection()
+    row = connection.execute(
+        "SELECT * FROM notes WHERE client_id = ? AND user_id = ? AND deleted_at IS NULL",
+        (client_id, int(user_id)),
+    ).fetchone()
+    connection.close()
+    return _row_to_dict(row) if row else None
+
+
+def set_note_meta(user_id, client_id, tags_json, concept_key=""):
+    """Persist Smart Notes metadata (tags + concept link) for one note."""
+    def work(connection):
+        connection.execute(
+            "UPDATE notes SET tags_json = ?, concept_key = ?, "
+            "updated_at = CURRENT_TIMESTAMP WHERE client_id = ? AND user_id = ? "
+            "AND deleted_at IS NULL",
+            (tags_json, str(concept_key or "")[:200], client_id, int(user_id)),
+        )
+    _transaction(work)
+    return get_note(user_id, client_id)
 
 
 def create_note(user_id, title, body, subject, chapter=None, source_type=None, source_id=None, source_title=None):

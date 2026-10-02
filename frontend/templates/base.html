@@ -17,6 +17,26 @@
 .notif-item{display:block;padding:9px 10px;border-radius:10px;color:inherit;text-decoration:none}
 .notif-item:hover{background:var(--surface-2)}
 .notif-item b{display:block;font-size:13.5px}
+.notif-item.unread{background:var(--primary-soft);border-left:3px solid var(--primary)}
+.notif-state{display:flex;flex-direction:column;gap:6px;padding:14px 12px;text-align:center;color:var(--muted);font-size:12.5px}
+.notif-state b{color:var(--ink);font-size:13.5px}
+.notif-error{color:#b91c1c}
+.notif-error b{color:#b91c1c}
+/* Command palette */
+.lc-palette-trigger{display:flex;align-items:center;gap:8px;width:100%;margin:10px 0 4px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font-size:12.5px;cursor:pointer;font-family:inherit}
+.lc-palette-trigger:hover{border-color:var(--primary)}
+.lc-palette-trigger kbd{margin-left:auto;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:10.5px;background:var(--surface-2)}
+#lcPalette{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;z-index:120;align-items:flex-start;justify-content:center;padding-top:12vh}
+#lcPalette.open{display:flex}
+.lc-palette-card{width:min(640px,92vw);background:var(--surface);border-radius:14px;border:1px solid var(--line);box-shadow:0 24px 60px rgba(15,23,42,.25);overflow:hidden}
+#lcPaletteInput{width:100%;border:0;border-bottom:1px solid var(--line);padding:14px 16px;font-size:15px;font-family:inherit;outline:0;background:transparent;color:var(--ink)}
+#lcPaletteResults{max-height:52vh;overflow:auto;padding:6px}
+.lc-palette-label{padding:8px 10px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.lc-palette-item{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 10px;border:0;background:transparent;border-radius:9px;cursor:pointer;font-family:inherit;color:var(--ink)}
+.lc-palette-item.active,.lc-palette-item:hover{background:var(--primary-soft)}
+.lc-palette-hint{color:var(--muted);font-size:12px;white-space:nowrap}
+.lc-palette-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px}
+.lc-palette-foot{padding:8px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px}
 </style>
 </head>
 <body class="lc">
@@ -31,6 +51,9 @@
   <aside class="sidebar" id="sidebar" aria-label="LearnCraft command navigation">
     <div class="brand"><div class="brand-mark" aria-hidden="true">L</div><div><div class="brand-name">LearnCraft</div><div class="brand-sub">STEM Command · Offline</div></div></div>
     <div class="lc-sysline" aria-hidden="true"><span class="lc-sysdot"></span><span>LEARN_OS · v1 · LOCAL</span><span class="lc-sysver">SYS.ONLINE</span></div>
+    <button class="lc-palette-trigger" id="openPalette" type="button" aria-label="Open command palette (Control K)">
+      <span aria-hidden="true">⌕</span><span>Search or jump to…</span><kbd>Ctrl K</kbd>
+    </button>
     <nav class="nav">
       <div class="nav-label">Learn</div>
       {% for item in nav %}
@@ -90,50 +113,12 @@
 <div class="modal-back" id="modalBack"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 <script src="/static/js/app.js"></script>
+<script src="/static/js/command-palette.js"></script>
 <script src="/static/js/external-links.js"></script>
 <script src="/static/js/sandbox-engine.js"></script>
 <script src="/static/js/offline-store.js"></script>
+<script src="/static/js/notifications.js"></script>
 <script>
-(function(){
-  var bell=document.getElementById('notifBell');
-  if(!bell) return;
-  var count=document.getElementById('notifCount');
-  var menu=document.getElementById('notifMenu');
-  var list=document.getElementById('notifList');
-  var KEY='lc_seen_teacher_items';
-  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-  function seen(){try{return JSON.parse(localStorage.getItem(KEY)||'[]');}catch(e){return [];}}
-  function saveSeen(ids){try{localStorage.setItem(KEY,JSON.stringify(ids));}catch(e){}}
-  function short(s,n){s=String(s||'');return s.length>n?s.slice(0,n)+'…':s;}
-  async function getJSON(url){var r=await fetch(url);if(!r.ok) throw new Error('bad');return r.json();}
-  async function refresh(){
-    try{
-      var res=await Promise.all([getJSON('/api/v1/assignments'),getJSON('/api/v1/announcements')]);
-      var items=[];
-      (res[0].items||[]).forEach(function(a){items.push({key:'asg:'+a.id,kind:'Assignment',cls:'warn',title:a.title||'New assignment',sub:(a.due_at?'Due: '+a.due_at:'No due date')});});
-      (res[1].items||[]).forEach(function(n){items.push({key:'ann:'+n.id,kind:'Announcement',cls:'info',title:short(n.message,90),sub:(n.created_at||'From your teacher')});});
-      var s=seen();
-      var fresh=items.filter(function(i){return s.indexOf(i.key)<0;});
-      if(fresh.length){count.hidden=false;count.textContent=fresh.length>9?'9+':String(fresh.length);}
-      else{count.hidden=true;}
-      list._keys=items.map(function(i){return i.key;});
-      if(!items.length){list.innerHTML='<div class="empty" style="padding:12px">No notifications yet. Teacher announcements will appear here.</div>';return;}
-      list.innerHTML=items.slice(0,8).map(function(i){
-        return '<a class="notif-item" href="/assignments#from-teacher"><span class="badge '+i.cls+'">'+esc(i.kind)+'</span> <b style="margin-top:4px">'+esc(i.title)+'</b><div class="caption">'+esc(i.sub)+'</div></a>';
-      }).join('');
-    }catch(e){/* offline: keep last state */}
-  }
-  bell.addEventListener('click',function(e){
-    e.stopPropagation();
-    var willOpen=menu.hidden;
-    menu.hidden=!willOpen;
-    bell.setAttribute('aria-expanded',String(willOpen));
-    if(willOpen){saveSeen(list._keys||seen());count.hidden=true;}
-  });
-  document.addEventListener('click',function(e){if(!menu.hidden&&!e.target.closest('.notif-wrap')){menu.hidden=true;}});
-  refresh();
-  setInterval(refresh,30000);
-})();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(function () {});

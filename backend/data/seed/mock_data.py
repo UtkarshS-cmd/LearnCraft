@@ -285,8 +285,10 @@ PROGRESS_ACTIVITY = [
 
 NAV = [
     {"slug": "home", "label": "Home", "href": "/home", "icon": "home"},
+    {"slug": "missions", "label": "Missions", "href": "/missions", "icon": "play"},
     {"slug": "my-learning", "label": "My Learning", "href": "/my-learning", "icon": "play"},
     {"slug": "subjects", "label": "Subjects", "href": "/subjects", "icon": "grid"},
+    {"slug": "mastery", "label": "Mastery Map", "href": "/mastery", "icon": "chart"},
     {"slug": "resources", "label": "Resources", "href": "/resources", "icon": "grid"},
     {"slug": "tests", "label": "Tests", "href": "/tests", "icon": "clip"},
     {"slug": "practical", "label": "Practical", "href": "/practical", "icon": "flask"},

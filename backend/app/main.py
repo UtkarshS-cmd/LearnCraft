@@ -1,11 +1,12 @@
 import json
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 
-from flask import Flask, jsonify, redirect, render_template, request, session
+from flask import (Flask, Response, jsonify, redirect, render_template, request,
+                   session)
 
 from data.seed import lessons_data as L
 from data.seed import mock_data as M
@@ -13,10 +14,14 @@ from app.core.security import hash_password, password_policy, verify_password
 from app.services.auth_service import AuthService, EmailExistsError
 from app.services.password_reset import PasswordResetService
 from app.database.connection import (
+    _transaction,
     add_student,
     create_user,
     ensure_note_seed,
+    get_connection,
     get_notes,
+    get_note,
+    set_note_meta,
     get_user_progress,
     get_student,
     get_user_by_email,
@@ -85,6 +90,11 @@ from app.api.v1.teacher import bp as teacher_api_bp
 from app.api.v1.resources import bp as resources_api_bp
 from app.api.v1.learning_a import bp as learning_a_bp
 from app.api.v1.learning_b import bp2 as learning_b_bp
+from app.api.v1.mastery_map import bp as mastery_map_bp
+from app.api.v1.missions import bp as missions_bp
+from app.api.v1.notifications import bp as notifications_bp
+from app.api.v1.search import bp as search_bp
+from app.api.v1.sessions import bp as sessions_bp
 
 for blueprint in (
     api_bp,
@@ -101,6 +111,11 @@ for blueprint in (
     resources_api_bp,
     learning_a_bp,
     learning_b_bp,
+    mastery_map_bp,
+    missions_bp,
+    notifications_bp,
+    search_bp,
+    sessions_bp,
 ):
     app.register_blueprint(blueprint)
 from app.core.config import (
@@ -197,6 +212,13 @@ def seed_local_content():
             )
         except Exception:
             continue
+    # Application-wide search index (curriculum half). Idempotent + bounded.
+    try:
+        from app.api.v1.search import rebuild_curriculum_index
+
+        rebuild_curriculum_index()
+    except Exception:
+        pass
 
 
 try:
@@ -620,6 +642,14 @@ def auth_register():
             auto_registered = enqueue_student_join_requests(user["id"])
         except Exception:
             auto_registered = 0
+    elif user.get("role") in {"TEACHER", "ADMIN"}:
+        # Mirror case: students that registered BEFORE this teacher account
+        # existed would otherwise never appear in the approval queue.
+        try:
+            from app.services.teacher_control import enqueue_existing_students_for_teacher
+            enqueue_existing_students_for_teacher(user["id"])
+        except Exception:
+            pass
 
     session.clear()
     session["user_id"] = user["id"]
@@ -804,6 +834,34 @@ def my_learning():
 def subjects():
     return render_template("pages/subjects.html", title="Subjects",
                            subjects=student_subjects(current_user()["id"]), **shell_ctx("subjects", current_user()))
+
+
+@app.route("/missions")
+@require_auth
+def missions_page():
+    """Learning Mission Engine UI - missions generated from real learner state."""
+    user = current_user()
+    from app.services.mission_engine import list_missions, mission_summary
+
+    try:
+        missions = list_missions(user["id"])
+        summary = mission_summary(user["id"])
+    except Exception:
+        missions, summary = [], {"offered": 0, "active": 0, "completed": 0, "total": 0}
+    selected = request.args.get("mission", type=int)
+    active = next((m for m in missions if m["id"] == selected), None)
+    return render_template("pages/missions.html", title="Missions", missions=missions,
+                           mission_summary=summary, active_mission=active,
+                           **shell_ctx("missions", user))
+
+
+@app.route("/mastery")
+@require_auth
+def mastery_page():
+    """Concept Mastery Map UI - graph generated from backend curriculum+mastery."""
+    user = current_user()
+    return render_template("pages/mastery.html", title="Mastery Map",
+                           **shell_ctx("mastery", user))
 
 
 @app.route("/subjects/<slug>")
@@ -1057,6 +1115,95 @@ def api_student_announcements():
     return jsonify({"items": student_announcements(current_user()["id"])})
 
 
+@app.post("/api/v1/assignments/<int:assignment_id>/submit")
+@require_auth
+def api_submit_assignment(assignment_id):
+    """Submit teacher-assigned work.
+
+    This is the link that makes assignment intelligence real: the submission is
+    scoped to the signed-in learner, verified against the assignment's own
+    target list, recorded in ``assignment_submissions``, mirrored to the
+    existing event/sync pipeline, and it advances the learner's mission.
+    """
+    user = current_user()
+    if not user or user.get("role") != "STUDENT":
+        return json_error("Student account required.", "FORBIDDEN", 403)
+
+    payload = request.get_json(silent=True) or {}
+    answers = payload.get("answers")
+    answers = answers if isinstance(answers, dict) else {}
+    try:
+        score = float(payload["score"]) if payload.get("score") is not None else None
+    except (TypeError, ValueError, KeyError):
+        score = None
+    record = {"answers": answers, "submitted_at": _server_now()}
+
+    def work(connection):
+        assignment = connection.execute(
+            "SELECT a.* FROM teacher_assignments a JOIN assignment_targets t "
+            "ON t.assignment_id = a.id WHERE a.id = ? AND t.student_id = ?",
+            (int(assignment_id), int(user["id"])),
+        ).fetchone()
+        if not assignment:
+            return None, None
+        now = connection.execute("SELECT CURRENT_TIMESTAMP AS now").fetchone()["now"]
+        if assignment["start_at"] and str(assignment["start_at"]) > str(now):
+            return None, "not_open"
+        connection.execute(
+            "INSERT INTO assignment_submissions (assignment_id, student_id, payload_json, score) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT(assignment_id, student_id) DO UPDATE SET "
+            "payload_json = excluded.payload_json, score = excluded.score, "
+            "submitted_at = CURRENT_TIMESTAMP",
+            (int(assignment_id), int(user["id"]), json.dumps(record)[:8000], score),
+        )
+        return assignment, None
+
+    assignment, problem = _transaction(work)
+    if problem == "not_open":
+        return json_error("This assignment is not open yet.", "NOT_OPEN", 400)
+    if not assignment:
+        return json_error("Assignment not found.", "NOT_FOUND", 404)
+
+    try:
+        record_event(user["id"], "ASSIGNMENT_SUBMITTED", activity_type="assignment",
+                     activity_id=str(assignment_id),
+                     detail=assignment["title"], score=score)
+    except Exception:
+        pass
+    try:
+        from app.services.gamification import award
+
+        award(int(user["id"]), "quiz_completed", f"assignment:{assignment_id}")
+    except Exception:
+        pass
+    try:
+        from app.services.mission_engine import refresh_mission
+
+        mission_id = _mission_for_assignment(int(user["id"]), assignment_id)
+        if mission_id:
+            refresh_mission(int(user["id"]), mission_id)
+    except Exception:
+        pass
+    return json_success("Assignment submitted.", "ASSIGNMENT_SUBMITTED",
+                       {"assignment_id": int(assignment_id)}, 201)
+
+
+def _mission_for_assignment(user_id: int, assignment_id: int) -> int | None:
+    connection = get_connection()
+    row = connection.execute(
+        "SELECT id FROM missions WHERE user_id = ? AND mission_key = ?",
+        (int(user_id), f"assignment:{assignment_id}"),
+    ).fetchone()
+    connection.close()
+    return int(row["id"]) if row else None
+
+
+def _server_now() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
 @app.route("/sandbox")
 @require_auth
 def sandbox():
@@ -1149,6 +1296,58 @@ def resources_hub():
 
 
 
+def _note_tags(payload) -> str:
+    """Normalise tags to a compact JSON list (max 12 short tags)."""
+    raw = payload.get("tags")
+    if isinstance(raw, str):
+        raw = [part for part in raw.replace(",", " ").split() if part]
+    if not isinstance(raw, (list, tuple)):
+        return "[]"
+    out: list[str] = []
+    for tag in raw[:12]:
+        text = str(tag).strip()[:40]
+        if text and text not in out:
+            out.append(text)
+    return json.dumps(out)
+
+
+def _index_note(note: dict, user_id: int) -> dict:
+    """Keep this learner's own note searchable (private, owner-scoped)."""
+    if not note:
+        return note
+    try:
+        from app.api.v1.search import index_note
+
+        index_note({**note, "user_id": user_id,
+                    "tags": json.loads(note.get("tags_json") or "[]")})
+    except Exception:
+        pass
+    return _public_note(note)
+
+
+def _public_note(note: dict) -> dict:
+    """Shape a note row for the API, decoding the stored JSON columns."""
+    item = dict(note)
+    try:
+        item["tags"] = json.loads(item.get("tags_json") or "[]")
+    except (TypeError, ValueError):
+        item["tags"] = []
+    item["concept_key"] = item.get("concept_key", "")
+    return item
+
+
+@app.get("/api/notes")
+@require_auth
+def api_list_notes():
+    """Smart Notes 2.0: searchable list for the signed-in learner only."""
+    user = current_user()
+    search = request.args.get("q", "").strip()
+    subject = request.args.get("subject", "").strip()
+    items = [_public_note(note) for note in
+             get_notes(user["id"], search, subject)]
+    return jsonify({"success": True, "items": items, "count": len(items)})
+
+
 @app.post("/api/notes")
 @require_auth
 def api_create_note():
@@ -1157,9 +1356,12 @@ def api_create_note():
     title, body, subject = (str(payload.get(key, "")).strip() for key in ("title", "body", "subject"))
     if not title or not subject:
         return json_error("Title and subject are required.", "VALIDATION_ERROR", 400)
-    return jsonify(create_note(user["id"], title, body, subject, payload.get("chapter"),
-                               payload.get("source_type"), payload.get("source_id"),
-                               payload.get("source_title"))), 201
+    note = create_note(user["id"], title, body, subject, payload.get("chapter"),
+                       payload.get("source_type"), payload.get("source_id"),
+                       payload.get("source_title"))
+    set_note_meta(user["id"], note["client_id"], _note_tags(payload),
+                  str(payload.get("concept_key", ""))[:200])
+    return jsonify(_index_note(get_note(user["id"], note["client_id"]), user["id"])), 201
 
 
 @app.put("/api/notes/<client_id>")
@@ -1170,8 +1372,12 @@ def api_update_note(client_id):
     title, body, subject = (str(payload.get(key, "")).strip() for key in ("title", "body", "subject"))
     if not title or not subject:
         return json_error("Title and subject are required.", "VALIDATION_ERROR", 400)
-    note = update_note(user["id"], client_id, title, body, subject, payload.get("chapter"))
-    return jsonify(note) if note else json_error("Note not found.", "NOT_FOUND", 404)
+    update_note(user["id"], client_id, title, body, subject, payload.get("chapter"))
+    if "tags" in payload or "concept_key" in payload:
+        set_note_meta(user["id"], client_id, _note_tags(payload),
+                      str(payload.get("concept_key", ""))[:200])
+    note = get_note(user["id"], client_id)
+    return jsonify(_index_note(note, user["id"])) if note else json_error("Note not found.", "NOT_FOUND", 404)
 
 
 @app.post("/api/notes/<client_id>/pin")
@@ -1186,8 +1392,41 @@ def api_pin_note(client_id):
 @app.delete("/api/notes/<client_id>")
 @require_auth
 def api_delete_note(client_id):
-    delete_note(current_user()["id"], client_id)
+    user = current_user()
+    delete_note(user["id"], client_id)
+    try:
+        from app.api.v1.search import unindex_note
+
+        unindex_note(client_id, user["id"])
+    except Exception:
+        pass
     return json_success("Note deleted.", "NOTE_DELETED", None, 200)
+
+
+@app.get("/api/notes/export")
+@require_auth
+def api_export_notes():
+    """Export the signed-in learner's notes (JSON or Markdown) for backup."""
+    user = current_user()
+    fmt = str(request.args.get("format", "json")).strip().lower()
+    notes = [_public_note(note) for note in get_notes(user["id"])]
+    if fmt == "md":
+        lines = [f"# LearnCraft notes - {user.get('name', 'Learner')}", ""]
+        for note in notes:
+            lines.append(f"## {note['title']}")
+            meta = [note.get("subject", "")]
+            if note.get("chapter"):
+                meta.append(note["chapter"])
+            if note.get("tags"):
+                meta.append(" ".join(f"#{tag}" for tag in note["tags"]))
+            lines.append(" · ".join(str(part) for part in meta if part))
+            lines.append("")
+            lines.append(str(note.get("body", "")))
+            lines.append("")
+        return Response("\n".join(lines), mimetype="text/markdown",
+                        headers={"Content-Disposition": "attachment; filename=learncraft-notes.md"})
+    return jsonify({"success": True, "count": len(notes), "notes": notes,
+                    "exported_at": datetime.now(timezone.utc).isoformat()})
 
 
 @app.get("/api/system/status")

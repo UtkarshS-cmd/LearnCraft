@@ -4,7 +4,8 @@ from app.database.connection import _transaction, get_connection
 
 XP_RULES = {"lesson_completed": 50, "practice": 10, "quiz_correct": 10,
             "quiz_completed": 25, "mastery_up": 30, "project": 100,
-            "note_created": 5, "revision": 15}
+            "note_created": 5, "revision": 15, "mission_completed": 60,
+            "session_completed": 20}
 
 LEVEL_XP = 250
 
@@ -29,7 +30,17 @@ def award(uid: int, action: str, ref: str = "") -> dict:
                   (xp, _level(xp), int(uid)))
         c.execute("INSERT INTO xp_events (user_id, action, points, ref) VALUES (?, ?, ?, ?)",
                   (int(uid), action[:80], pts, str(ref)[:180]))
-    _transaction(work)
+        return _level(xp - pts), _level(xp)
+    previous_level, level = _transaction(work)
+    # A level change is a real persisted event; notify once, never per keystroke.
+    if level > previous_level:
+        try:
+            from app.services.notifications import notify
+
+            notify(int(uid), "level_up", f"Level {level} reached",
+                   f"You earned {pts} XP for {action.replace('_', ' ')}.", href="/profile")
+        except Exception:
+            pass
     return profile(uid, awarded=pts)
 
 

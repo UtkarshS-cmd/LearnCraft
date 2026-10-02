@@ -48,6 +48,14 @@ def register():
             auto_registered = enqueue_student_join_requests(user["id"])
         except Exception:
             auto_registered = 0
+    else:
+        # Teacher/admin accounts backfill join requests for students that
+        # already existed, so registration order never hides learners.
+        try:
+            from app.services.teacher_control import enqueue_existing_students_for_teacher
+            enqueue_existing_students_for_teacher(user["id"])
+        except Exception:
+            pass
     session.clear()
     session["user_id"] = user["id"]
     session.permanent = True

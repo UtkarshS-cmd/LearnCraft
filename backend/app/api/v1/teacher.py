@@ -245,6 +245,60 @@ def assignment():
         return jsonify({"success": False, "message": str(exc), "code": "VALIDATION_ERROR"}), 400
 
 
+@bp.get("/pulse")
+def pulse():
+    """Class Pulse: every metric carries its source table and a drill-down link."""
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    class_id = request.args.get("class_id", type=int)
+    from app.services.class_pulse import class_pulse
+
+    return jsonify({"success": True, **class_pulse(user_id, class_id)})
+
+
+@bp.get("/signals")
+def signals():
+    """Early-warning overview for every student of this teacher."""
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    from app.services.early_warning import class_signals
+
+    items = class_signals(user_id)
+    return jsonify({"success": True, "items": items, "count": len(items)})
+
+
+@bp.get("/students/<int:student_id>/signals")
+def student_signals(student_id):
+    """Drill-down evidence behind one student's status."""
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    from app.services.early_warning import student_signals as build_signals
+
+    report = build_signals(user_id, student_id)
+    if not report:
+        return jsonify({"success": False, "message":
+                        "Student not found in your classes.", "code": "FORBIDDEN"}), 403
+    return jsonify({"success": True, **report})
+
+
+@bp.get("/assignments/<int:assignment_id>/insights")
+def assignment_insights(assignment_id):
+    """Completion, struggled concepts, common wrong answers and support list."""
+    user_id = teacher_id()
+    if not user_id:
+        return forbidden()
+    from app.services.assignment_intel import assignment_insights as build_insights
+
+    insights = build_insights(user_id, assignment_id)
+    if not insights:
+        return jsonify({"success": False, "message": "Assignment not found.",
+                        "code": "NOT_FOUND"}), 404
+    return jsonify({"success": True, **insights})
+
+
 @bp.get("/assignments")
 def assignments_list():
     user_id = teacher_id()
